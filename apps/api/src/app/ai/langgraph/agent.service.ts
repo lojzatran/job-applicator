@@ -1,12 +1,32 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import { AgentBuilder } from './AgentBuilder';
+import { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { COVER_LETTER_GENERATOR_LLM, JOB_EVALUATOR_LLM } from '../ai.constants';
+import { Job } from '../../jobs/types';
 
 @Injectable()
 export class AgentService {
+  constructor(
+    @Inject(JOB_EVALUATOR_LLM) private readonly jobEvaluatorLlm: BaseChatModel,
+    @Inject(COVER_LETTER_GENERATOR_LLM)
+    private readonly coverLetterGeneratorLlm: BaseChatModel,
+  ) {}
 
-    
-    getAgent() {
-        const agent = new Agent({
-            
-        
+  async executeAgent(jobs: Job[], cvText: string) {
+    const agentBuilder = new AgentBuilder(
+      this.jobEvaluatorLlm,
+      this.coverLetterGeneratorLlm,
+    );
+    const agent = agentBuilder.build();
+    for (const job of jobs) {
+      const result = await agent.stream({
+        job: job,
+        cvText: cvText,
+      });
+
+      for await (const chunk of result) {
+        console.log(chunk);
+      }
     }
+  }
 }

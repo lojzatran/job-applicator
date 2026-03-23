@@ -6,7 +6,7 @@
       "request": "launch",
       "name": "Debug @apps/api with Nx",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["nx", "serve", "@apps/api"],
+      "runtimeArgs": ["nx", "dev", "@apps/api"],
       "env": {
         "NODE_OPTIONS": "--inspect=9229"
       },

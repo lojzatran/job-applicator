@@ -1,0 +1,14 @@
+services:
+  rabbitmq:
+    image: rabbitmq:4.2.3-management-alpine
+    ports:
+      - '5672:5672'
+      - '15672:15672'
+    environment:
+      - RABBITMQ_ERLANG_COOKIE=a_very_long_secret_cookie_for_rabbitmq_4_0
+    healthcheck:
+      test: ['CMD', 'rabbitmq-diagnostics', '-q', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
