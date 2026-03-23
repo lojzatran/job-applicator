@@ -12,21 +12,20 @@ export class AgentService {
     private readonly coverLetterGeneratorLlm: BaseChatModel,
   ) {}
 
-  async executeAgent(jobs: Job[], cvText: string) {
+  async executeAgent(jobs: Job[], maxJobs: number, cvText: string) {
     const agentBuilder = new AgentBuilder(
       this.jobEvaluatorLlm,
       this.coverLetterGeneratorLlm,
     );
     const agent = agentBuilder.build();
-    for (const job of jobs) {
-      const result = await agent.stream({
-        job: job,
-        cvText: cvText,
-      });
+    const result = await agent.stream({
+      cvText: cvText,
+      maxAppliedJobs: maxJobs,
+      jobs: jobs,
+    });
 
-      for await (const chunk of result) {
-        console.log(chunk);
-      }
+    for await (const chunk of result) {
+      console.log(chunk);
     }
   }
 }

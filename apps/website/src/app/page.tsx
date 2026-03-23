@@ -4,6 +4,7 @@ import { BackgroundDecor } from './components/BackgroundDecor';
 import { LinkedInToggle } from './components/LinkedInToggle';
 import { PageHero } from './components/PageHero';
 import { ResumeDropzone } from './components/ResumeDropzone';
+import { MaxJobsField } from './components/MaxJobsField';
 import { StatusMessage } from './components/StatusMessage';
 import { SubmitButton } from './components/SubmitButton';
 import { StartupJobsToggle } from './components/StartupJobsToggle';
@@ -18,6 +19,8 @@ export default function Index() {
     setLinkedinEnabled,
     startupJobsEnabled,
     setStartupJobsEnabled,
+    maxJobs,
+    setMaxJobs,
     selectedFile,
     isDragging,
     isUploading,
@@ -68,6 +71,8 @@ export default function Index() {
                   enabled={startupJobsEnabled}
                   onToggle={() => setStartupJobsEnabled(!startupJobsEnabled)}
                 />
+
+                <MaxJobsField value={maxJobs} onChange={setMaxJobs} />
 
                 <SubmitButton isUploading={isUploading} />
               </form>

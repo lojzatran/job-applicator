@@ -8,9 +8,12 @@ import z from 'zod';
 export class AgentBuilder {
   private StateSchema = new StateSchema({
     isValidJob: z.boolean(),
-    job: JobSchema,
+    job: JobSchema.optional(),
+    maxAppliedJobs: z.number(),
+    appliedJobsCount: z.number().default(0),
+    jobs: z.array(JobSchema),
     cvText: z.string(),
-    coverLetter: z.string(),
+    coverLetter: z.string().optional(),
   });
 
   private jobEvaluatorLlm: BaseChatModel;
@@ -22,6 +25,21 @@ export class AgentBuilder {
   ) {
     this.jobEvaluatorLlm = jobEvaluatorLlm;
     this.coverLetterGeneratorLlm = coverLetterGeneratorLlm ?? jobEvaluatorLlm;
+  }
+
+  private jobSupplier(state: typeof this.StateSchema.State) {
+    const [job, ...remainingJobs] = state.jobs;
+    return { job, jobs: remainingJobs };
+  }
+
+  private shouldContinue(state: typeof this.StateSchema.State) {
+    console.log(
+      `Should continue: ${state.appliedJobsCount} >= ${state.maxAppliedJobs}`,
+    );
+    if (!state.job || state.appliedJobsCount >= state.maxAppliedJobs) {
+      return END;
+    }
+    return 'job_evaluator';
   }
 
   private async evaluateJob(state: typeof this.StateSchema.State) {
@@ -49,9 +67,11 @@ export class AgentBuilder {
 
     const prompt = await template.invoke({
       cvText: state.cvText,
-      jobTitle: state.job.title,
-      jobDescription: state.job.description,
+      jobTitle: state.job!.title,
+      jobDescription: state.job!.description,
     });
+
+    console.log(`Evaluating job: ${JSON.stringify(state.job)}`);
 
     const response = await this.jobEvaluatorLlm
       .withStructuredOutput(z.boolean())
@@ -65,7 +85,7 @@ export class AgentBuilder {
     if (isValidJob) {
       return 'cover_letter_generator';
     }
-    return END;
+    return 'job_supplier';
   }
 
   private async generateCoverLetter(state: typeof this.StateSchema.State) {
@@ -113,32 +133,40 @@ export class AgentBuilder {
 
     const prompt = await template.invoke({
       cv: state.cvText,
-      jobTitle: state.job.title,
-      jobDescription: state.job.description,
-      companyName: state.job.company,
+      jobTitle: state.job!.title,
+      jobDescription: state.job!.description,
+      companyName: state.job!.company,
     });
 
     const response = await this.coverLetterGeneratorLlm.invoke(prompt);
 
-    return { coverLetter: response.content };
+    return {
+      coverLetter: response.content,
+      appliedJobsCount: state.appliedJobsCount + 1,
+    };
   }
 
   build() {
     const stateGraph = new StateGraph(this.StateSchema);
 
     stateGraph
+      .addNode('job_supplier', this.jobSupplier.bind(this))
       .addNode('job_evaluator', this.evaluateJob.bind(this), {
         retryPolicy: { maxAttempts: 3 },
       })
       .addNode('cover_letter_generator', this.generateCoverLetter.bind(this), {
         retryPolicy: { maxAttempts: 3 },
       })
-      .addEdge(START, 'job_evaluator')
-      .addConditionalEdges('job_evaluator', this.filterJobs, [
-        'cover_letter_generator',
+      .addEdge(START, 'job_supplier')
+      .addConditionalEdges('job_supplier', this.shouldContinue, [
+        'job_evaluator',
         END,
       ])
-      .addEdge('cover_letter_generator', END);
+      .addConditionalEdges('job_evaluator', this.filterJobs, [
+        'cover_letter_generator',
+        'job_supplier',
+      ])
+      .addEdge('cover_letter_generator', 'job_supplier');
 
     return stateGraph.compile();
   }

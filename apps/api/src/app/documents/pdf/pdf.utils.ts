@@ -23,7 +23,6 @@ const shouldInsertSpace = (
   const gap = currentItem.x - previousEndX;
   const minGapForSpace =
     Math.max(previousItem.lineHeight, currentItem.lineHeight) * 0.15;
-
   return gap > minGapForSpace;
 };
 

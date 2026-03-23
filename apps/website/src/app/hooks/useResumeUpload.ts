@@ -1,12 +1,6 @@
 'use client';
 
-import {
-  ChangeEvent,
-  DragEvent,
-  FormEvent,
-  useRef,
-  useState,
-} from 'react';
+import { ChangeEvent, DragEvent, FormEvent, useRef, useState } from 'react';
 import { UploadResponse } from '../types/upload';
 
 const acceptedExtensions = ['pdf', 'doc', 'docx'];
@@ -24,6 +18,7 @@ const validateFile = (file: File) => {
 export const useResumeUpload = () => {
   const [linkedinEnabled, setLinkedinEnabled] = useState(false);
   const [startupJobsEnabled, setStartupJobsEnabled] = useState(false);
+  const [maxJobs, setMaxJobs] = useState(5);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -93,6 +88,7 @@ export const useResumeUpload = () => {
     formData.append('file', selectedFile);
     formData.append('linkedinEnabled', String(linkedinEnabled));
     formData.append('startupJobsEnabled', String(startupJobsEnabled));
+    formData.append('maxJobs', String(maxJobs));
 
     setValidationMessage('');
     setReadyMessage('');
@@ -133,6 +129,8 @@ export const useResumeUpload = () => {
     setLinkedinEnabled,
     startupJobsEnabled,
     setStartupJobsEnabled,
+    maxJobs,
+    setMaxJobs,
     selectedFile,
     isDragging,
     isUploading,

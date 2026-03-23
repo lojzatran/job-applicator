@@ -15,6 +15,23 @@ const toBoolean = (value: FormDataEntryValue | null): boolean => {
   return ['true', '1', 'on', 'yes'].includes(value.toLowerCase());
 };
 
+const toPositiveInteger = (
+  value: FormDataEntryValue | null,
+  fallback: number,
+): number => {
+  if (typeof value !== 'string') {
+    return fallback;
+  }
+
+  const parsedValue = Number.parseInt(value, 10);
+
+  if (!Number.isFinite(parsedValue) || parsedValue < 1) {
+    return fallback;
+  }
+
+  return parsedValue;
+};
+
 const createStoredFilename = (originalName: string): string => {
   const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
   return `${uniqueSuffix}${extname(originalName)}`;
@@ -24,10 +41,12 @@ const sendToQueue = async ({
   filePath,
   linkedinEnabled,
   startupJobsEnabled,
+  maxJobs,
 }: {
   filePath: string;
   linkedinEnabled: boolean;
   startupJobsEnabled: boolean;
+  maxJobs: number;
 }) => {
   const rabbitmqUrl = process.env.RABBITMQ_URL;
   if (!rabbitmqUrl) {
@@ -44,6 +63,7 @@ const sendToQueue = async ({
         filePath,
         linkedinEnabled,
         startupJobsEnabled,
+        maxJobs,
       }),
     ),
     { persistent: false },
@@ -56,6 +76,9 @@ const sendToQueue = async ({
 export async function POST(request: Request) {
   const formData = await request.formData();
   const fileEntry = formData.get('file');
+  const linkedinEnabled = toBoolean(formData.get('linkedinEnabled'));
+  const startupJobsEnabled = toBoolean(formData.get('startupJobsEnabled'));
+  const maxJobs = toPositiveInteger(formData.get('maxJobs'), 10);
 
   if (!(fileEntry instanceof File)) {
     return NextResponse.json({ message: 'File is required.' }, { status: 400 });
@@ -71,14 +94,16 @@ export async function POST(request: Request) {
 
   await sendToQueue({
     filePath,
-    linkedinEnabled: toBoolean(formData.get('linkedinEnabled')),
-    startupJobsEnabled: toBoolean(formData.get('startupJobsEnabled')),
+    linkedinEnabled,
+    startupJobsEnabled,
+    maxJobs,
   });
 
   return NextResponse.json({
     message: 'File uploaded successfully.',
-    linkedinEnabled: toBoolean(formData.get('linkedinEnabled')),
-    startupJobsEnabled: toBoolean(formData.get('startupJobsEnabled')),
+    linkedinEnabled,
+    startupJobsEnabled,
+    maxJobs,
     file: {
       originalName: fileEntry.name,
       storedName,

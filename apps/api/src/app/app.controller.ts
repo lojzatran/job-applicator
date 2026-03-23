@@ -20,21 +20,22 @@ export class AppController {
       filePath,
       linkedinEnabled,
       startupJobsEnabled,
+      maxJobs,
     }: {
       filePath: string;
       linkedinEnabled: boolean;
       startupJobsEnabled: boolean;
+      maxJobs: number;
     },
   ) {
     console.log('Processing job applications...');
     const channelRef = context.getChannelRef();
     try {
-      const jobs = await this.jobsService.fetchJobs(
-        linkedinEnabled,
-        startupJobsEnabled,
-      );
-      const text = await this.pdfService.extractTextContent(filePath);
-      await this.agentService.executeAgent([jobs[0]], text);
+      const [text, jobs] = await Promise.all([
+        this.pdfService.extractTextContent(filePath),
+        this.jobsService.fetchJobs(linkedinEnabled, startupJobsEnabled),
+      ]);
+      await this.agentService.executeAgent(jobs, maxJobs, text);
       channelRef.ack(context.getMessage());
     } catch (e) {
       channelRef.nack(context.getMessage());
