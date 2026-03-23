@@ -1,4 +1,5 @@
 import './global.css';
+import { ThemePreferenceProvider } from './context/theme-preference-context';
 
 export const metadata = {
   title: 'Welcome to ',
@@ -11,8 +12,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body>{children}</body>
+    <html lang="en" suppressHydrationWarning>
+      <body>
+        <ThemePreferenceProvider>{children}</ThemePreferenceProvider>
+      </body>
     </html>
   );
 }
