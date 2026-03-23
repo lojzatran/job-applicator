@@ -6,6 +6,7 @@ import { PageHero } from './components/PageHero';
 import { ResumeDropzone } from './components/ResumeDropzone';
 import { StatusMessage } from './components/StatusMessage';
 import { SubmitButton } from './components/SubmitButton';
+import { StartupJobsToggle } from './components/StartupJobsToggle';
 import { ThemeToggle } from './components/ThemeToggle';
 import { useResumeUpload } from './hooks/useResumeUpload';
 import { useThemePreference } from './hooks/useThemePreference';
@@ -15,6 +16,8 @@ export default function Index() {
   const {
     linkedinEnabled,
     setLinkedinEnabled,
+    startupJobsEnabled,
+    setStartupJobsEnabled,
     selectedFile,
     isDragging,
     isUploading,
@@ -59,6 +62,11 @@ export default function Index() {
                 <LinkedInToggle
                   enabled={linkedinEnabled}
                   onToggle={() => setLinkedinEnabled(!linkedinEnabled)}
+                />
+
+                <StartupJobsToggle
+                  enabled={startupJobsEnabled}
+                  onToggle={() => setStartupJobsEnabled(!startupJobsEnabled)}
                 />
 
                 <SubmitButton isUploading={isUploading} />

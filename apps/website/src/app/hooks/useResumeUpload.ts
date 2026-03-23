@@ -23,6 +23,7 @@ const validateFile = (file: File) => {
 
 export const useResumeUpload = () => {
   const [linkedinEnabled, setLinkedinEnabled] = useState(false);
+  const [startupJobsEnabled, setStartupJobsEnabled] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -91,6 +92,7 @@ export const useResumeUpload = () => {
     const formData = new FormData();
     formData.append('file', selectedFile);
     formData.append('linkedinEnabled', String(linkedinEnabled));
+    formData.append('startupJobsEnabled', String(startupJobsEnabled));
 
     setValidationMessage('');
     setReadyMessage('');
@@ -129,6 +131,8 @@ export const useResumeUpload = () => {
   return {
     linkedinEnabled,
     setLinkedinEnabled,
+    startupJobsEnabled,
+    setStartupJobsEnabled,
     selectedFile,
     isDragging,
     isUploading,

@@ -10,10 +10,15 @@ export class JobsService {
     private readonly startupjobsService: StartupJobsService,
   ) {}
 
-  async fetchJobs(linkedinEnabled: boolean): Promise<Job[]> {
+  async fetchJobs(
+    linkedinEnabled: boolean,
+    startupJobsEnabled: boolean,
+  ): Promise<Job[]> {
     const [linkedInJobs, startupJobs] = await Promise.all([
       linkedinEnabled ? this.linkedinService.fetchJobs() : Promise.resolve([]),
-      this.startupjobsService.fetchJobs(),
+      startupJobsEnabled
+        ? this.startupjobsService.fetchJobs()
+        : Promise.resolve([]),
     ]);
 
     return [...linkedInJobs, ...startupJobs];

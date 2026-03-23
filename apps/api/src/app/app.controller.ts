@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller } from '@nestjs/common';
 import { JobsService } from './jobs/jobs.service';
 import { PdfService } from './documents/pdf/pdf.service';
 import { AgentService } from './ai/langgraph/agent.service';
@@ -15,12 +15,24 @@ export class AppController {
   @EventPattern()
   async getData(
     @Ctx() context: RmqContext,
-    @Payload() { filePath, linkedinEnabled }: { filePath: string; linkedinEnabled: boolean },
+    @Payload()
+    {
+      filePath,
+      linkedinEnabled,
+      startupJobsEnabled,
+    }: {
+      filePath: string;
+      linkedinEnabled: boolean;
+      startupJobsEnabled: boolean;
+    },
   ) {
     console.log('Processing job applications...');
     const channelRef = context.getChannelRef();
     try {
-      const jobs = await this.jobsService.fetchJobs(linkedinEnabled);
+      const jobs = await this.jobsService.fetchJobs(
+        linkedinEnabled,
+        startupJobsEnabled,
+      );
       const text = await this.pdfService.extractTextContent(filePath);
       await this.agentService.executeAgent([jobs[0]], text);
       channelRef.ack(context.getMessage());

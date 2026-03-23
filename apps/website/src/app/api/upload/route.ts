@@ -23,9 +23,11 @@ const createStoredFilename = (originalName: string): string => {
 const sendToQueue = async ({
   filePath,
   linkedinEnabled,
+  startupJobsEnabled,
 }: {
   filePath: string;
   linkedinEnabled: boolean;
+  startupJobsEnabled: boolean;
 }) => {
   const rabbitmqUrl = process.env.RABBITMQ_URL;
   if (!rabbitmqUrl) {
@@ -41,6 +43,7 @@ const sendToQueue = async ({
       JSON.stringify({
         filePath,
         linkedinEnabled,
+        startupJobsEnabled,
       }),
     ),
     { persistent: false },
@@ -69,11 +72,13 @@ export async function POST(request: Request) {
   await sendToQueue({
     filePath,
     linkedinEnabled: toBoolean(formData.get('linkedinEnabled')),
+    startupJobsEnabled: toBoolean(formData.get('startupJobsEnabled')),
   });
 
   return NextResponse.json({
     message: 'File uploaded successfully.',
     linkedinEnabled: toBoolean(formData.get('linkedinEnabled')),
+    startupJobsEnabled: toBoolean(formData.get('startupJobsEnabled')),
     file: {
       originalName: fileEntry.name,
       storedName,
