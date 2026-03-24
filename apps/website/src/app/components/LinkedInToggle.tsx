@@ -1,9 +1,9 @@
 'use client';
 
-type LinkedInToggleProps = {
+interface LinkedInToggleProps {
   enabled: boolean;
   onToggle: () => void;
-};
+}
 
 export const LinkedInToggle = ({
   enabled,

@@ -16,6 +16,8 @@
     "skipLibCheck": true,
     "strict": true,
     "target": "es2022",
-    "customConditions": ["@apps/source"]
+    "customConditions": ["@apps/source"],
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
   }
 }

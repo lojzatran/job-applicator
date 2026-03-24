@@ -1,9 +1,9 @@
 'use client';
 
-type ThemeToggleProps = {
+interface ThemeToggleProps {
   isDarkMode: boolean;
   onToggle: () => void;
-};
+}
 
 export const ThemeToggle = ({
   isDarkMode,

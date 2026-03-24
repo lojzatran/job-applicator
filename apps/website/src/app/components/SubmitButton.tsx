@@ -1,8 +1,8 @@
 'use client';
 
-type SubmitButtonProps = {
+interface SubmitButtonProps {
   isUploading: boolean;
-};
+}
 
 export const SubmitButton = ({ isUploading }: SubmitButtonProps) => {
   return (

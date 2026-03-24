@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { BackgroundDecor } from './components/BackgroundDecor';
 import { LinkedInToggle } from './components/LinkedInToggle';
 import { PageHero } from './components/PageHero';
@@ -78,9 +79,27 @@ export default function Index() {
               </form>
             </section>
 
-            <footer className="mt-8 pb-8 text-center sm:mt-12 sm:pb-0">
+            <div className="mt-8 flex justify-center">
+              <Link
+                href="/applications"
+                className="group inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white/50 px-5 py-2.5 text-sm font-semibold text-slate-600 transition-all hover:border-emerald-200 hover:bg-emerald-50/50 hover:text-emerald-700 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400 dark:hover:border-emerald-900/50 dark:hover:bg-emerald-950/20 dark:hover:text-emerald-400"
+              >
+                <span>View My Applications</span>
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
+                >
+                  <path d="M5 12h14M12 5l7 7-7 7" />
+                </svg>
+              </Link>
+            </div>
+
+            <footer className="mt-12 pb-8 text-center sm:pb-0">
               <p className="text-sm font-medium text-slate-400 dark:text-slate-600">
-                &copy; 2024 Job Applicator AI. All rights reserved.
+                &copy; 2026 Job Applicator AI. All rights reserved.
               </p>
             </footer>
           </div>

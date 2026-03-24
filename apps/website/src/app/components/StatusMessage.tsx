@@ -1,9 +1,9 @@
 'use client';
 
-type StatusMessageProps = {
+interface StatusMessageProps {
   tone: 'error' | 'success';
   message: string;
-};
+}
 
 export const StatusMessage = ({ tone, message }: StatusMessageProps) => {
   if (!message) {

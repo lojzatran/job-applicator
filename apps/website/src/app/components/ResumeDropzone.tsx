@@ -2,7 +2,7 @@
 
 import { ChangeEvent, DragEvent, RefObject } from 'react';
 
-type ResumeDropzoneProps = {
+interface ResumeDropzoneProps {
   fileInputRef: RefObject<HTMLInputElement | null>;
   selectedFile: File | null;
   isDragging: boolean;

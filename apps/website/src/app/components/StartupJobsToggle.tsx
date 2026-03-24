@@ -1,9 +1,9 @@
 'use client';
 
-type StartupJobsToggleProps = {
+interface StartupJobsToggleProps {
   enabled: boolean;
   onToggle: () => void;
-};
+}
 
 export const StartupJobsToggle = ({
   enabled,

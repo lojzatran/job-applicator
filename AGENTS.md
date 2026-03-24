@@ -14,19 +14,24 @@ Welcome, AI Coding Agent! This project is a specialized tool for job searching a
 
 This project is an **Nx Monorepo** with the following core technologies:
 
-- **Framework**: [Next.js](https://nextjs.org/) (App Router)
-- **UI Library**: [React](https://react.dev/)
+- **Frontend Framework**: [Next.js](https://nextjs.org/) (App Router)
+- **Frontend Library**: [React](https://react.dev/)
+- **Backend Framework**: [NestJS](https://nestjs.com/)
 - **Styling**: [Tailwind CSS](https://tailwindcss.com/)
 - **Language**: [TypeScript](https://www.typescript.org/)
 - **State/Infrastructure**: [Nx](https://nx.dev/)
+- **Queue / Messaging**: [RabbitMQ](https://www.rabbitmq.com/) via `amqplib`
+- **Database**: [PostgreSQL](https://www.postgresql.org/) via [TypeORM](https://typeorm.io/)
+- **AI Orchestration**: [LangChain](https://www.langchain.com/) / [LangGraph](https://langchain-ai.github.io/langgraph/)
 - **Testing**: [Jest](https://jestjs.io/) & [Playwright](https://playwright.dev/)
 
 ## 📂 Project Structure
 
 - `apps/website/`: The main Next.js application.
-  - `src/app/`: App router pages, layouts, and global styles.
-  - `src/api/`: Backend API routes.
+- `apps/api/`: The NestJS API that consumes RabbitMQ messages, runs LangGraph, and persists job applications.
+  - `src/app/`: API modules, services, controllers, and persistence.
 - `apps/website-e2e/`: Playwright end-to-end tests.
+- `libs/shared/`: Shared workspace code, if/when common utilities are extracted.
 - `package.json`: Root dependencies and scripts.
 - `nx.json`: Nx workspace configuration.
 
@@ -34,11 +39,16 @@ This project is an **Nx Monorepo** with the following core technologies:
 
 Use `nx` to run tasks. In case `nx` is not found, use `npx nx`.
 
-- **Development**: `nx dev website`
-- **Build**: `nx build website`
-- **Linting**: `nx lint website`
-- **Unit Tests**: `nx test website`
-- **E2E Tests**: `nx e2e website-e2e`
+- **Website Dev**: `nx dev website`
+- **Website Build**: `nx build website`
+- **Website Lint**: `nx lint website`
+- **Website Unit Tests**: `nx test website`
+- **Website E2E Tests**: `nx e2e website-e2e`
+- **API Dev**: `nx serve api`
+- **API Build**: `nx build api`
+- **API Lint**: `nx lint api`
+- **API Type Check**: `nx typecheck api`
+- **Run Everything**: `nx dev-all`
 
 ## 🧩 Agent Guidelines
 
@@ -49,6 +59,16 @@ Use `nx` to run tasks. In case `nx` is not found, use `npx nx`.
 5. **Proactive Debugging**: If a task fails, check the `nx` logs or run `npx nx show project website` to understand available targets.
 6. **Manual UI testing**: Whenever a task is finished, try to run the application in development mode and verify that the app is running and not failing.
 7. **Keep methods short**: Keep methods short and focused on a single responsibility. If a method is too long, split it into smaller methods and give it a descriptive name.
+8. **Use the current year**: Always use the current year by default if not explicitly written otherwise.
+
+## Typescript usage
+
+1. **Use interface**: Default to `interface`, use `type` when you need what interfaces can’t do (unions, tuples, advanced mapped/conditional types).
+
+## React guidelines
+
+1. **Use functional components**: Default to functional components, use class components only when necessary.
+2. **Split long JSX into smaller logical components**: If a JSX part of a component be named and grouped together logically, it should be extracted into a separate component. Put these new components in a `components` folder next to the original component.
 
 ---
 

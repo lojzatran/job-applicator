@@ -3,6 +3,7 @@ import { AgentBuilder } from './AgentBuilder';
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { COVER_LETTER_GENERATOR_LLM, JOB_EVALUATOR_LLM } from '../ai.constants';
 import { Job } from '../../jobs/types';
+import { JobsService } from '../../jobs/jobs.service';
 
 @Injectable()
 export class AgentService {
@@ -10,12 +11,14 @@ export class AgentService {
     @Inject(JOB_EVALUATOR_LLM) private readonly jobEvaluatorLlm: BaseChatModel,
     @Inject(COVER_LETTER_GENERATOR_LLM)
     private readonly coverLetterGeneratorLlm: BaseChatModel,
+    private readonly jobsService: JobsService,
   ) {}
 
   async executeAgent(jobs: Job[], maxJobs: number, cvText: string) {
     const agentBuilder = new AgentBuilder(
       this.jobEvaluatorLlm,
       this.coverLetterGeneratorLlm,
+      this.jobsService,
     );
     const agent = agentBuilder.build();
     const result = await agent.stream({

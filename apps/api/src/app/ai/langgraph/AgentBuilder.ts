@@ -4,6 +4,7 @@ import { StateSchema } from '@langchain/langgraph';
 import { JobSchema } from '../../jobs/types';
 import { PromptTemplate } from '@langchain/core/prompts';
 import z from 'zod';
+import { JobsService } from '../../jobs/jobs.service';
 
 export class AgentBuilder {
   private StateSchema = new StateSchema({
@@ -18,13 +19,16 @@ export class AgentBuilder {
 
   private jobEvaluatorLlm: BaseChatModel;
   private coverLetterGeneratorLlm: BaseChatModel;
+  private jobsService: JobsService;
 
   constructor(
     jobEvaluatorLlm: BaseChatModel,
     coverLetterGeneratorLlm: BaseChatModel | null,
+    jobsService: JobsService,
   ) {
     this.jobEvaluatorLlm = jobEvaluatorLlm;
     this.coverLetterGeneratorLlm = coverLetterGeneratorLlm ?? jobEvaluatorLlm;
+    this.jobsService = jobsService;
   }
 
   private jobSupplier(state: typeof this.StateSchema.State) {
@@ -142,6 +146,16 @@ export class AgentBuilder {
 
     return {
       coverLetter: response.content,
+    };
+  }
+
+  private async persistJobApplication(state: typeof this.StateSchema.State) {
+    await this.jobsService.saveJobApplication(
+      state.job!,
+      state.coverLetter!,
+    );
+
+    return {
       appliedJobsCount: state.appliedJobsCount + 1,
     };
   }
@@ -157,6 +171,7 @@ export class AgentBuilder {
       .addNode('cover_letter_generator', this.generateCoverLetter.bind(this), {
         retryPolicy: { maxAttempts: 3 },
       })
+      .addNode('persistence', this.persistJobApplication.bind(this))
       .addEdge(START, 'job_supplier')
       .addConditionalEdges('job_supplier', this.shouldContinue, [
         'job_evaluator',
@@ -166,7 +181,8 @@ export class AgentBuilder {
         'cover_letter_generator',
         'job_supplier',
       ])
-      .addEdge('cover_letter_generator', 'job_supplier');
+      .addEdge('cover_letter_generator', 'persistence')
+      .addEdge('persistence', 'job_supplier');
 
     return stateGraph.compile();
   }

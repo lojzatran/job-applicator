@@ -1,9 +1,9 @@
 'use client';
 
-type MaxJobsFieldProps = {
+interface MaxJobsFieldProps {
   value: number;
   onChange: (value: number) => void;
-};
+}
 
 export const MaxJobsField = ({ value, onChange }: MaxJobsFieldProps) => {
   return (
