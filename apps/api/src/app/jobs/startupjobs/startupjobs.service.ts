@@ -168,14 +168,14 @@ export class StartupJobsService {
       { concurrency: 3 },
     );
 
-    const allJobs = [...data.member, ...jobs.flat()];
+    const allJobs: StartupJobsOffer[] = [...data.member, ...jobs.flat()];
 
     return allJobs.map((job) => ({
       id: job.id,
       title: job.title.en || job.title.cs || '',
       description: cleanHtml(job.description.en || job.description.cs || ''),
       company: job.company.name,
-      url: job.slug,
+      url: `https://www.startupjobs.cz/nabidka/${job.displayId}/${job.slug}`,
     }));
   }
 }

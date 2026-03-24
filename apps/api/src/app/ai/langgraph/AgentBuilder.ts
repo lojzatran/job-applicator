@@ -67,6 +67,11 @@ export class AgentBuilder {
 
         3) Job Description:
         {jobDescription}
+
+        OUTPUT:
+        - Return true if the candidate matches the job description
+        - Return false otherwise
+        - Return only true or false, no other text or formatting, so that it can be parsed to boolean.
       `);
 
     const prompt = await template.invoke({
@@ -150,10 +155,7 @@ export class AgentBuilder {
   }
 
   private async persistJobApplication(state: typeof this.StateSchema.State) {
-    await this.jobsService.saveJobApplication(
-      state.job!,
-      state.coverLetter!,
-    );
+    await this.jobsService.saveJobApplication(state.job!, state.coverLetter!);
 
     return {
       appliedJobsCount: state.appliedJobsCount + 1,
