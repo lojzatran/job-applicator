@@ -2,6 +2,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { extname, join, resolve } from 'node:path';
 import { NextResponse } from 'next/server';
 import amqplib from 'amqplib';
+import { env } from '@apps/shared';
 
 export const runtime = 'nodejs';
 
@@ -48,16 +49,12 @@ const sendToQueue = async ({
   startupJobsEnabled: boolean;
   maxJobs: number;
 }) => {
-  const rabbitmqUrl = process.env.RABBITMQ_URL;
-  if (!rabbitmqUrl) {
-    throw new Error('RABBITMQ_URL is not defined');
-  }
-  const connection = await amqplib.connect(rabbitmqUrl);
+  const connection = await amqplib.connect(env.RABBITMQ_URL);
   const channel = await connection.createConfirmChannel();
-  await channel.assertQueue('process_job_applications', { durable: false });
+  await channel.assertQueue(env.RABBITMQ_QUEUE, { durable: false });
 
   channel.sendToQueue(
-    'process_job_applications',
+    env.RABBITMQ_QUEUE,
     Buffer.from(
       JSON.stringify({
         filePath,

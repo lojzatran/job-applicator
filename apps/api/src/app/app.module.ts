@@ -11,21 +11,12 @@ import {
 import { PdfService } from './documents/pdf/pdf.service';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { JobApplication } from '@apps/shared';
+import { JobApplication, dataSourceOptions } from '@apps/shared';
 
 @Module({
   imports: [
     ConfigModule.forRoot(),
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: 'localhost',
-      port: 5432,
-      username: 'postgres',
-      password: 'postgres',
-      database: 'job_applicator',
-      entities: [JobApplication],
-      synchronize: true,
-    }),
+    TypeOrmModule.forRoot(dataSourceOptions),
     TypeOrmModule.forFeature([JobApplication]),
   ],
   controllers: [AppController],

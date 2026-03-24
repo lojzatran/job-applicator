@@ -21,9 +21,9 @@ async function getAppDataSource(): Promise<typeof AppDataSource | null> {
 }
 
 export async function listJobApplications(): Promise<JobApplication[]> {
-  await getAppDataSource();
+  const appDataSource = await getAppDataSource();
 
-  const jobApplicationsRepository = AppDataSource.getRepository(JobApplication);
+  const jobApplicationsRepository = appDataSource!.getRepository(JobApplication);
   return jobApplicationsRepository.find();
 }
 
