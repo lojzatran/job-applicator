@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { Job } from '../types';
 import { cleanHtml } from '../jobs.utils';
+import { InjectRepository } from '@nestjs/typeorm';
+import { JobApplication } from '@apps/shared';
+import { Repository } from 'typeorm';
+import { Between } from 'typeorm';
 
 type StartupJobsLocalizedValue = {
   cs: string | null;
@@ -144,38 +148,80 @@ export class StartupJobsService {
   // This is fixed limit by startupjobs.cz
   private LIMIT = 20;
 
+  constructor(
+    @InjectRepository(JobApplication)
+    private readonly jobApplicationRepository: Repository<JobApplication>,
+  ) {}
+
   async fetchJobs(): Promise<Job[]> {
-    const response = await fetch(
-      `https://core.startupjobs.cz/api/search/offers?page=1&startupOnly=false&locationPreference%5B%5D=remote`,
-    );
+    const start = new Date();
+    start.setUTCHours(0, 0, 0, 0);
 
-    const data: StartupJobsSearchOffersResponse =
-      (await response.json()) as StartupJobsSearchOffersResponse;
+    const end = new Date();
+    end.setUTCHours(23, 59, 59, 999);
 
-    const totalPages = Math.ceil(data.totalItems / this.LIMIT) - 1; // subtract 1 because we already fetched the first page above
-    const { default: pMap } = await import(/* webpackIgnore: true */ 'p-map');
-
-    const jobs = await pMap(
-      Array.from({ length: totalPages }, (_, i) => i + 2),
-      async (pageNumber) => {
-        const response = await fetch(
-          `https://core.startupjobs.cz/api/search/offers?page=${pageNumber}&startupOnly=false&locationPreference%5B%5D=remote`,
-        );
-        const data: StartupJobsSearchOffersResponse =
-          (await response.json()) as StartupJobsSearchOffersResponse;
-        return data.member;
+    const fetchedJobs = await this.jobApplicationRepository.find({
+      where: {
+        createdAt: Between(start, end),
+        source: 'startupjobs',
       },
-      { concurrency: 3 },
-    );
+    });
 
-    const allJobs: StartupJobsOffer[] = [...data.member, ...jobs.flat()];
+    let jobs: Job[] = [];
+    if (fetchedJobs.length > 0) {
+      jobs = fetchedJobs.map((job) => job.job as Job);
+    } else {
+      const response = await fetch(
+        `https://core.startupjobs.cz/api/search/offers?page=1&startupOnly=false&locationPreference%5B%5D=remote`,
+      );
 
-    return allJobs.map((job) => ({
-      id: job.id,
-      title: job.title.en || job.title.cs || '',
-      description: cleanHtml(job.description.en || job.description.cs || ''),
-      company: job.company.name,
-      url: `https://www.startupjobs.cz/nabidka/${job.displayId}/${job.slug}`,
-    }));
+      const firstPage: StartupJobsSearchOffersResponse =
+        (await response.json()) as StartupJobsSearchOffersResponse;
+
+      const totalPages = Math.ceil(firstPage.totalItems / this.LIMIT) - 1; // subtract 1 because we already fetched the first page above
+      const { default: pMap } = await import(/* webpackIgnore: true */ 'p-map');
+
+      const otherPages = await pMap(
+        Array.from({ length: totalPages }, (_, i) => i + 2),
+        async (pageNumber) => {
+          const response = await fetch(
+            `https://core.startupjobs.cz/api/search/offers?page=${pageNumber}&startupOnly=false&locationPreference%5B%5D=remote`,
+          );
+          const data: StartupJobsSearchOffersResponse =
+            (await response.json()) as StartupJobsSearchOffersResponse;
+          return data.member;
+        },
+        { concurrency: 3 },
+      );
+
+      const allStartupJobs: StartupJobsOffer[] = [
+        ...firstPage.member,
+        ...otherPages.flat(),
+      ];
+
+      jobs = allStartupJobs.map((job) => ({
+        id: job.id,
+        title: job.title.en || job.title.cs || '',
+        description: cleanHtml(job.description.en || job.description.cs || ''),
+        company: job.company.name,
+        url: `https://www.startupjobs.cz/nabidka/${job.displayId}/${job.slug}`,
+        source: 'startupjobs',
+      }));
+
+      await this.saveJobs(jobs);
+    }
+    return jobs;
+  }
+
+  async saveJobs(jobs: Job[]) {
+    const jobApplications = jobs.map((job) => {
+      const jobApplication = new JobApplication();
+      jobApplication.job = job;
+      jobApplication.url = job.url;
+      jobApplication.createdAt = new Date();
+      jobApplication.source = 'startupjobs';
+      return jobApplication;
+    });
+    await this.jobApplicationRepository.insert(jobApplications);
   }
 }

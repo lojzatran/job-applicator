@@ -8,8 +8,14 @@ export class JobApplication {
   @Column({ type: 'jsonb' })
   job!: object;
 
+  @Column({ unique: true })
+  url!: string;
+
   @Column({ nullable: true })
   coverLetter?: string;
+
+  @Column()
+  source!: string;
 
   @Column()
   createdAt!: Date;

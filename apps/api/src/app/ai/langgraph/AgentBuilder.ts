@@ -1,10 +1,15 @@
-import { StateGraph, END, START } from '@langchain/langgraph';
+import {
+  MemorySaver,
+  StateGraph,
+  END,
+  START,
+  ReducedValue,
+} from '@langchain/langgraph';
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { StateSchema } from '@langchain/langgraph';
 import { JobSchema } from '../../jobs/types';
 import { PromptTemplate } from '@langchain/core/prompts';
 import z from 'zod';
-import { JobsService } from '../../jobs/jobs.service';
 
 export class AgentBuilder {
   private StateSchema = new StateSchema({
@@ -14,25 +19,34 @@ export class AgentBuilder {
     appliedJobsCount: z.number().default(0),
     jobs: z.array(JobSchema),
     cvText: z.string(),
-    coverLetter: z.string().optional(),
+    coverLetters: new ReducedValue(
+      z
+        .array(z.object({ url: z.string(), coverLetter: z.string() }))
+        .default(() => []),
+      {
+        inputSchema: z.object({ url: z.string(), coverLetter: z.string() }),
+        reducer: (currentCoverLetters, newCoverLetter) => [
+          ...currentCoverLetters,
+          newCoverLetter,
+        ],
+      },
+    ),
   });
 
   private jobEvaluatorLlm: BaseChatModel;
   private coverLetterGeneratorLlm: BaseChatModel;
-  private jobsService: JobsService;
 
   constructor(
     jobEvaluatorLlm: BaseChatModel,
     coverLetterGeneratorLlm: BaseChatModel | null,
-    jobsService: JobsService,
   ) {
     this.jobEvaluatorLlm = jobEvaluatorLlm;
     this.coverLetterGeneratorLlm = coverLetterGeneratorLlm ?? jobEvaluatorLlm;
-    this.jobsService = jobsService;
   }
 
   private jobSupplier(state: typeof this.StateSchema.State) {
     const [job, ...remainingJobs] = state.jobs;
+    console.log(`Job supplier: ${JSON.stringify(job)}`);
     return { job, jobs: remainingJobs };
   }
 
@@ -80,17 +94,21 @@ export class AgentBuilder {
       jobDescription: state.job!.description,
     });
 
-    console.log(`Evaluating job: ${JSON.stringify(state.job)}`);
-
-    const response = await this.jobEvaluatorLlm
-      .withStructuredOutput(z.boolean())
-      .invoke(prompt);
-
-    return { isValidJob: response };
+    try {
+      const response = await this.jobEvaluatorLlm
+        .withStructuredOutput(z.boolean())
+        .invoke(prompt);
+      console.log(`Evaluated job: ${response}`);
+      return { isValidJob: response };
+    } catch (e) {
+      console.log(`Evaluated job error: ${e}`);
+      return { isValidJob: false };
+    }
   }
 
   private filterJobs(state: typeof this.StateSchema.State) {
     const isValidJob = state.isValidJob;
+    console.log(`Filter jobs: ${isValidJob}`);
     if (isValidJob) {
       return 'cover_letter_generator';
     }
@@ -150,15 +168,11 @@ export class AgentBuilder {
     const response = await this.coverLetterGeneratorLlm.invoke(prompt);
 
     return {
-      coverLetter: response.content,
-    };
-  }
-
-  private async persistJobApplication(state: typeof this.StateSchema.State) {
-    await this.jobsService.saveJobApplication(state.job!, state.coverLetter!);
-
-    return {
       appliedJobsCount: state.appliedJobsCount + 1,
+      coverLetters: {
+        url: state.job!.url,
+        coverLetter: response.content,
+      },
     };
   }
 
@@ -173,7 +187,6 @@ export class AgentBuilder {
       .addNode('cover_letter_generator', this.generateCoverLetter.bind(this), {
         retryPolicy: { maxAttempts: 3 },
       })
-      .addNode('persistence', this.persistJobApplication.bind(this))
       .addEdge(START, 'job_supplier')
       .addConditionalEdges('job_supplier', this.shouldContinue, [
         'job_evaluator',
@@ -183,9 +196,8 @@ export class AgentBuilder {
         'cover_letter_generator',
         'job_supplier',
       ])
-      .addEdge('cover_letter_generator', 'persistence')
-      .addEdge('persistence', 'job_supplier');
+      .addEdge('cover_letter_generator', 'job_supplier');
 
-    return stateGraph.compile();
+    return stateGraph.compile({ checkpointer: new MemorySaver() });
   }
 }

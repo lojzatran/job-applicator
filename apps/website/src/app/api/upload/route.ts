@@ -3,6 +3,7 @@ import { extname, join, resolve } from 'node:path';
 import { NextResponse } from 'next/server';
 import amqplib from 'amqplib';
 import { env } from '@apps/shared';
+import { v4 as uuidv4 } from 'uuid';
 
 export const runtime = 'nodejs';
 
@@ -61,6 +62,7 @@ const sendToQueue = async ({
         linkedinEnabled,
         startupJobsEnabled,
         maxJobs,
+        threadId: uuidv4(),
       }),
     ),
     { persistent: false },

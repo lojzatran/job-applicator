@@ -6,6 +6,7 @@ export const JobSchema = z.object({
   description: z.string(),
   company: z.string(),
   url: z.string(),
+  source: z.enum(['linkedin', 'startupjobs']),
 });
 
 export type Job = z.infer<typeof JobSchema>;

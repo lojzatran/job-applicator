@@ -41,4 +41,34 @@ export class JobsService {
       await this.jobApplicationRepository.save(jobApplication);
     return savedJobApplication;
   }
+
+  async updateJobApplications(
+    updates: {
+      url: string;
+      coverLetter: string;
+    }[],
+  ): Promise<void> {
+    if (updates.length === 0) {
+      return;
+    }
+
+    const tableName = this.jobApplicationRepository.metadata.tableName;
+    const valuePlaceholders = updates
+      .map((_, index) => `($${index * 2 + 1}, $${index * 2 + 2})`)
+      .join(', ');
+    const parameters = updates.flatMap(({ url, coverLetter }) => [
+      url,
+      coverLetter,
+    ]);
+
+    await this.jobApplicationRepository.manager.query(
+      `
+        UPDATE ${tableName} AS job_application
+        SET "coverLetter" = updates.cover_letter
+        FROM (VALUES ${valuePlaceholders}) AS updates(url, cover_letter)
+        WHERE job_application.url = updates.url
+      `,
+      parameters,
+    );
+  }
 }

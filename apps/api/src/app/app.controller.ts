@@ -1,16 +1,10 @@
 import { Controller } from '@nestjs/common';
-import { JobsService } from './jobs/jobs.service';
-import { PdfService } from './documents/pdf/pdf.service';
 import { AgentService } from './ai/langgraph/agent.service';
 import { EventPattern, Payload, RmqContext, Ctx } from '@nestjs/microservices';
 
 @Controller()
 export class AppController {
-  constructor(
-    private readonly jobsService: JobsService,
-    private readonly pdfService: PdfService,
-    private readonly agentService: AgentService,
-  ) {}
+  constructor(private readonly agentService: AgentService) {}
 
   @EventPattern()
   async getData(
@@ -21,23 +15,30 @@ export class AppController {
       linkedinEnabled,
       startupJobsEnabled,
       maxJobs,
+      threadId,
     }: {
       filePath: string;
       linkedinEnabled: boolean;
       startupJobsEnabled: boolean;
       maxJobs: number;
+      threadId: string;
     },
   ) {
     console.log('Processing job applications...');
     const channelRef = context.getChannelRef();
     try {
-      const [text, jobs] = await Promise.all([
-        this.pdfService.extractTextContent(filePath),
-        this.jobsService.fetchJobs(linkedinEnabled, startupJobsEnabled),
-      ]);
-      await this.agentService.executeAgent(jobs, maxJobs, text);
+      await this.agentService.executeAgent(filePath, {
+        maxJobs,
+        linkedinEnabled,
+        startupJobsEnabled,
+        threadId,
+      });
       channelRef.ack(context.getMessage());
     } catch (e) {
+      console.log(
+        'Error processing job applications:',
+        JSON.stringify(e, null, 2),
+      );
       channelRef.nack(context.getMessage());
     }
   }
