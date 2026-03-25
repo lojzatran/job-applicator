@@ -7,6 +7,7 @@ import { AgentService } from './ai/langgraph/agent.service';
 import {
   coverLetterGeneratorLlmProvider,
   jobEvaluatorLlmProvider,
+  critiqueLlmProvider,
 } from './ai/providers/llm.provider';
 import { PdfService } from './documents/pdf/pdf.service';
 import { ConfigModule } from '@nestjs/config';
@@ -27,6 +28,7 @@ import { JobApplication, dataSourceOptions } from '@apps/shared';
     AgentService,
     jobEvaluatorLlmProvider,
     coverLetterGeneratorLlmProvider,
+    critiqueLlmProvider,
     PdfService,
   ],
 })

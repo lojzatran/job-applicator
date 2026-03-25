@@ -11,6 +11,7 @@ import { StateSchema } from '@langchain/langgraph';
 import { JobSchema } from '../../jobs/types';
 import { PromptTemplate } from '@langchain/core/prompts';
 import z from 'zod';
+import { CoverLetterGraph } from './graphs/CoverLetterGraph';
 
 export class AgentBuilder {
   private StateSchema = new StateSchema({
@@ -35,14 +36,18 @@ export class AgentBuilder {
   });
 
   private jobEvaluatorLlm: BaseChatModel;
-  private coverLetterGeneratorLlm: BaseChatModel;
+  private coverLetterSubgraph;
 
   constructor(
     jobEvaluatorLlm: BaseChatModel,
-    coverLetterGeneratorLlm: BaseChatModel | null,
+    coverLetterGeneratorLlm: BaseChatModel,
+    critiqueLlm: BaseChatModel,
   ) {
     this.jobEvaluatorLlm = jobEvaluatorLlm;
-    this.coverLetterGeneratorLlm = coverLetterGeneratorLlm ?? jobEvaluatorLlm;
+    this.coverLetterSubgraph = new CoverLetterGraph(
+      coverLetterGeneratorLlm,
+      critiqueLlm,
+    ).build();
   }
 
   private async summarizeCv(state: typeof this.StateSchema.State) {
@@ -128,62 +133,17 @@ export class AgentBuilder {
   }
 
   private async generateCoverLetter(state: typeof this.StateSchema.State) {
-    const template = PromptTemplate.fromTemplate(`
-        You are an experienced hiring manager and professional copywriter.
-
-        Your task is to write a tailored, concise, and compelling cover letter.
-
-        INPUTS:
-        1) Candidate CV:
-        {cv}
-
-        2) Job Title:
-        {jobTitle}
-        
-        3) Job Description:
-        {jobDescription}
-        
-        4) Company Name:
-        {companyName}
-
-        INSTRUCTIONS:
-        - Detect the language of the job description and write the cover letter in the SAME language.
-        - Match the tone and style of the job description (formal, casual, technical, etc.).
-        - Always remain polite and professional (e.g., in Czech always use formal address, never informal "tykání").
-        - Keep it 200–300 words.
-        - Focus only on the most relevant experience and skills for this job.
-        - Do NOT repeat the CV verbatim — summarize and tailor.
-        - Show clear alignment with the job requirements.
-        - Highlight 2–3 key achievements or strengths.
-        - Use specific technologies and keywords from the job description.
-        - Sound natural and human, not generic or robotic.
-        - Avoid clichés (e.g., "I am passionate", "team player", etc.).
-        - If company name is provided, personalize the letter slightly.
-        - If the job description language is unclear, default to English.
-
-        OUTPUT:
-        Write a complete cover letter with:
-        - Opening paragraph (role + interest)
-        - Middle paragraph(s) (relevant experience + impact)
-        - Closing paragraph (interest + call to action)
-
-        No explanations, only the final cover letter.
-        `);
-
-    const prompt = await template.invoke({
-      cv: state.cvText,
-      jobTitle: state.job!.title,
-      jobDescription: state.job!.description,
-      companyName: state.job!.company,
-    });
-
-    const response = await this.coverLetterGeneratorLlm.invoke(prompt);
-
+    const response = await this.coverLetterSubgraph.invoke(
+      {
+        cvText: state.cvText,
+        job: state.job,
+      },
+    );
     return {
       appliedJobsCount: state.appliedJobsCount + 1,
       coverLetters: {
         url: state.job!.url,
-        coverLetter: response.content,
+        coverLetter: response.coverLetter,
       },
     };
   }
@@ -197,9 +157,7 @@ export class AgentBuilder {
       .addNode('job_evaluator', this.evaluateJob.bind(this), {
         retryPolicy: { maxAttempts: 3 },
       })
-      .addNode('cover_letter_generator', this.generateCoverLetter.bind(this), {
-        retryPolicy: { maxAttempts: 3 },
-      })
+      .addNode('cover_letter_generator', this.generateCoverLetter.bind(this))
       .addEdge(START, 'cv_summarizer')
       .addEdge('cv_summarizer', 'job_supplier')
       .addConditionalEdges('job_supplier', this.shouldContinue, [

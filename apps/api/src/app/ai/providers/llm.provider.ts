@@ -1,6 +1,6 @@
 import { ChatOllama } from '@langchain/ollama';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
-import { COVER_LETTER_GENERATOR_LLM, JOB_EVALUATOR_LLM } from '../ai.constants';
+import { COVER_LETTER_GENERATOR_LLM, JOB_EVALUATOR_LLM, CRITIQUE_LLM } from '../ai.constants';
 import { env } from '@apps/shared';
 
 function createJobEvaluatorLlm() {
@@ -38,6 +38,20 @@ function createCoverLetterGeneratorLlm() {
   });
 }
 
+function createCritiqueLlm() {
+  if (!env.CRITIQUE_MODEL || !env.OLLAMA_BASE_URL) {
+    throw new Error(
+      'Missing Ollama configuration. Set OLLAMA_BASE_URL and CRITIQUE_MODEL before starting the API.',
+    );
+  }
+
+  return new ChatOllama({
+    model: env.CRITIQUE_MODEL,
+    baseUrl: env.OLLAMA_BASE_URL,
+    temperature: 0.7,
+  });
+}
+
 export const jobEvaluatorLlmProvider = {
   provide: JOB_EVALUATOR_LLM,
   useFactory: createJobEvaluatorLlm,
@@ -47,3 +61,8 @@ export const coverLetterGeneratorLlmProvider = {
   provide: COVER_LETTER_GENERATOR_LLM,
   useFactory: createCoverLetterGeneratorLlm,
 };
+
+export const critiqueLlmProvider = {
+  provide: CRITIQUE_LLM,
+  useFactory: createCritiqueLlm,
+}
