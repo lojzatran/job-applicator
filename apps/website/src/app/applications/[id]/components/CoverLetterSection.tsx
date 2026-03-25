@@ -1,12 +1,14 @@
 'use client';
 
 interface CoverLetterSectionProps {
-  coverLetter: string;
+  coverLetter?: string;
 }
 
 export const CoverLetterSection = ({ coverLetter }: CoverLetterSectionProps) => {
   const handleCopy = () => {
-    navigator.clipboard.writeText(coverLetter);
+    if (coverLetter) {
+      navigator.clipboard.writeText(coverLetter);
+    }
   };
 
   return (
@@ -22,8 +24,13 @@ export const CoverLetterSection = ({ coverLetter }: CoverLetterSectionProps) => 
         </h2>
         <button 
           onClick={handleCopy}
-          className="group relative flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 transition-all hover:bg-emerald-100 dark:bg-slate-800 dark:hover:bg-emerald-950/40 border border-slate-200 dark:border-slate-700"
-          title="Copy to clipboard"
+          disabled={!coverLetter}
+          className={`group relative flex h-10 w-10 items-center justify-center rounded-xl transition-all border ${
+            coverLetter 
+              ? 'bg-slate-100 hover:bg-emerald-100 dark:bg-slate-800 dark:hover:bg-emerald-950/40 border-slate-200 dark:border-slate-700' 
+              : 'bg-slate-50 dark:bg-slate-900 border-slate-100 dark:border-slate-800 opacity-50 cursor-not-allowed'
+          }`}
+          title={coverLetter ? "Copy to clipboard" : "Cover letter not generated yet"}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5 text-slate-500 group-hover:text-emerald-600">
             <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
@@ -35,7 +42,7 @@ export const CoverLetterSection = ({ coverLetter }: CoverLetterSectionProps) => 
         <div className="rounded-2xl border border-slate-100 bg-white p-8 shadow-inner dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
           <div className="prose prose-slate dark:prose-invert max-w-none">
             <p className="whitespace-pre-wrap leading-relaxed text-slate-700 dark:text-slate-300 font-serif italic text-lg tracking-tight">
-              {coverLetter}
+              {coverLetter || "Your tailored cover letter is being generated. Please check back in a moment..."}
             </p>
           </div>
         </div>

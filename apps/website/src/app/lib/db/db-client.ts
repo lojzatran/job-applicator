@@ -13,7 +13,7 @@ async function getAppDataSource(): Promise<typeof AppDataSource | null> {
     try {
       appDataSourceInitialization = await AppDataSource.initialize();
     } catch (error) {
-        appDataSourceInitialization = null;
+      appDataSourceInitialization = null;
       throw error;
     }
   }
@@ -23,15 +23,21 @@ async function getAppDataSource(): Promise<typeof AppDataSource | null> {
 export async function listJobApplications(): Promise<JobApplication[]> {
   const appDataSource = await getAppDataSource();
 
-  const jobApplicationsRepository = appDataSource!.getRepository(JobApplication);
-  return jobApplicationsRepository.find();
+  const jobApplicationsRepository =
+    appDataSource!.getRepository(JobApplication);
+  return jobApplicationsRepository
+    .createQueryBuilder('job_application')
+    .orderBy('job_application.coverLetter', 'DESC', 'NULLS LAST')
+    .addOrderBy('job_application.createdAt', 'DESC')
+    .getMany();
 }
 
 export async function getJobApplication(
   id: string,
 ): Promise<JobApplication | null> {
-  await getAppDataSource();
+  const appDataSource = await getAppDataSource();
 
-  const jobApplicationsRepository = AppDataSource.getRepository(JobApplication);
+  const jobApplicationsRepository =
+    appDataSource!.getRepository(JobApplication);
   return jobApplicationsRepository.findOneBy({ id });
 }

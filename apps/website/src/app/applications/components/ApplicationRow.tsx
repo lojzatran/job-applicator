@@ -26,9 +26,14 @@ export const ApplicationRow = ({ application: app }: ApplicationRowProps) => {
         </Link>
       </td>
       <td className="px-6 py-6 font-medium text-slate-600 dark:text-slate-400">
-         <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200/50 dark:border-slate-700/50">
-          {app.job.company}
-        </span>
+        <div className="flex flex-col gap-2 min-w-max">
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200/50 dark:border-slate-700/50 w-fit">
+            {app.job.company}
+          </span>
+          <span className={`inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest ${app.source === 'linkedin' ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400'}`}>
+            {app.source}
+          </span>
+        </div>
       </td>
       <td className="px-6 py-6 text-sm text-slate-500 dark:text-slate-500">
         {new Date(app.createdAt).toLocaleDateString(undefined, {
@@ -38,7 +43,7 @@ export const ApplicationRow = ({ application: app }: ApplicationRowProps) => {
         })}
       </td>
       <td className="px-6 py-6 max-w-xs overflow-hidden text-ellipsis whitespace-nowrap text-sm text-slate-500 dark:text-slate-500 italic">
-        "{app.coverLetter.substring(0, 60)}..."
+        {app.coverLetter ? `"${app.coverLetter.substring(0, 60)}..."` : "(Processing cover letter...)"}
       </td>
       <td className="px-6 py-6 text-right">
         <a 
