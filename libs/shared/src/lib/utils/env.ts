@@ -16,7 +16,6 @@ if (!process.env.GEMINI_API_KEY && process.env.GEMINI_LLM_KEY) {
 
 const envSchema = z.object({
   GEMINI_API_KEY: z.string().optional(),
-  GEMINI_MODEL: z.string().optional(),
   POSTGRES_HOST: z.string(),
   POSTGRES_PORT: z.coerce.number(),
   POSTGRES_USER: z.string(),
@@ -25,7 +24,8 @@ const envSchema = z.object({
   RABBITMQ_URL: z.string(),
   RABBITMQ_QUEUE: z.string(),
   OLLAMA_BASE_URL: z.string().optional(),
-  OLLAMA_CHAT_MODEL: z.string().optional(),
+  JOB_EVALUATOR_MODEL: z.string().optional(),
+  COVER_LETTER_GENERATOR_MODEL: z.string().optional(),
 });
 
 const skipValidation = process.env.SKIP_ENV_VALIDATION === 'true';

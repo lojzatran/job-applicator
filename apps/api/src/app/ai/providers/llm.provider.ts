@@ -4,27 +4,35 @@ import { COVER_LETTER_GENERATOR_LLM, JOB_EVALUATOR_LLM } from '../ai.constants';
 import { env } from '@apps/shared';
 
 function createJobEvaluatorLlm() {
-  if (!env.GEMINI_API_KEY || !env.GEMINI_MODEL) {
+  if (!env.JOB_EVALUATOR_MODEL) {
     throw new Error(
-      'Missing Gemini configuration. Set GEMINI_API_KEY and GEMINI_MODEL before starting the API.',
+      'Missing JOB_EVALUATOR_MODEL configuration. Set JOB_EVALUATOR_MODEL before starting the API.',
     );
   }
 
-  return new ChatGoogleGenerativeAI({
-    apiKey: env.GEMINI_API_KEY,
-    model: env.GEMINI_MODEL,
-  });
+  if (env.GEMINI_API_KEY) {
+    return new ChatGoogleGenerativeAI({
+      apiKey: env.GEMINI_API_KEY,
+      model: env.JOB_EVALUATOR_MODEL,
+    });
+  } else {
+    return new ChatOllama({
+      model: env.JOB_EVALUATOR_MODEL,
+      baseUrl: env.OLLAMA_BASE_URL,
+      temperature: 0,
+    });
+  }
 }
 
 function createCoverLetterGeneratorLlm() {
-  if (!env.OLLAMA_BASE_URL || !env.OLLAMA_CHAT_MODEL) {
+  if (!env.OLLAMA_BASE_URL || !env.COVER_LETTER_GENERATOR_MODEL) {
     throw new Error(
-      'Missing Ollama configuration. Set OLLAMA_BASE_URL and OLLAMA_CHAT_MODEL before starting the API.',
+      'Missing Ollama configuration. Set OLLAMA_BASE_URL and COVER_LETTER_GENERATOR_MODEL before starting the API.',
     );
   }
 
   return new ChatOllama({
-    model: env.OLLAMA_CHAT_MODEL,
+    model: env.COVER_LETTER_GENERATOR_MODEL,
     baseUrl: env.OLLAMA_BASE_URL,
     temperature: 0.7,
   });

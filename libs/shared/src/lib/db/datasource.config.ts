@@ -11,7 +11,7 @@ export const dataSourceOptions = {
   password: env.POSTGRES_PASSWORD,
   database: env.POSTGRES_DB,
   synchronize: false,
-  logging: true,
+  logging: ['error'],
   entities: [JobApplication],
   subscribers: [],
   migrations: [],
