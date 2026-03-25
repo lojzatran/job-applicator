@@ -3,28 +3,27 @@ import { JobApplication } from '@apps/shared';
 
 let appDataSourceInitialization: Promise<typeof AppDataSource> | null = null;
 
-async function getAppDataSource(): Promise<typeof AppDataSource | null> {
+async function getAppDataSource(): Promise<typeof AppDataSource> {
   if (AppDataSource.isInitialized) {
     return AppDataSource;
   }
 
   if (!appDataSourceInitialization) {
-    let appDataSourceInitialization;
-    try {
-      appDataSourceInitialization = await AppDataSource.initialize();
-    } catch (error) {
-      appDataSourceInitialization = null;
-      throw error;
-    }
+    appDataSourceInitialization = AppDataSource.initialize();
   }
-  return appDataSourceInitialization;
+
+  try {
+    return await appDataSourceInitialization;
+  } catch (error) {
+    appDataSourceInitialization = null;
+    throw error;
+  }
 }
 
 export async function listJobApplications(): Promise<JobApplication[]> {
   const appDataSource = await getAppDataSource();
 
-  const jobApplicationsRepository =
-    appDataSource!.getRepository(JobApplication);
+  const jobApplicationsRepository = appDataSource.getRepository(JobApplication);
   return jobApplicationsRepository
     .createQueryBuilder('job_application')
     .orderBy('job_application.coverLetter', 'DESC', 'NULLS LAST')
@@ -37,7 +36,6 @@ export async function getJobApplication(
 ): Promise<JobApplication | null> {
   const appDataSource = await getAppDataSource();
 
-  const jobApplicationsRepository =
-    appDataSource!.getRepository(JobApplication);
+  const jobApplicationsRepository = appDataSource.getRepository(JobApplication);
   return jobApplicationsRepository.findOneBy({ id });
 }

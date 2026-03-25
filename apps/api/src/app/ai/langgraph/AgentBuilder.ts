@@ -5,6 +5,7 @@ import {
   START,
   ReducedValue,
 } from '@langchain/langgraph';
+import * as hub from 'langchain/hub/node';
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { StateSchema } from '@langchain/langgraph';
 import { JobSchema } from '../../jobs/types';
@@ -42,6 +43,17 @@ export class AgentBuilder {
   ) {
     this.jobEvaluatorLlm = jobEvaluatorLlm;
     this.coverLetterGeneratorLlm = coverLetterGeneratorLlm ?? jobEvaluatorLlm;
+  }
+
+  private async summarizeCv(state: typeof this.StateSchema.State) {
+    const template = await hub.pull('lo-b/summarize-cv');
+    const prompt = await template.invoke({
+      cv: state.cvText,
+    });
+
+    const response = await this.jobEvaluatorLlm.invoke(prompt);
+
+    return { cvText: response.content };
   }
 
   private jobSupplier(state: typeof this.StateSchema.State) {
@@ -181,13 +193,15 @@ export class AgentBuilder {
 
     stateGraph
       .addNode('job_supplier', this.jobSupplier.bind(this))
+      .addNode('cv_summarizer', this.summarizeCv.bind(this))
       .addNode('job_evaluator', this.evaluateJob.bind(this), {
         retryPolicy: { maxAttempts: 3 },
       })
       .addNode('cover_letter_generator', this.generateCoverLetter.bind(this), {
         retryPolicy: { maxAttempts: 3 },
       })
-      .addEdge(START, 'job_supplier')
+      .addEdge(START, 'cv_summarizer')
+      .addEdge('cv_summarizer', 'job_supplier')
       .addConditionalEdges('job_supplier', this.shouldContinue, [
         'job_evaluator',
         END,

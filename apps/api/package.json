@@ -89,6 +89,7 @@
     "@nestjs/platform-express": "^11.0.0",
     "@nestjs/typeorm": "^11.0.0",
     "cheerio": "^1.2.0",
+    "langchain": "^1.2.37",
     "linkedin-jobs-api": "^1.0.7",
     "p-map": "^7.0.4",
     "pdfjs-dist": "^5.5.207",
