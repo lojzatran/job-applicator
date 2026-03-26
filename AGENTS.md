@@ -32,6 +32,10 @@ This project is an **Nx Monorepo** with the following core technologies:
   - `src/app/`: API modules, services, controllers, and persistence.
 - `apps/website-e2e/`: Playwright end-to-end tests.
 - `libs/shared/`: Shared workspace code, if/when common utilities are extracted.
+- `libs/migrations/`: TypeORM migration scripts, datasource, and reset helpers.
+- `docs/`: Project documentation assets and helper scripts.
+  - `docs/assets/`: Generated diagrams and other static documentation images.
+  - `docs/scripts/`: Scripts used to generate documentation assets such as the LangGraph diagram.
 - `package.json`: Root dependencies and scripts.
 - `nx.json`: Nx workspace configuration.
 
@@ -48,7 +52,18 @@ Use `nx` to run tasks. In case `nx` is not found, use `npx nx`.
 - **API Build**: `nx build api`
 - **API Lint**: `nx lint api`
 - **API Type Check**: `nx typecheck api`
-- **Run Everything**: `nx dev-all`
+- **Run Everything**: `nx dev-all` or `npm run dev-all`
+- **Database Migration**: `npm run migrate`
+- **Reset Local DB**: `npm run db:reset`
+- **Export LangGraph Diagram**: `npm run export-graph`
+
+## ⚙️ Environment
+
+- Keep the root `.env` file aligned with `.env.example`.
+- Required infrastructure variables include PostgreSQL and RabbitMQ connection settings.
+- AI model configuration is split between the job evaluator and the cover letter/critique Ollama models.
+- `GEMINI_API_KEY` can be used for the job evaluator; `GEMINI_LLM_KEY` is supported as a legacy alias.
+- `SKIP_ENV_VALIDATION=true` is available for local scripts that need to bypass validation. Usually this is necessary only when building docker images.
 
 ## 🧩 Agent Guidelines
 
@@ -56,7 +71,7 @@ Use `nx` to run tasks. In case `nx` is not found, use `npx nx`.
 2. **TypeScript First**: Always use strong typing. Avoid `any` where possible.
 3. **Nx Integration**: When adding new libraries or apps, use `npx nx generate` to maintain workspace consistency.
 4. **Consistency**: Follow the existing coding style (Prettier and ESLint are configured).
-5. **Proactive Debugging**: If a task fails, check the `nx` logs or run `npx nx show project website` to understand available targets.
+5. **Proactive Debugging**: If a task fails, check the Nx logs or run `npx nx show project website` to understand available targets.
 6. **Manual UI testing**: Whenever a task is finished, try to run the application in development mode and verify that the app is running and not failing.
 7. **Keep methods short**: Keep methods short and focused on a single responsibility. If a method is too long, split it into smaller methods and give it a descriptive name.
 8. **Use the current year**: Always use the current year by default if not explicitly written otherwise.
