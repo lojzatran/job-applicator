@@ -1,30 +1,64 @@
-# Apps
+# Job Applicator
 
-This project helps you to find jobs from different resources, evaluate your skills matching and prepare the cover letter.
+Job Applicator helps you discover jobs from multiple sources, evaluate how well your CV matches a role, and generate tailored cover letters.
 
-## Run tasks
+## Prerequisites
 
-To run the dev server for your app, use:
+- Node.js and npm installed locally.
+- Docker running for the supporting services used by the backend and local development workflow.
+- A populated `.env` file at the workspace root with the API, database, queue, and model settings required by your environment.
+- Use `.env.example` as the starting point for the workspace `.env` file.
+
+## Required env vars
+
+- `POSTGRES_HOST` - PostgreSQL host, usually `localhost` for local development.
+- `POSTGRES_PORT` - PostgreSQL port, usually `5432`.
+- `POSTGRES_USER` - Database user.
+- `POSTGRES_PASSWORD` - Database password.
+- `POSTGRES_DB` - Database name.
+- `RABBITMQ_URL` - RabbitMQ connection string, usually `amqp://localhost` for local development.
+- `RABBITMQ_QUEUE` - Queue name used for job-processing messages.
+- `JOB_EVALUATOR_MODEL` - LLM model name used to evaluate whether a job matches the CV.
+- `OLLAMA_BASE_URL` - Required when using Ollama-based models for cover letters and critique.
+- `COVER_LETTER_GENERATOR_MODEL` - LLM model name used to generate the cover letter.
+- `CRITIQUE_MODEL` - LLM model name used to critique and rewrite the cover letter.
+
+Optional but supported:
+
+- `GEMINI_API_KEY` - If set, the job evaluator uses Gemini instead of Ollama.
+- `LANGSMITH_PROJECT` - LangSmith project name for tracing.
+
+## Run Tasks
+
+### Run all
+
+Start the full workspace with:
 
 ```sh
-npx nx dev website
+npm run dev-all
 ```
 
-To create a production bundle:
+This runs the Nx development targets for the website and API together.
+
+### Run frontend website
+
+Start only the Next.js app with:
 
 ```sh
-npx nx build website
+nx dev website
 ```
 
-To see all available targets to run for a project, run:
+If `nx` is not available on your PATH, use `npx nx dev website` instead.
+
+### Run backend
+
+Start only the NestJS API with:
 
 ```sh
-npx nx show project website
+nx serve api
 ```
 
-These targets are either [inferred automatically](https://nx.dev/concepts/inferred-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or defined in the `project.json` or `package.json` files.
-
-[More about running tasks in the docs &raquo;](https://nx.dev/features/run-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+The API consumes job-processing messages, executes the LangGraph workflow, and persists the generated cover letters.
 
 ## Database Migrations
 
@@ -44,73 +78,89 @@ npm run db:reset
 
 This drops every table in the `public` schema and then reruns migrations.
 
-## Add new projects
+## Used Technologies
 
-While you could add new projects to your workspace manually, you might want to leverage [Nx plugins](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) and their [code generation](https://nx.dev/features/generate-code?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) feature.
+- **Nx** for monorepo orchestration and task execution.
+- **Next.js** for the website frontend.
+- **NestJS** for the API and message-driven backend workflow.
+- **React** and **TypeScript** for the UI layer.
+- **Tailwind CSS** for styling.
+- **PostgreSQL** with **TypeORM** for persistence.
+- **RabbitMQ** with `amqplib` for asynchronous job processing.
+- **LangChain** and **LangGraph** for the AI agent workflow.
+- **Jest** and **Playwright** for automated testing.
 
-Use the plugin's generator to create new projects.
+## Project Architecture
 
-To generate a new application, use:
+The repository is organized as an Nx monorepo:
 
-```sh
-npx nx g @nx/next:app demo
+- `apps/website/` contains the Next.js application.
+- `apps/api/` contains the NestJS service that processes job data and runs the agent workflow.
+- `apps/website-e2e/` contains Playwright end-to-end tests.
+- `libs/shared/` is available for reusable workspace utilities.
+- `libs/migrations/` contains TypeORM migrations and the migration datasource.
+
+### Component Diagram
+
+The website collects user input and triggers backend job-processing flows. The API fetches job listings, reads the candidate CV, runs the AI workflow, and stores the resulting applications back in the database.
+
+```mermaid
+flowchart LR
+  User[User] --> Website[Website / Next.js]
+  Website --> Api[NestJS API]
+  Api --> Queue[RabbitMQ]
+  Queue --> Api
+  Api --> Pdf[CV PDF extraction]
+  Api --> Jobs[Job sources]
+  Api --> LangGraph[LangGraph agent]
+  LangGraph --> LLMs[LLM providers]
+  Api --> DB[(PostgreSQL)]
+  Website <-->|status and results| Api
 ```
 
-To generate a new library, use:
+### Sequence Diagram
 
-```sh
-npx nx g @nx/react:lib mylib
+1. The website submits a CV file and processing preferences.
+2. The API receives the message from RabbitMQ.
+3. The API extracts text from the uploaded CV and fetches jobs from enabled sources.
+4. The LangGraph agent summarizes the CV, evaluates each job, and generates cover letters for matching roles.
+5. The API persists the generated cover letters and application data.
+
+```mermaid
+sequenceDiagram
+  actor User
+  participant Website as Website / Next.js
+  participant Api as NestJS API
+  participant Queue as RabbitMQ
+  participant Pdf as PDF Service
+  participant Jobs as Jobs Service
+  participant Graph as LangGraph Agent
+  participant DB as PostgreSQL
+
+  User->>Website: Upload CV and select job sources
+  Website->>Api: Submit processing request
+  Api->>Queue: Publish job-processing message
+  Queue-->>Api: Deliver message
+  Api->>Pdf: Extract CV text
+  Api->>Jobs: Fetch jobs from enabled sources
+  Api->>Graph: Summarize CV and evaluate jobs
+  Graph-->>Api: Return generated cover letters
+  Api->>DB: Save applications and cover letters
+  Api-->>Website: Return processing result
 ```
 
-You can use `npx nx list` to get a list of installed plugins. Then, run `npx nx list <plugin-name>` to learn about more specific capabilities of a particular plugin. Alternatively, [install Nx Console](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) to browse plugins and generators in your IDE.
+## AI Agents
 
-[Learn more about Nx plugins &raquo;](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) | [Browse the plugin registry &raquo;](https://nx.dev/plugin-registry?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+The AI workflow is implemented with LangGraph in `apps/api/src/app/ai/langgraph/`.
 
-## Set up CI!
+![LangGraph agent diagram](docs/assets/graph.png)
 
-### Step 1
+The main graph works as follows:
 
-To connect to Nx Cloud, run the following command:
+- `cv_summarizer` reduces the uploaded CV into a compact summary optimized for downstream evaluation.
+- `job_supplier` iterates through the fetched jobs one by one.
+- `job_evaluator` checks whether the current job is a meaningful match for the candidate.
+- `cover_letter_generator` creates a tailored cover letter for matched jobs.
+- `CoverLetterGraph` adds a critique-and-rewrite loop so the generated letter is refined before it is stored.
 
-```sh
-npx nx connect
-```
-
-Connecting to Nx Cloud ensures a [fast and scalable CI](https://nx.dev/ci/intro/why-nx-cloud?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) pipeline. It includes features such as:
-
-- [Remote caching](https://nx.dev/ci/features/remote-cache?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task distribution across multiple machines](https://nx.dev/ci/features/distribute-task-execution?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Automated e2e test splitting](https://nx.dev/ci/features/split-e2e-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task flakiness detection and rerunning](https://nx.dev/ci/features/flaky-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-### Step 2
-
-Use the following command to configure a CI workflow for your workspace:
-
-```sh
-npx nx g ci-workflow
-```
-
-[Learn more about Nx on CI](https://nx.dev/ci/intro/ci-with-nx#ready-get-started-with-your-provider?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Install Nx Console
-
-Nx Console is an editor extension that enriches your developer experience. It lets you run tasks, generate code, and improves code autocompletion in your IDE. It is available for VSCode and IntelliJ.
-
-[Install Nx Console &raquo;](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Useful links
-
-Learn more:
-
-- [Learn more about this workspace setup](https://nx.dev/nx-api/next?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Learn about Nx on CI](https://nx.dev/ci/intro/ci-with-nx?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Releasing Packages with Nx release](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [What are Nx plugins?](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-And join the Nx community:
-
-- [Discord](https://go.nx.dev/community)
-- [Follow us on X](https://twitter.com/nxdevtools) or [LinkedIn](https://www.linkedin.com/company/nrwl)
-- [Our Youtube channel](https://www.youtube.com/@nxdevtools)
-- [Our blog](https://nx.dev/blog?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+The graph keeps track of how many jobs have already been processed and stops once it reaches the configured maximum.

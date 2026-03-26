@@ -10,10 +10,6 @@ const appEnvPath = resolve(appRoot, '.env');
 loadDotEnv({ path: workspaceEnvPath });
 loadDotEnv({ path: appEnvPath, override: true });
 
-if (!process.env.GEMINI_API_KEY && process.env.GEMINI_LLM_KEY) {
-  process.env.GEMINI_API_KEY = process.env.GEMINI_LLM_KEY;
-}
-
 const envSchema = z.object({
   GEMINI_API_KEY: z.string().optional(),
   POSTGRES_HOST: z.string(),
