@@ -52,13 +52,15 @@ export class AgentService {
       },
       {
         configurable: { thread_id: options.threadId },
-        recursionLimit: jobs.length + 1,
+        // recursion is a super-step, and in my graph there are currently 4 super-steps for each job.
+        // I also add a buffer of 5 (random number) just be sure.
+        recursionLimit: 4 * jobs.length + 5,
       },
     );
     console.log('Agent Finished: ' + JSON.stringify(result, null, 2));
 
     await this.jobsService.updateJobApplications(
-      result.coverLetters.map((coverLetter) => ({
+      result.coverLetters.map((coverLetter: { url: string; coverLetter: string }) => ({
         url: coverLetter.url,
         coverLetter: coverLetter.coverLetter,
       })),

@@ -60,6 +60,31 @@ nx serve api
 
 The API consumes job-processing messages, executes the LangGraph workflow, and persists the generated cover letters.
 
+## AI Evaluation
+
+The `apps/ai-evaluation/` app contains LangSmith-based evaluation scripts for the job evaluator and graph flows.
+
+Run them from the workspace root:
+
+```sh
+npm run ai-eval:node-job-evaluator
+npm run ai-eval:graph
+```
+
+Each command seeds its dataset if needed and then runs the matching `eval.ts` file.
+
+The eval app reads its own config from `apps/ai-evaluation/.env` and still depends on the workspace root `.env` through the shared env loader.
+
+Required for the eval app:
+
+- `GRADER_LLM_MODEL` - model used to score graph evaluation output.
+
+Optional for the eval app:
+
+- `GEMINI_API_KEY` - required when the grader model is a Gemini model.
+- `OLLAMA_BASE_URL` - required when the evaluator graph uses Ollama.
+- `SKIP_ENV_VALIDATION=true` - bypasses env validation for local scripting.
+
 ## Database Migrations
 
 Run the TypeORM migration from the workspace root with:

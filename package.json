@@ -7,7 +7,9 @@
     "api:prod": "nx build api --configuration=production && cd apps/api && node dist/main.js",
     "migrate": "typeorm migration:run -d libs/migrations/migration-data-source.cjs",
     "db:reset": "tsx libs/migrations/reset-database.ts && npm run migrate",
-    "export-graph": "node --import tsx docs/scripts/export-langgraph-graph.ts"
+    "export-graph": "node --import tsx docs/scripts/export-langgraph-graph.ts",
+    "ai-eval:node-job-evaluator": "tsx apps/ai-evaluation/src/node-job-evaluator/job-evaluator.dataset.ts && tsx apps/ai-evaluation/src/node-job-evaluator/job-evaluator-gemma3:12b.eval.ts",
+    "ai-eval:graph": "tsx apps/ai-evaluation/src/graph/graph-dataset.ts && tsx apps/ai-evaluation/src/graph/graph-gemma3:12b.eval.ts"
   },
   "private": true,
   "dependencies": {
@@ -26,6 +28,7 @@
     "@nestjs/testing": "^11.0.0",
     "@next/eslint-plugin-next": "^16.1.6",
     "@nx/devkit": "22.6.0",
+    "@nx/esbuild": "22.6.0",
     "@nx/eslint": "22.6.0",
     "@nx/eslint-plugin": "22.6.0",
     "@nx/jest": "22.6.0",
@@ -52,6 +55,7 @@
     "@types/react-dom": "^19.0.0",
     "autoprefixer": "10.4.13",
     "babel-jest": "^30.0.2",
+    "esbuild": "^0.19.2",
     "eslint": "^9.8.0",
     "eslint-config-next": "^16.1.6",
     "eslint-config-prettier": "^10.0.0",

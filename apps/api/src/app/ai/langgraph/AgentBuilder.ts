@@ -4,6 +4,7 @@ import {
   END,
   START,
   ReducedValue,
+  CompiledStateGraph,
 } from '@langchain/langgraph';
 import * as hub from 'langchain/hub/node';
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
@@ -148,10 +149,8 @@ export class AgentBuilder {
     };
   }
 
-  build() {
-    const stateGraph = new StateGraph(this.StateSchema);
-
-    stateGraph
+  build(): CompiledStateGraph<any, any, any, any, any, any> {
+    return new StateGraph(this.StateSchema)
       .addNode('job_supplier', this.jobSupplier.bind(this))
       .addNode('cv_summarizer', this.summarizeCv.bind(this))
       .addNode('job_evaluator', this.evaluateJob.bind(this), {
@@ -168,8 +167,7 @@ export class AgentBuilder {
         'cover_letter_generator',
         'job_supplier',
       ])
-      .addEdge('cover_letter_generator', 'job_supplier');
-
-    return stateGraph.compile({ checkpointer: new MemorySaver() });
+      .addEdge('cover_letter_generator', 'job_supplier')
+      .compile({ checkpointer: new MemorySaver() });
   }
 }
