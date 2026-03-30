@@ -13,12 +13,14 @@ import { PdfService } from './documents/pdf/pdf.service';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JobApplication, dataSourceOptions } from '@apps/shared';
+import { CvEmbeddingsService } from './cv/embeddings/cv-summary-embeddings.service';
+import { Cv } from '@apps/shared';
 
 @Module({
   imports: [
     ConfigModule.forRoot(),
     TypeOrmModule.forRoot(dataSourceOptions),
-    TypeOrmModule.forFeature([JobApplication]),
+    TypeOrmModule.forFeature([JobApplication, Cv]),
   ],
   controllers: [AppController],
   providers: [
@@ -30,6 +32,7 @@ import { JobApplication, dataSourceOptions } from '@apps/shared';
     coverLetterGeneratorLlmProvider,
     critiqueLlmProvider,
     PdfService,
+    CvEmbeddingsService,
   ],
 })
 export class AppModule {}

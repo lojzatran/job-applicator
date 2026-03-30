@@ -5,6 +5,7 @@
   "scripts": {
     "dev-all": "nx run-many --targets=dev,serve --all",
     "api:prod": "nx build api --configuration=production && cd apps/api && node dist/main.js",
+    "test-integration:api": "npm run db:reset && nx test api -- --runInBand --testPathPatterns=integration\\.spec\\.ts$",
     "migrate": "typeorm migration:run -d libs/migrations/migration-data-source.cjs",
     "db:reset": "tsx libs/migrations/reset-database.ts && npm run migrate",
     "export-graph": "node --import tsx docs/scripts/export-langgraph-graph.ts",

@@ -13,12 +13,13 @@ services:
       retries: 10
       start_period: 30s
   postgres:
-    image: postgres
+    hostname: 127.0.0.1
+    image: pgvector/pgvector:pg18
+    ports:
+      - 5432:5432
     restart: always
     shm_size: 128mb
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: job_applicator
-    ports:
-      - '5432:5432'

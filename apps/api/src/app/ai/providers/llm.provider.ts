@@ -1,7 +1,7 @@
 import { ChatOllama } from '@langchain/ollama';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { COVER_LETTER_GENERATOR_LLM, JOB_EVALUATOR_LLM, CRITIQUE_LLM } from '../ai.constants';
-import { env } from '@apps/shared';
+import { env } from '../../../utils/env';
 
 function createJobEvaluatorLlm() {
   if (!env.JOB_EVALUATOR_MODEL) {

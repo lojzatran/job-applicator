@@ -8,6 +8,10 @@ import {
 } from '../ai.constants';
 import { JobsService } from '../../jobs/jobs.service';
 import { PdfService } from '../../documents/pdf/pdf.service';
+import { CvEmbeddingsService } from '../../cv/embeddings/cv-summary-embeddings.service';
+import { Repository } from 'typeorm';
+import { Cv } from '@apps/shared';
+import { InjectRepository } from '@nestjs/typeorm';
 
 @Injectable()
 export class AgentService {
@@ -17,6 +21,9 @@ export class AgentService {
     private readonly coverLetterGeneratorLlm: BaseChatModel,
     private readonly jobsService: JobsService,
     private readonly pdfService: PdfService,
+    private readonly cvEmbeddingsService: CvEmbeddingsService,
+    @InjectRepository(Cv)
+    private readonly cvRepository: Repository<Cv>,
     @Inject(CRITIQUE_LLM)
     private readonly critiqueLlm: BaseChatModel,
   ) {}
@@ -42,6 +49,8 @@ export class AgentService {
       this.jobEvaluatorLlm,
       this.coverLetterGeneratorLlm,
       this.critiqueLlm,
+      this.cvEmbeddingsService,
+      this.cvRepository,
     );
     const agent = agentBuilder.build();
     const result = await agent.invoke(
@@ -60,10 +69,12 @@ export class AgentService {
     console.log('Agent Finished: ' + JSON.stringify(result, null, 2));
 
     await this.jobsService.updateJobApplications(
-      result.coverLetters.map((coverLetter: { url: string; coverLetter: string }) => ({
-        url: coverLetter.url,
-        coverLetter: coverLetter.coverLetter,
-      })),
+      result.coverLetters.map(
+        (coverLetter: { url: string; coverLetter: string }) => ({
+          url: coverLetter.url,
+          coverLetter: coverLetter.coverLetter,
+        }),
+      ),
     );
   }
 }

@@ -79,9 +79,13 @@
   },
   "dependencies": {
     "@apps/shared": "*",
+    "@langchain/classic": "^1.0.25",
+    "@langchain/community": "^1.1.25",
+    "@langchain/core": "^1.1.36",
     "@langchain/google-genai": "^2.1.26",
     "@langchain/langgraph": "^1.2.3",
     "@langchain/ollama": "^1.2.6",
+    "@langchain/textsplitters": "^1.0.1",
     "@nestjs/common": "^11.0.0",
     "@nestjs/config": "^4.0.3",
     "@nestjs/core": "^11.0.0",
@@ -95,6 +99,7 @@
     "pdfjs-dist": "^5.5.207",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.0",
+    "string-strip-html": "^8.5.0",
     "tslib": "^2.3.0"
   },
   "devDependencies": {

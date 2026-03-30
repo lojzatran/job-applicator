@@ -48,8 +48,6 @@ Start only the Next.js app with:
 nx dev website
 ```
 
-If `nx` is not available on your PATH, use `npx nx dev website` instead.
-
 ### Run backend
 
 Start only the NestJS API with:
@@ -59,6 +57,22 @@ nx serve api
 ```
 
 The API consumes job-processing messages, executes the LangGraph workflow, and persists the generated cover letters.
+
+### Run API tests
+
+Run the API test suite from the workspace root with:
+
+```sh
+npm run test:api
+```
+
+This runs the Nx Jest target for `apps/api` and picks up any `*.spec.ts` or `*.test.ts` files under `apps/api/src/`.
+
+The current API test coverage is the CV embedding integration spec, so make sure local Ollama is running and these models are available:
+
+- `OLLAMA_BASE_URL` - should point to your local Ollama server, usually `http://localhost:11434`.
+- `gemma3:12b` - model used by `CvEmbeddingsService`.
+- `nomic-embed-text:latest` - embedding model used by `CvEmbeddingsService`.
 
 ## AI Evaluation
 

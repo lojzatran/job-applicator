@@ -1,18 +1,20 @@
-import { StateSchema, END, START, StateGraph } from '@langchain/langgraph';
-import { z } from 'zod';
+import { END, START, StateGraph } from '@langchain/langgraph';
+import { z } from 'zod/v4';
 import { JobSchema } from '../../../jobs/types';
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { PromptTemplate } from '@langchain/core/prompts';
 
-export class CoverLetterGraph {
-  private CoverLetterGraphSchema = new StateSchema({
-    cvText: z.string(),
-    job: JobSchema,
-    coverLetter: z.string(),
-    critique: z.string(),
-    counter: z.number().default(0),
-  });
+const CoverLetterSchema = z.object({
+  cvText: z.string(),
+  job: JobSchema,
+  coverLetter: z.string(),
+  critique: z.string(),
+  counter: z.number().default(0),
+});
 
+type CoverLetterState = z.infer<typeof CoverLetterSchema>;
+
+export class CoverLetterGraph {
   private coverLetterGeneratorLlm: BaseChatModel;
   private critiqueLlm: BaseChatModel;
   private MAX_ITERATIONS: number = 1;
@@ -25,9 +27,7 @@ export class CoverLetterGraph {
     this.critiqueLlm = critiqueLlm ?? coverLetterGeneratorLlm;
   }
 
-  private async generateCoverLetter(
-    state: typeof this.CoverLetterGraphSchema.State,
-  ) {
+  private async generateCoverLetter(state: CoverLetterState) {
     const template = PromptTemplate.fromTemplate(`
         You are an experienced hiring manager and professional copywriter.
 
@@ -83,9 +83,7 @@ export class CoverLetterGraph {
     return { coverLetter: response.content };
   }
 
-  private async rewriteCoverLetter(
-    state: typeof this.CoverLetterGraphSchema.State,
-  ) {
+  private async rewriteCoverLetter(state: CoverLetterState) {
     const template = PromptTemplate.fromTemplate(`
         You are an assistant who is specialized in correcting and writing cover letters.
 
@@ -112,9 +110,7 @@ export class CoverLetterGraph {
     return { coverLetter: response.content };
   }
 
-  private async critiqueCoverLetter(
-    state: typeof this.CoverLetterGraphSchema.State,
-  ) {
+  private async critiqueCoverLetter(state: CoverLetterState) {
     const template = PromptTemplate.fromTemplate(`
         You are an experienced hiring manager and professional copywriter.
 
@@ -135,11 +131,11 @@ export class CoverLetterGraph {
     return { critique: response.content };
   }
 
-  private increaseCounter(state: typeof this.CoverLetterGraphSchema.State) {
+  private increaseCounter(state: CoverLetterState) {
     return { counter: state.counter + 1 };
   }
 
-  private shouldContinue(state: typeof this.CoverLetterGraphSchema.State) {
+  private shouldContinue(state: CoverLetterState) {
     if (state.counter > this.MAX_ITERATIONS) {
       return END;
     }
@@ -147,7 +143,7 @@ export class CoverLetterGraph {
   }
 
   build() {
-    const workflow = new StateGraph(this.CoverLetterGraphSchema);
+    const workflow = new StateGraph(CoverLetterSchema);
 
     workflow
       .addNode('generate_cover_letter', this.generateCoverLetter.bind(this))

@@ -154,6 +154,7 @@ export class StartupJobsService {
   ) {}
 
   async fetchJobs(): Promise<Job[]> {
+    console.log(`Fetching jobs from startupjobs.cz...`);
     const start = new Date();
     start.setUTCHours(0, 0, 0, 0);
 

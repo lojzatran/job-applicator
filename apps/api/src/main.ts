@@ -6,7 +6,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app/app.module';
 import { Transport } from '@nestjs/microservices';
-import { env } from '@apps/shared';
+import { env } from './utils/env';
 
 async function bootstrap() {
   const app = await NestFactory.createMicroservice(AppModule, {
@@ -20,6 +20,7 @@ async function bootstrap() {
       noAck: false,
     },
   });
+  app.enableShutdownHooks();
   await app.listen();
 }
 

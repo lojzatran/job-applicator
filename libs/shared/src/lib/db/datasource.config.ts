@@ -1,8 +1,9 @@
 import { JobApplication } from '../entities/job-application.entity';
+import { Cv } from '../entities/cv.entity';
 import { DataSourceOptions } from 'typeorm';
 import { env } from '../utils/env';
 
-export const dataSourceOptions = {
+export const postgresConnectionOptions = {
   type: 'postgres',
   schema: 'public',
   host: env.POSTGRES_HOST,
@@ -10,9 +11,13 @@ export const dataSourceOptions = {
   username: env.POSTGRES_USER,
   password: env.POSTGRES_PASSWORD,
   database: env.POSTGRES_DB,
+};
+
+export const dataSourceOptions = {
+  ...postgresConnectionOptions,
   synchronize: false,
   logging: ['error'],
-  entities: [JobApplication],
+  entities: [JobApplication, Cv],
   subscribers: [],
   migrations: [],
 } as DataSourceOptions;

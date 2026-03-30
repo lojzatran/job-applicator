@@ -16,6 +16,7 @@ export class LinkedinService {
   ) {}
 
   async fetchJobs(): Promise<Job[]> {
+    console.log(`Fetching jobs from linkedin...`);
     const start = new Date();
     start.setUTCHours(0, 0, 0, 0);
 
@@ -42,9 +43,9 @@ export class LinkedinService {
         has_verification: false,
         under_10_applicants: false,
       });
-  
+
       const jobUrls = jobs.map((job) => job.jobUrl);
-  
+
       const descriptions = await pMap(
         jobUrls,
         (url) => this.fetchJobDescription(url),
@@ -52,7 +53,7 @@ export class LinkedinService {
           concurrency: 3,
         },
       );
-  
+
       const jobsWithDescription: Job[] = jobs.map((job, index) => ({
         id: job.jobUrl,
         title: job.position,
@@ -63,10 +64,9 @@ export class LinkedinService {
       }));
 
       await this.saveJobs(jobsWithDescription);
-  
+
       return jobsWithDescription;
     }
-
   }
 
   private async fetchJobDescription(url: string) {
