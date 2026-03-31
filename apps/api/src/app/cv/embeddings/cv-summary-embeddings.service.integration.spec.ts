@@ -5,8 +5,7 @@ import { CvEmbeddingsService } from './cv-summary-embeddings.service';
 import * as crypto from 'crypto';
 
 describe('Cv Embeddings Service integration', () => {
-  const databaseUrl = env.DATABASE_URL;
-  const VECTOR_DIMENSION = 768;
+  const databaseUrl = `postgres://${env.POSTGRES_USER}:${env.POSTGRES_PASSWORD}@${env.POSTGRES_HOST}:${env.POSTGRES_PORT}/${env.POSTGRES_DB}`;
   let moduleRef: TestingModule;
   let pool: Pool;
 
@@ -26,12 +25,6 @@ describe('Cv Embeddings Service integration', () => {
 
   beforeAll(async () => {
     jest.setTimeout(300000);
-
-    if (!databaseUrl) {
-      throw new Error(
-        'DATABASE_URL is required for CvEmbeddingsService integration tests.',
-      );
-    }
 
     pool = new Pool({
       connectionString: databaseUrl,
@@ -162,7 +155,7 @@ describe('Cv Embeddings Service integration', () => {
 
       const embeddings = cvEmbeddings.map((embedding) => ({
         cvId,
-        embedding: fitVectorToDimension(embedding.embedding, VECTOR_DIMENSION),
+        embedding: embedding.embedding,
         weight: embedding.weight,
         model: env.EMBEDDING_MODEL,
       }));
@@ -215,9 +208,9 @@ async function insertCv(
     path: string;
     rawText: string;
   },
-): Promise<string> {
+): Promise<number> {
   const cvHash = crypto.createHash('md5').update(input.rawText).digest('hex');
-  const result = await pool.query<{ id: string }>(
+  const result = await pool.query<{ id: number }>(
     `
       INSERT INTO "cv" ("path", "rawText", "hash", "createdAt")
       VALUES ($1, $2, $3, $4)
@@ -250,12 +243,4 @@ function isMissingRelationError(error: unknown): error is { code: string } {
     'code' in error &&
     error.code === '42P01'
   );
-}
-
-function fitVectorToDimension(vector: number[], dimension: number): number[] {
-  if (vector.length >= dimension) {
-    return vector.slice(0, dimension);
-  }
-
-  return [...vector, ...new Array(dimension - vector.length).fill(0)];
 }

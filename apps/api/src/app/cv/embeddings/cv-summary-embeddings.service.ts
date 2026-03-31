@@ -10,14 +10,13 @@ import { countTokensApproximately, HumanMessage } from 'langchain';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import { stripHtml } from 'string-strip-html';
 
-
 interface CvWeightedEmbedding {
   embedding: number[];
   weight: number;
 }
 
 interface CvEmbeddingRecord {
-  cvId: string;
+  cvId: number;
   embedding: number[];
   weight: number;
   model: string;
@@ -30,7 +29,7 @@ export class CvEmbeddingsService {
 
   async onModuleInit(): Promise<void> {
     this.pool = new Pool({
-      connectionString: env.DATABASE_URL,
+      connectionString: `postgres://${env.POSTGRES_USER}:${env.POSTGRES_PASSWORD}@${env.POSTGRES_HOST}:${env.POSTGRES_PORT}/${env.POSTGRES_DB}`,
     });
   }
 
@@ -40,8 +39,13 @@ export class CvEmbeddingsService {
     }
   }
 
-  private isEmpty(obj: Record<string, any>) {
-    return Object.values(obj).every((arr) => arr.length === 0);
+  private isEmpty(obj: Record<string, string | string[]>) {
+    return Object.values(obj).every((value) => {
+      if (Array.isArray(value)) {
+        return value.every((item) => !item || item.trim().length === 0);
+      }
+      return !value || value.trim().length === 0;
+    });
   }
 
   async createWeightedEmbeddingsForCv(
@@ -84,6 +88,35 @@ export class CvEmbeddingsService {
     documents: Record<string, string | string[]>,
     cvText: string,
   ): Promise<CvWeightedEmbedding[]> {
+    if (this.isEmpty(documents)) {
+      const embedding = await this.createEmbeddings(cvText);
+      return [{ embedding, weight: 1 }];
+    }
+    const embeddingsWithWeight: CvWeightedEmbedding[] = [];
+    for (const [key, value] of Object.entries(documents)) {
+      if (Array.isArray(value)) {
+        const nonEmptyItems = value
+          .map((item) => item?.trim())
+          .filter((item) => item && item.length > 0);
+        if (nonEmptyItems.length === 0) {
+          continue;
+        }
+        const formattedValue = nonEmptyItems.join('\n');
+        embeddingsWithWeight.push(
+          await this.embedKeyValue(key, formattedValue),
+        );
+      } else {
+        const trimmedValue = value?.trim();
+        if (!trimmedValue || trimmedValue.length === 0) {
+          continue;
+        }
+        embeddingsWithWeight.push(await this.embedKeyValue(key, trimmedValue));
+      }
+    }
+    return embeddingsWithWeight;
+  }
+
+  private async embedKeyValue(key: string, value: string) {
     const sectionWeights: Record<string, number> = {
       summary: 0.6,
       skills: 2.5,
@@ -92,22 +125,12 @@ export class CvEmbeddingsService {
       education: 0.7,
       other: 0.2,
     };
-
-    if (this.isEmpty(documents)) {
-      const embedding = await this.createEmbeddings(cvText);
-      return [{ embedding, weight: 1 }];
-    }
-    const embeddingsWithWeight: CvWeightedEmbedding[] = [];
-    for (const [key, value] of Object.entries(documents)) {
-      const formattedValue = Array.isArray(value) ? value.join('\n') : value;
-      const textToEmbed = key + ': ' + formattedValue;
-      const embedding = await this.createEmbeddings(textToEmbed);
-      embeddingsWithWeight.push({
-        embedding,
-        weight: sectionWeights[key] ?? 1.0,
-      });
-    }
-    return embeddingsWithWeight;
+    const textToEmbed = key + ': ' + value;
+    const embedding = await this.createEmbeddings(textToEmbed);
+    return {
+      embedding,
+      weight: sectionWeights[key] ?? 1.0,
+    };
   }
 
   /**
@@ -151,15 +174,14 @@ export class CvEmbeddingsService {
   async createEmbeddings(text: string) {
     const embeddingModel = new OllamaEmbeddings({
       model: env.EMBEDDING_MODEL,
-      baseUrl: 'http://localhost:11434',
+      baseUrl: env.OLLAMA_BASE_URL ?? 'http://localhost:11434',
     });
 
     try {
       const vectors = await embeddingModel.embedQuery(text);
       return vectors;
     } catch (error) {
-      console.error('Error creating embeddings for text: ', text, error);
-      return [];
+      throw error;
     }
   }
 
@@ -198,7 +220,7 @@ export class CvEmbeddingsService {
   }
 
   async scoreJobAndCvMatching(
-    cvId: string,
+    cvId: number,
     queryEmbeddings: number[][],
     model = env.EMBEDDING_MODEL,
   ): Promise<number> {

@@ -3,6 +3,7 @@ import { z } from 'zod/v4';
 import { JobSchema } from '../../../jobs/types';
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { PromptTemplate } from '@langchain/core/prompts';
+import { getBufferString } from '@langchain/core/messages';
 
 const CoverLetterSchema = z.object({
   cvText: z.string(),
@@ -80,7 +81,7 @@ export class CoverLetterGraph {
 
     const response = await this.coverLetterGeneratorLlm.invoke(prompt);
 
-    return { coverLetter: response.content };
+    return { coverLetter: getBufferString([response]) };
   }
 
   private async rewriteCoverLetter(state: CoverLetterState) {
@@ -107,7 +108,7 @@ export class CoverLetterGraph {
 
     const response = await this.coverLetterGeneratorLlm.invoke(prompt);
 
-    return { coverLetter: response.content };
+    return { coverLetter: getBufferString([response]) };
   }
 
   private async critiqueCoverLetter(state: CoverLetterState) {
@@ -128,7 +129,7 @@ export class CoverLetterGraph {
 
     const response = await this.critiqueLlm.invoke(prompt);
 
-    return { critique: response.content };
+    return { critique: getBufferString([response]) };
   }
 
   private increaseCounter(state: CoverLetterState) {

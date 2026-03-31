@@ -34,7 +34,7 @@ const AgentStateSchema = z.object({
   appliedJobsCount: z.number().default(0),
   jobs: z.array(JobSchema),
   cvText: z.string(),
-  cvEntityId: z.string(),
+  cvEntityId: z.number(),
   coverLetters: withLangGraph(z.array(CoverLetterEntrySchema), {
     reducer: {
       schema: CoverLetterEntrySchema,

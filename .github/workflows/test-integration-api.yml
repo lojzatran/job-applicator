@@ -56,6 +56,11 @@ jobs:
             sleep 2
           done
 
+          if ! nc -z 127.0.0.1 11434; then
+            echo "Failed to start Ollama on port 11434"
+            exit 1
+          fi
+
       - name: Wait for services
         run: |
           for port in 5432 5672; do
@@ -66,6 +71,11 @@ jobs:
 
               sleep 2
             done
+
+            if ! nc -z 127.0.0.1 "$port"; then
+              echo "Service on port $port is not reachable"
+              exit 1
+            fi
           done
 
       - name: Verify Gemini configuration
