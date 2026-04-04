@@ -3,6 +3,7 @@ import { Pool } from 'pg';
 import { env } from '../../../utils/env';
 import { CvEmbeddingsService } from './cv-summary-embeddings.service';
 import * as crypto from 'crypto';
+import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 
 describe('Cv Embeddings Service integration', () => {
   const databaseUrl = `postgres://${env.POSTGRES_USER}:${env.POSTGRES_PASSWORD}@${env.POSTGRES_HOST}:${env.POSTGRES_PORT}/${env.POSTGRES_DB}`;
@@ -199,6 +200,71 @@ describe('Cv Embeddings Service integration', () => {
         'Junior Business Development Representative',
       ]).toContain(names[4]);
     }, 300000);
+  });
+
+  describe('Job description embedding hygiene', () => {
+    it('returns no embeddings for empty or whitespace-only job descriptions', async () => {
+      const service = moduleRef.get(CvEmbeddingsService);
+      const createEmbeddingsSpy = jest.spyOn(service, 'createEmbeddings');
+
+      await expect(
+        service.createEmbeddingsForJobDescription('   \n\t  '),
+      ).resolves.toEqual([]);
+
+      expect(createEmbeddingsSpy).not.toHaveBeenCalled();
+      createEmbeddingsSpy.mockRestore();
+    });
+
+    it('skips blank split chunks before embedding job descriptions', async () => {
+      const service = moduleRef.get(CvEmbeddingsService);
+      const createEmbeddingsSpy = jest
+        .spyOn(service, 'createEmbeddings')
+        .mockResolvedValue([1, 2, 3]);
+      const splitterSpy = jest.spyOn(
+        RecursiveCharacterTextSplitter,
+        'fromLanguage',
+      );
+
+      splitterSpy.mockReturnValue({
+        splitText: jest.fn().mockResolvedValue([
+          '   ',
+          '<p>Product manager with strong ops background</p>',
+          '<div>\n</div>',
+        ]),
+      } as never);
+
+      const jobDescription = `<div>${'role '.repeat(800)}</div>`;
+      const embeddings = await service.createEmbeddingsForJobDescription(
+        jobDescription,
+      );
+
+      expect(embeddings).toEqual([[1, 2, 3]]);
+      expect(createEmbeddingsSpy).toHaveBeenCalledTimes(1);
+      expect(createEmbeddingsSpy).toHaveBeenCalledWith(
+        'Product manager with strong ops background',
+      );
+
+      splitterSpy.mockRestore();
+      createEmbeddingsSpy.mockRestore();
+    });
+  });
+
+  describe('CV embedding persistence guards', () => {
+    it('returns early for empty embeddings and throws when the pool is missing', async () => {
+      const service = new CvEmbeddingsService();
+
+      await expect(service.insertCvEmbeddings([])).resolves.toBeUndefined();
+      await expect(
+        service.insertCvEmbeddings([
+          {
+            cvId: 1,
+            embedding: [1, 2, 3],
+            weight: 1,
+            model: env.EMBEDDING_MODEL,
+          },
+        ]),
+      ).rejects.toThrow('Embeddings pool not initialized');
+    });
   });
 });
 

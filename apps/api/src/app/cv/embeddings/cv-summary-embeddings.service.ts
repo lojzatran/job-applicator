@@ -60,8 +60,8 @@ export class CvEmbeddingsService {
       2. **Do not invent facts, dates, companies, or skills**. If a value is unknown, omit optional string fields and use empty arrays for list fields.
       3. **Classify each block into ONE section type** from the schema below.
       4. **Always return valid JSON** matching the schema exactly - no extra fields, no missing fields.
-      5. **Use only the exact field names and value types defined in CvSchema**: `summary` as an optional string, `skills` as a string array, `experience` as a string array, `projects` as a string array, `education` as a string array, and `other` as an optional string array.
-      6. **Preserve the candidate's original wording in the extracted text values**. Do not add a `raw_text` field.
+      5. **Use only the exact field names and value types defined in CvSchema**: 'summary' as an optional string, 'skills' as a string array, 'experience' as a string array, 'projects' as a string array, 'education' as a string array, and 'other' as an optional string array.
+      6. **Preserve the candidate's original wording in the extracted text values**. Do not add a 'raw_text' field.
 
       ## Input Block
       {cvText}
@@ -160,14 +160,20 @@ export class CvEmbeddingsService {
       const embeddings: number[][] = [];
       for (const doc of htmlDocs) {
         const cleanText = stripHtml(doc).result;
+        if (!cleanText.trim()) {
+          continue;
+        }
         const embedding = await this.createEmbeddings(cleanText);
         embeddings.push(embedding);
       }
       return embeddings;
     } else {
-      const embedding = await this.createEmbeddings(
-        stripHtml(jobDescription).result,
-      );
+      const cleanText = stripHtml(jobDescription).result;
+      if (!cleanText.trim()) {
+        return [];
+      }
+
+      const embedding = await this.createEmbeddings(cleanText);
       return [embedding];
     }
   }
@@ -191,8 +197,12 @@ export class CvEmbeddingsService {
   }
 
   async insertCvEmbeddings(embeddings: CvEmbeddingRecord[], manager: any = this.pool): Promise<void> {
-    if (embeddings.length === 0 || !this.pool) {
+    if (embeddings.length === 0) {
       return;
+    }
+
+    if (!this.pool) {
+      throw new Error('Embeddings pool not initialized');
     }
 
     const placeholders: string[] = [];

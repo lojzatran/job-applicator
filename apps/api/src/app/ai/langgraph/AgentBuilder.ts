@@ -178,19 +178,21 @@ export class AgentBuilder {
 
   private async evaluateJob(state: AgentState) {
     console.log(`Evaluating job: ${JSON.stringify(state.job?.title)}`);
-    const jobDescriptionEmbedding: number[][] =
-      await this.cvEmbeddingsService.createEmbeddingsForJobDescription(
-        state.job!.description,
+
+    try {
+      const jobDescriptionEmbedding: number[][] =
+        await this.cvEmbeddingsService.createEmbeddingsForJobDescription(
+          state.job!.description,
+        );
+      const score = await this.cvEmbeddingsService.scoreJobAndCvMatching(
+        state.cvEntityId,
+        jobDescriptionEmbedding,
       );
-    const score = await this.cvEmbeddingsService.scoreJobAndCvMatching(
-      state.cvEntityId,
-      jobDescriptionEmbedding,
-    );
 
-    console.log(`Job score: ${score}`);
+      console.log(`Job score: ${score}`);
 
-    if (score > THRESHOLD) {
-      const template = PromptTemplate.fromTemplate(`
+      if (score > THRESHOLD) {
+        const template = PromptTemplate.fromTemplate(`
           You are an experienced technical recruiter and hiring manager.
   
           Your task is to evaluate if a candidate matches a job description.
@@ -217,23 +219,22 @@ export class AgentBuilder {
           - Return only true or false, no other text or formatting, so that it can be parsed to boolean.
         `);
 
-      const prompt = await template.invoke({
-        cvText: state.cvText,
-        jobTitle: state.job!.title,
-        jobDescription: state.job!.description,
-      });
+        const prompt = await template.invoke({
+          cvText: state.cvText,
+          jobTitle: state.job!.title,
+          jobDescription: state.job!.description,
+        });
 
-      try {
         const response = await this.jobEvaluatorLlm
           .withStructuredOutput(z.boolean())
           .invoke(prompt);
         console.log(`Evaluated job: ${response}`);
         return { isValidJob: response };
-      } catch (e) {
-        console.log(`Evaluated job error: ${e}`);
+      } else {
         return { isValidJob: false };
       }
-    } else {
+    } catch (error) {
+      console.error('Failed to evaluate job', error);
       return { isValidJob: false };
     }
   }
