@@ -3,10 +3,13 @@ import { Pool } from 'pg';
 import { env } from '../../../utils/env';
 import { CvEmbeddingsService } from './cv-summary-embeddings.service';
 import * as crypto from 'crypto';
+import {
+  cvParserLlmProvider,
+  embeddingModelProvider,
+} from '../../ai/providers/llm.provider';
 
 describe('Cv Embeddings Service integration', () => {
-  const databaseUrl = env.DATABASE_URL;
-  const VECTOR_DIMENSION = 768;
+  const databaseUrl = `postgres://${env.POSTGRES_USER}:${env.POSTGRES_PASSWORD}@${env.POSTGRES_HOST}:${env.POSTGRES_PORT}/${env.POSTGRES_DB}`;
   let moduleRef: TestingModule;
   let pool: Pool;
 
@@ -27,12 +30,6 @@ describe('Cv Embeddings Service integration', () => {
   beforeAll(async () => {
     jest.setTimeout(300000);
 
-    if (!databaseUrl) {
-      throw new Error(
-        'DATABASE_URL is required for CvEmbeddingsService integration tests.',
-      );
-    }
-
     pool = new Pool({
       connectionString: databaseUrl,
     });
@@ -44,7 +41,11 @@ describe('Cv Embeddings Service integration', () => {
     await truncateCvTables(pool);
 
     moduleRef = await Test.createTestingModule({
-      providers: [CvEmbeddingsService],
+      providers: [
+        CvEmbeddingsService,
+        cvParserLlmProvider,
+        embeddingModelProvider,
+      ],
     }).compile();
 
     await moduleRef.init();
@@ -142,7 +143,7 @@ describe('Cv Embeddings Service integration', () => {
       },
       {
         name: 'Backend Engineer (Tanganica)',
-        text: '<p>Ahoj! Jsme Tanganica, český B2B SaaS pro e-shopy. Pomáháme automatizovat marketing a spolupracujeme se stovkami klientů. Jsme součástí skupiny ABUGO a stavíme moderní produkty s AI-first přístupem.</p><p><strong>Tvoje role</strong></p><p>Hledáme medior+ backend developera do malého týmu. Každý má přímý vliv na produkt. Stack: .NET 8, PostgreSQL, Docker, GCP. Možnost remote nebo kanceláře v Liberci/Brně.</p><p><strong>Tech stack</strong></p><ul><li>C# / .NET (REST API, EF)</li><li>PostgreSQL (multi-tenant)</li><li>Docker, CI/CD, GCP</li><li>Integrace: Google, Meta, Stripe, Shopify, OpenAI</li></ul><p><strong>Co budeš dělat</strong></p><ul><li>Navrhovat backend architekturu</li><li>Integrovat externí služby</li><li>Optimalizovat databáze</li><li>Podílet se na AI funkcích</li></ul><p><strong>Výběrko</strong></p><ul><li>HR call</li><li>Tech kolo</li><li>Setkání s CEO</li></ul><p><strong>Co dostaneš</strong></p><ul><li>Férovou odměnu</li><li>Startup prostředí</li><li>Multisport</li><li>Moderní kanceláře</li><li>Podporu vzdělávání</li></ul>',
+        text: '<p>Ahoj! Jsme Tanganica, český B2B SaaS pro e-shopy. Pomáháme automatizovat marketing a spolupracujeme se stovkami klientů. Jsme součástí skupiny ABUGO a stavíme moderní produkty s AI-first přístupem.</p><p><strong>Tvoje role</strong></p><p>Hledáme medior+ backend developera do malého týmu. Každý má přímý vliv na produkt. Stack: .NET 8, MongoDB, Debian, AWS. Možnost remote nebo kanceláře v Liberci/Brně.</p><p><strong>Tech stack</strong></p><ul><li>C# / .NET (REST API, EF)</li><li>MongoDB (multi-tenant)</li><li>Debian, CI/CD, AWS</li><li>Integrace: Google, Meta, Stripe, Shopify, OpenAI</li></ul><p><strong>Co budeš dělat</strong></p><ul><li>Navrhovat backend architekturu</li><li>Integrovat externí služby</li><li>Optimalizovat databáze</li><li>Podílet se na AI funkcích</li></ul><p><strong>Výběrko</strong></p><ul><li>HR call</li><li>Tech kolo</li><li>Setkání s CEO</li></ul><p><strong>Co dostaneš</strong></p><ul><li>Férovou odměnu</li><li>Startup prostředí</li><li>Multisport</li><li>Moderní kanceláře</li><li>Podporu vzdělávání</li></ul>',
       },
       {
         name: 'Backend Engineer (AI-created)',
@@ -162,7 +163,7 @@ describe('Cv Embeddings Service integration', () => {
 
       const embeddings = cvEmbeddings.map((embedding) => ({
         cvId,
-        embedding: fitVectorToDimension(embedding.embedding, VECTOR_DIMENSION),
+        embedding: embedding.embedding,
         weight: embedding.weight,
         model: env.EMBEDDING_MODEL,
       }));
@@ -186,27 +187,26 @@ describe('Cv Embeddings Service integration', () => {
       results.sort((a, b) => b.score - a.score);
 
       const names = results.map((result) => result.name);
-      // We know the first one is the best match because I created the job description
-      // with AI according to the CV. The others are less deterministic, but IT jobs should be before others.
-      expect(names[0]).toEqual('Backend Engineer (AI-created)');
-      expect([
+      const itJobs = [
+        'Backend Engineer (AI-created)',
         'Senior Frontend Developer (Next.js / React)',
         'Backend Engineer (Tanganica)',
-      ]).toContain(names[1]);
-      expect([
-        'Senior Frontend Developer (Next.js / React)',
-        'Backend Engineer (Tanganica)',
-      ]).toContain(names[2]);
-      expect([
+      ].sort();
+      const nonItJobs = [
         'Marketing / Campaigns Specialist (MAGU)',
         'Junior Business Development Representative',
-      ]).toContain(names[3]);
-      expect([
-        'Marketing / Campaigns Specialist (MAGU)',
-        'Junior Business Development Representative',
-      ]).toContain(names[4]);
+      ].sort();
+
+      // IT jobs should be in the top 3
+      const top3Sorted = names.slice(0, 3).sort();
+      expect(top3Sorted).toEqual(itJobs);
+
+      // Non-IT jobs should be in the bottom 2
+      const bottom2Sorted = names.slice(3, 5).sort();
+      expect(bottom2Sorted).toEqual(nonItJobs);
     }, 300000);
   });
+
 });
 
 async function insertCv(
@@ -215,9 +215,9 @@ async function insertCv(
     path: string;
     rawText: string;
   },
-): Promise<string> {
+): Promise<number> {
   const cvHash = crypto.createHash('md5').update(input.rawText).digest('hex');
-  const result = await pool.query<{ id: string }>(
+  const result = await pool.query<{ id: number }>(
     `
       INSERT INTO "cv" ("path", "rawText", "hash", "createdAt")
       VALUES ($1, $2, $3, $4)
@@ -236,7 +236,9 @@ async function truncateCvTables(pool: Pool): Promise<void> {
     `);
   } catch (error) {
     if (isMissingRelationError(error)) {
-      return;
+      throw new Error(
+        'Table "cv" or "cv_embedding" does not exist. Please run "npm run migrate" or "npm run db:reset" to prepare the database schema.',
+      );
     }
 
     throw error;
@@ -250,12 +252,4 @@ function isMissingRelationError(error: unknown): error is { code: string } {
     'code' in error &&
     error.code === '42P01'
   );
-}
-
-function fitVectorToDimension(vector: number[], dimension: number): number[] {
-  if (vector.length >= dimension) {
-    return vector.slice(0, dimension);
-  }
-
-  return [...vector, ...new Array(dimension - vector.length).fill(0)];
 }

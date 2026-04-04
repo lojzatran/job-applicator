@@ -19,7 +19,7 @@ Job Applicator helps you discover jobs from multiple sources, evaluate how well 
 - `RABBITMQ_URL` - RabbitMQ connection string, usually `amqp://localhost` for local development.
 - `RABBITMQ_QUEUE` - Queue name used for job-processing messages.
 - `JOB_EVALUATOR_MODEL` - LLM model name used to evaluate whether a job matches the CV.
-- `OLLAMA_BASE_URL` - Required when using Ollama-based models for cover letters and critique.
+- `OLLAMA_BASE_URL` - Required when using Ollama-based models for job evaluation, cover letters, and critique.
 - `COVER_LETTER_GENERATOR_MODEL` - LLM model name used to generate the cover letter.
 - `CRITIQUE_MODEL` - LLM model name used to critique and rewrite the cover letter.
 
@@ -27,6 +27,8 @@ Optional but supported:
 
 - `GEMINI_API_KEY` - If set, the job evaluator uses Gemini instead of Ollama.
 - `LANGSMITH_PROJECT` - LangSmith project name for tracing.
+- `LANGSMITH_TRACING` - Enables LangSmith tracing.
+- `LANGSMITH_API_KEY` - LangSmith API key.
 
 ## Run Tasks
 
@@ -38,7 +40,7 @@ Start the full workspace with:
 npm run dev-all
 ```
 
-This runs the Nx development targets for the website and API together.
+This runs the Nx development targets for the workspace apps together.
 
 ### Run frontend website
 
@@ -58,15 +60,31 @@ nx serve api
 
 The API consumes job-processing messages, executes the LangGraph workflow, and persists the generated cover letters.
 
-### Run API tests
+### Run Tests
+
+Run the full workspace test suite from the workspace root with:
+
+```sh
+npm test
+```
+
+This runs every Nx `test` target in the repository, including the API integration tests.
+
+Run only unit tests from the workspace root with:
+
+```sh
+npm run test:unit
+```
+
+This runs every Nx `test` target while ignoring `integration.spec.ts` files.
 
 Run the API test suite from the workspace root with:
 
 ```sh
-npm run test:api
+npm run test-integration:api
 ```
 
-This runs the Nx Jest target for `apps/api` and picks up any `*.spec.ts` or `*.test.ts` files under `apps/api/src/`.
+This runs the Nx Jest target for `apps/api` and picks up the `*.integration.spec.ts` files under `apps/api/src/`.
 
 The current API test coverage is the CV embedding integration spec, so make sure local Ollama is running and these models are available:
 

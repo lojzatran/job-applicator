@@ -18,6 +18,7 @@
     "target": "es2022",
     "customConditions": ["@apps/source"],
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
+    "emitDecoratorMetadata": true,
+    "esModuleInterop": true
   }
 }

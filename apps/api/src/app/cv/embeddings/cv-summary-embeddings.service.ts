@@ -2,14 +2,17 @@ import { Injectable } from '@nestjs/common';
 import { PromptTemplate } from '@langchain/core/prompts';
 import { CvSchema } from './cv-schema';
 import { RunnableSequence } from '@langchain/core/runnables';
-import { OllamaEmbeddings } from '@langchain/ollama';
 import { env } from '../../../utils/env';
 import { Pool } from 'pg';
-import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
-import { countTokensApproximately, HumanMessage } from 'langchain';
+import { HumanMessage } from '@langchain/core/messages';
+import { countTokensApproximately } from 'langchain';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import { stripHtml } from 'string-strip-html';
-
+import { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { CV_PARSER_LLM, EMBEDDING_MODEL } from '../../ai/ai.constants';
+import { Inject } from '@nestjs/common';
+import { Embeddings } from '@langchain/core/embeddings';
+import { OnApplicationShutdown, OnModuleInit } from '@nestjs/common';
 
 interface CvWeightedEmbedding {
   embedding: number[];
@@ -17,7 +20,7 @@ interface CvWeightedEmbedding {
 }
 
 interface CvEmbeddingRecord {
-  cvId: string;
+  cvId: number;
   embedding: number[];
   weight: number;
   model: string;
@@ -25,12 +28,12 @@ interface CvEmbeddingRecord {
 }
 
 @Injectable()
-export class CvEmbeddingsService {
+export class CvEmbeddingsService implements OnModuleInit, OnApplicationShutdown {
   private pool: Pool | undefined;
 
   async onModuleInit(): Promise<void> {
     this.pool = new Pool({
-      connectionString: env.DATABASE_URL,
+      connectionString: `postgres://${env.POSTGRES_USER}:${env.POSTGRES_PASSWORD}@${env.POSTGRES_HOST}:${env.POSTGRES_PORT}/${env.POSTGRES_DB}`,
     });
   }
 
@@ -40,8 +43,20 @@ export class CvEmbeddingsService {
     }
   }
 
-  private isEmpty(obj: Record<string, any>) {
-    return Object.values(obj).every((arr) => arr.length === 0);
+  constructor(
+    @Inject(CV_PARSER_LLM)
+    private readonly cvParserLlm: BaseChatModel,
+    @Inject(EMBEDDING_MODEL)
+    private readonly embeddingModel: Embeddings,
+  ) {}
+
+  private isEmpty(obj: Record<string, string | string[]>) {
+    return Object.values(obj).every((value) => {
+      if (Array.isArray(value)) {
+        return value.every((item) => !item || item.trim().length === 0);
+      }
+      return !value || value.trim().length === 0;
+    });
   }
 
   async createWeightedEmbeddingsForCv(
@@ -53,19 +68,17 @@ export class CvEmbeddingsService {
       ## Instructions
 
       1. **NEVER rewrite, summarize, or improve the candidate's text**. Preserve exact original wording.
-      2. **Do not invent facts, dates, companies, or skills**. If uncertain, use 'null' or empty strings.
+      2. **Do not invent facts, dates, companies, or skills**. If a value is unknown, omit optional string fields and use empty arrays for list fields.
       3. **Classify each block into ONE section type** from the schema below.
       4. **Always return valid JSON** matching the schema exactly - no extra fields, no missing fields.
-      5. **Keep 'raw_text' identical** to the input block (including formatting, bullets, typos).
+      5. **Use only the exact field names and value types defined in CvSchema**: 'summary' as an optional string, 'skills' as a string array, 'experience' as a string array, 'projects' as a string array, 'education' as a string array, and 'other' as an optional string array.
+      6. **Preserve the candidate's original wording in the extracted text values**. Do not add a 'raw_text' field.
 
       ## Input Block
       {cvText}
     `);
 
-    const llm = new ChatGoogleGenerativeAI({
-      apiKey: env.GEMINI_API_KEY,
-      model: env.CV_PARSER_MODEL,
-    }).withStructuredOutput(CvSchema);
+    const llm = this.cvParserLlm.withStructuredOutput(CvSchema);
 
     const chain = RunnableSequence.from([
       template,
@@ -84,6 +97,39 @@ export class CvEmbeddingsService {
     documents: Record<string, string | string[]>,
     cvText: string,
   ): Promise<CvWeightedEmbedding[]> {
+    if (this.isEmpty(documents)) {
+      return this.createEmbeddingsForWeightedChunks(cvText, 1);
+    }
+    const embeddingsWithWeight: CvWeightedEmbedding[] = [];
+    for (const [key, value] of Object.entries(documents)) {
+      if (Array.isArray(value)) {
+        const nonEmptyItems = value
+          .map((item) => item?.trim())
+          .filter((item) => item && item.length > 0);
+        if (nonEmptyItems.length === 0) {
+          continue;
+        }
+        const formattedValue = nonEmptyItems.join('\n');
+        embeddingsWithWeight.push(
+          ...(await this.embedKeyValue(key, formattedValue)),
+        );
+      } else {
+        const trimmedValue = value?.trim();
+        if (!trimmedValue || trimmedValue.length === 0) {
+          continue;
+        }
+        embeddingsWithWeight.push(
+          ...(await this.embedKeyValue(key, trimmedValue)),
+        );
+      }
+    }
+    return embeddingsWithWeight;
+  }
+
+  private async embedKeyValue(
+    key: string,
+    value: string,
+  ): Promise<CvWeightedEmbedding[]> {
     const sectionWeights: Record<string, number> = {
       summary: 0.6,
       skills: 2.5,
@@ -92,22 +138,58 @@ export class CvEmbeddingsService {
       education: 0.7,
       other: 0.2,
     };
+    const weight = sectionWeights[key] ?? 1.0;
+    return this.createEmbeddingsForWeightedChunks(`${key}: ${value}`, weight);
+  }
 
-    if (this.isEmpty(documents)) {
-      const embedding = await this.createEmbeddings(cvText);
-      return [{ embedding, weight: 1 }];
-    }
-    const embeddingsWithWeight: CvWeightedEmbedding[] = [];
-    for (const [key, value] of Object.entries(documents)) {
-      const formattedValue = Array.isArray(value) ? value.join('\n') : value;
-      const textToEmbed = key + ': ' + formattedValue;
-      const embedding = await this.createEmbeddings(textToEmbed);
-      embeddingsWithWeight.push({
+  private async createEmbeddingsForWeightedChunks(
+    text: string,
+    weight: number,
+  ): Promise<CvWeightedEmbedding[]> {
+    const splitter = new RecursiveCharacterTextSplitter({
+      chunkSize: 500,
+      chunkOverlap: 60,
+    });
+    const chunks = await splitter.splitText(text);
+    return this.createEmbeddingsForChunks(chunks, (chunk) => chunk.trim(), weight);
+  }
+
+  private async createEmbeddingsForChunks(
+    chunks: string[],
+    normalizeChunk: (chunk: string) => string,
+    weight: number,
+  ): Promise<CvWeightedEmbedding[]>;
+
+  private async createEmbeddingsForChunks(
+    chunks: string[],
+    normalizeChunk: (chunk: string) => string,
+  ): Promise<number[][]>;
+
+  private async createEmbeddingsForChunks(
+    chunks: string[],
+    normalizeChunk: (chunk: string) => string,
+    weight?: number,
+  ): Promise<CvWeightedEmbedding[] | number[][]> {
+    const embeddings: CvWeightedEmbedding[] = [];
+
+    for (const chunk of chunks) {
+      const normalizedChunk = normalizeChunk(chunk).trim();
+      if (!normalizedChunk) {
+        continue;
+      }
+
+      const embedding = await this.createEmbeddings(normalizedChunk);
+      embeddings.push({
         embedding,
-        weight: sectionWeights[key] ?? 1.0,
+        weight: weight ?? 1,
       });
     }
-    return embeddingsWithWeight;
+
+    if (weight === undefined) {
+      return embeddings.map((item) => item.embedding);
+    }
+
+    return embeddings;
   }
 
   /**
@@ -123,7 +205,7 @@ export class CvEmbeddingsService {
     ]);
     console.log(
       'Token count for job description: ',
-      jobDescription,
+      jobDescription.substring(0, 100) + '...',
       tokenCount,
     );
 
@@ -133,33 +215,18 @@ export class CvEmbeddingsService {
         chunkOverlap: 60,
       });
       const htmlDocs = await htmlSplitter.splitText(jobDescription);
-      const embeddings: number[][] = [];
-      for (const doc of htmlDocs) {
-        const cleanText = stripHtml(doc).result;
-        const embedding = await this.createEmbeddings(cleanText);
-        embeddings.push(embedding);
-      }
-      return embeddings;
-    } else {
-      const embedding = await this.createEmbeddings(
-        stripHtml(jobDescription).result,
-      );
-      return [embedding];
+      return this.createEmbeddingsForChunks(htmlDocs, (doc) => stripHtml(doc).result);
     }
+
+    return this.createEmbeddingsForChunks([jobDescription], (doc) => stripHtml(doc).result);
   }
 
   async createEmbeddings(text: string) {
-    const embeddingModel = new OllamaEmbeddings({
-      model: env.EMBEDDING_MODEL,
-      baseUrl: 'http://localhost:11434',
-    });
-
     try {
-      const vectors = await embeddingModel.embedQuery(text);
+      const vectors = await this.embeddingModel.embedQuery(text);
       return vectors;
     } catch (error) {
-      console.error('Error creating embeddings for text: ', text, error);
-      return [];
+      throw error;
     }
   }
 
@@ -167,9 +234,18 @@ export class CvEmbeddingsService {
     return `[${embedding.join(',')}]`;
   }
 
-  async insertCvEmbeddings(embeddings: CvEmbeddingRecord[]): Promise<void> {
-    if (embeddings.length === 0 || !this.pool) {
+  async insertCvEmbeddings(
+    embeddings: CvEmbeddingRecord[],
+    manager: any = this.pool,
+  ): Promise<void> {
+    if (embeddings.length === 0) {
       return;
+    }
+
+    const executor = manager || this.pool;
+
+    if (!executor) {
+      throw new Error('Embeddings pool not initialized');
     }
 
     const placeholders: string[] = [];
@@ -188,7 +264,7 @@ export class CvEmbeddingsService {
       ];
     });
 
-    await this.pool.query(
+    await executor.query(
       `
         INSERT INTO "cv_embedding" ("cvId", "embedding", "weight", "model", "createdAt")
         VALUES ${placeholders.join(', ')}
@@ -198,7 +274,7 @@ export class CvEmbeddingsService {
   }
 
   async scoreJobAndCvMatching(
-    cvId: string,
+    cvId: number,
     queryEmbeddings: number[][],
     model = env.EMBEDDING_MODEL,
   ): Promise<number> {
