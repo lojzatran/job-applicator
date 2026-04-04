@@ -6,7 +6,8 @@ import { OllamaEmbeddings } from '@langchain/ollama';
 import { env } from '../../../utils/env';
 import { Pool } from 'pg';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
-import { countTokensApproximately, HumanMessage } from 'langchain';
+import { HumanMessage } from '@langchain/core/messages';
+import { countTokensApproximately } from 'langchain';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import { stripHtml } from 'string-strip-html';
 
@@ -196,12 +197,17 @@ export class CvEmbeddingsService {
     return `[${embedding.join(',')}]`;
   }
 
-  async insertCvEmbeddings(embeddings: CvEmbeddingRecord[], manager: any = this.pool): Promise<void> {
+  async insertCvEmbeddings(
+    embeddings: CvEmbeddingRecord[],
+    manager: any = this.pool,
+  ): Promise<void> {
     if (embeddings.length === 0) {
       return;
     }
 
-    if (!this.pool) {
+    const executor = manager || this.pool;
+
+    if (!executor) {
       throw new Error('Embeddings pool not initialized');
     }
 
@@ -221,7 +227,7 @@ export class CvEmbeddingsService {
       ];
     });
 
-    await manager.query(
+    await executor.query(
       `
         INSERT INTO "cv_embedding" ("cvId", "embedding", "weight", "model", "createdAt")
         VALUES ${placeholders.join(', ')}

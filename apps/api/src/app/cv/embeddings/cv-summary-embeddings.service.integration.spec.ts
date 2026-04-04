@@ -265,6 +265,31 @@ describe('Cv Embeddings Service integration', () => {
         ]),
       ).rejects.toThrow('Embeddings pool not initialized');
     });
+
+    it('uses the provided manager when inserting embeddings inside a transaction', async () => {
+      const service = new CvEmbeddingsService();
+      const query = jest.fn().mockResolvedValue(undefined);
+      const manager = {
+        query,
+      };
+
+      await expect(
+        service.insertCvEmbeddings(
+          [
+            {
+              cvId: 1,
+              embedding: [1, 2, 3],
+              weight: 1,
+              model: env.EMBEDDING_MODEL,
+            },
+          ],
+          manager,
+        ),
+      ).resolves.toBeUndefined();
+
+      expect(query).toHaveBeenCalledTimes(1);
+      expect(query.mock.calls[0][0]).toContain('INSERT INTO "cv_embedding"');
+    });
   });
 });
 
