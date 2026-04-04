@@ -12,6 +12,7 @@ import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { CV_PARSER_LLM, EMBEDDING_MODEL } from '../../ai/ai.constants';
 import { Inject } from '@nestjs/common';
 import { Embeddings } from '@langchain/core/embeddings';
+import { OnApplicationShutdown, OnModuleInit } from '@nestjs/common';
 
 interface CvWeightedEmbedding {
   embedding: number[];
@@ -27,7 +28,7 @@ interface CvEmbeddingRecord {
 }
 
 @Injectable()
-export class CvEmbeddingsService {
+export class CvEmbeddingsService implements OnModuleInit, OnApplicationShutdown {
   private pool: Pool | undefined;
 
   async onModuleInit(): Promise<void> {
