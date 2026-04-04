@@ -6,6 +6,8 @@ import { JobsService } from './jobs/jobs.service';
 import { AgentService } from './ai/langgraph/agent.service';
 import {
   coverLetterGeneratorLlmProvider,
+  cvParserLlmProvider,
+  embeddingModelProvider,
   jobEvaluatorLlmProvider,
   critiqueLlmProvider,
 } from './ai/providers/llm.provider';
@@ -31,6 +33,8 @@ import { Cv } from '@apps/shared';
     jobEvaluatorLlmProvider,
     coverLetterGeneratorLlmProvider,
     critiqueLlmProvider,
+    cvParserLlmProvider,
+    embeddingModelProvider,
     PdfService,
     CvEmbeddingsService,
   ],

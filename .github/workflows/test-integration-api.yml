@@ -1,4 +1,4 @@
-name: test-integration-api
+name: test
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - '**'
 
 jobs:
-  test-integration-api:
+  test:
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
@@ -81,15 +81,15 @@ jobs:
       - name: Verify Gemini configuration
         run: |
           if [ -z "$GEMINI_API_KEY" ]; then
-            echo "GEMINI_API_KEY is required to run test-integration:api in CI."
+            echo "GEMINI_API_KEY is required to run the test suite in CI."
             exit 1
           fi
 
       - name: Pull Ollama embedding model
         run: ollama pull "$EMBEDDING_MODEL"
 
-      - name: Run integration tests
-        run: npm run test-integration:api
+      - name: Run all tests
+        run: npm test
 
       - name: Stop services
         if: always()

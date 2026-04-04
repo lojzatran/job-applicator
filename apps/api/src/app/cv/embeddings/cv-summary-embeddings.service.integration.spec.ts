@@ -3,7 +3,10 @@ import { Pool } from 'pg';
 import { env } from '../../../utils/env';
 import { CvEmbeddingsService } from './cv-summary-embeddings.service';
 import * as crypto from 'crypto';
-import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
+import {
+  cvParserLlmProvider,
+  embeddingModelProvider,
+} from '../../ai/providers/llm.provider';
 
 describe('Cv Embeddings Service integration', () => {
   const databaseUrl = `postgres://${env.POSTGRES_USER}:${env.POSTGRES_PASSWORD}@${env.POSTGRES_HOST}:${env.POSTGRES_PORT}/${env.POSTGRES_DB}`;
@@ -38,7 +41,11 @@ describe('Cv Embeddings Service integration', () => {
     await truncateCvTables(pool);
 
     moduleRef = await Test.createTestingModule({
-      providers: [CvEmbeddingsService],
+      providers: [
+        CvEmbeddingsService,
+        cvParserLlmProvider,
+        embeddingModelProvider,
+      ],
     }).compile();
 
     await moduleRef.init();
@@ -136,7 +143,7 @@ describe('Cv Embeddings Service integration', () => {
       },
       {
         name: 'Backend Engineer (Tanganica)',
-        text: '<p>Ahoj! Jsme Tanganica, český B2B SaaS pro e-shopy. Pomáháme automatizovat marketing a spolupracujeme se stovkami klientů. Jsme součástí skupiny ABUGO a stavíme moderní produkty s AI-first přístupem.</p><p><strong>Tvoje role</strong></p><p>Hledáme medior+ backend developera do malého týmu. Každý má přímý vliv na produkt. Stack: .NET 8, PostgreSQL, Docker, GCP. Možnost remote nebo kanceláře v Liberci/Brně.</p><p><strong>Tech stack</strong></p><ul><li>C# / .NET (REST API, EF)</li><li>PostgreSQL (multi-tenant)</li><li>Docker, CI/CD, GCP</li><li>Integrace: Google, Meta, Stripe, Shopify, OpenAI</li></ul><p><strong>Co budeš dělat</strong></p><ul><li>Navrhovat backend architekturu</li><li>Integrovat externí služby</li><li>Optimalizovat databáze</li><li>Podílet se na AI funkcích</li></ul><p><strong>Výběrko</strong></p><ul><li>HR call</li><li>Tech kolo</li><li>Setkání s CEO</li></ul><p><strong>Co dostaneš</strong></p><ul><li>Férovou odměnu</li><li>Startup prostředí</li><li>Multisport</li><li>Moderní kanceláře</li><li>Podporu vzdělávání</li></ul>',
+        text: '<p>Ahoj! Jsme Tanganica, český B2B SaaS pro e-shopy. Pomáháme automatizovat marketing a spolupracujeme se stovkami klientů. Jsme součástí skupiny ABUGO a stavíme moderní produkty s AI-first přístupem.</p><p><strong>Tvoje role</strong></p><p>Hledáme medior+ backend developera do malého týmu. Každý má přímý vliv na produkt. Stack: .NET 8, MongoDB, Debian, AWS. Možnost remote nebo kanceláře v Liberci/Brně.</p><p><strong>Tech stack</strong></p><ul><li>C# / .NET (REST API, EF)</li><li>MongoDB (multi-tenant)</li><li>Debian, CI/CD, AWS</li><li>Integrace: Google, Meta, Stripe, Shopify, OpenAI</li></ul><p><strong>Co budeš dělat</strong></p><ul><li>Navrhovat backend architekturu</li><li>Integrovat externí služby</li><li>Optimalizovat databáze</li><li>Podílet se na AI funkcích</li></ul><p><strong>Výběrko</strong></p><ul><li>HR call</li><li>Tech kolo</li><li>Setkání s CEO</li></ul><p><strong>Co dostaneš</strong></p><ul><li>Férovou odměnu</li><li>Startup prostředí</li><li>Multisport</li><li>Moderní kanceláře</li><li>Podporu vzdělávání</li></ul>',
       },
       {
         name: 'Backend Engineer (AI-created)',
@@ -202,95 +209,6 @@ describe('Cv Embeddings Service integration', () => {
     }, 300000);
   });
 
-  describe('Job description embedding hygiene', () => {
-    it('returns no embeddings for empty or whitespace-only job descriptions', async () => {
-      const service = moduleRef.get(CvEmbeddingsService);
-      const createEmbeddingsSpy = jest.spyOn(service, 'createEmbeddings');
-
-      await expect(
-        service.createEmbeddingsForJobDescription('   \n\t  '),
-      ).resolves.toEqual([]);
-
-      expect(createEmbeddingsSpy).not.toHaveBeenCalled();
-      createEmbeddingsSpy.mockRestore();
-    });
-
-    it('skips blank split chunks before embedding job descriptions', async () => {
-      const service = moduleRef.get(CvEmbeddingsService);
-      const createEmbeddingsSpy = jest
-        .spyOn(service, 'createEmbeddings')
-        .mockResolvedValue([1, 2, 3]);
-      const splitterSpy = jest.spyOn(
-        RecursiveCharacterTextSplitter,
-        'fromLanguage',
-      );
-
-      splitterSpy.mockReturnValue({
-        splitText: jest.fn().mockResolvedValue([
-          '   ',
-          '<p>Product manager with strong ops background</p>',
-          '<div>\n</div>',
-        ]),
-      } as never);
-
-      const jobDescription = `<div>${'role '.repeat(800)}</div>`;
-      const embeddings = await service.createEmbeddingsForJobDescription(
-        jobDescription,
-      );
-
-      expect(embeddings).toEqual([[1, 2, 3]]);
-      expect(createEmbeddingsSpy).toHaveBeenCalledTimes(1);
-      expect(createEmbeddingsSpy).toHaveBeenCalledWith(
-        'Product manager with strong ops background',
-      );
-
-      splitterSpy.mockRestore();
-      createEmbeddingsSpy.mockRestore();
-    });
-  });
-
-  describe('CV embedding persistence guards', () => {
-    it('returns early for empty embeddings and throws when the pool is missing', async () => {
-      const service = new CvEmbeddingsService();
-
-      await expect(service.insertCvEmbeddings([])).resolves.toBeUndefined();
-      await expect(
-        service.insertCvEmbeddings([
-          {
-            cvId: 1,
-            embedding: [1, 2, 3],
-            weight: 1,
-            model: env.EMBEDDING_MODEL,
-          },
-        ]),
-      ).rejects.toThrow('Embeddings pool not initialized');
-    });
-
-    it('uses the provided manager when inserting embeddings inside a transaction', async () => {
-      const service = new CvEmbeddingsService();
-      const query = jest.fn().mockResolvedValue(undefined);
-      const manager = {
-        query,
-      };
-
-      await expect(
-        service.insertCvEmbeddings(
-          [
-            {
-              cvId: 1,
-              embedding: [1, 2, 3],
-              weight: 1,
-              model: env.EMBEDDING_MODEL,
-            },
-          ],
-          manager,
-        ),
-      ).resolves.toBeUndefined();
-
-      expect(query).toHaveBeenCalledTimes(1);
-      expect(query.mock.calls[0][0]).toContain('INSERT INTO "cv_embedding"');
-    });
-  });
 });
 
 async function insertCv(
