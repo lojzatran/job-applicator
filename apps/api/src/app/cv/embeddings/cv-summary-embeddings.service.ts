@@ -57,10 +57,11 @@ export class CvEmbeddingsService {
       ## Instructions
 
       1. **NEVER rewrite, summarize, or improve the candidate's text**. Preserve exact original wording.
-      2. **Do not invent facts, dates, companies, or skills**. If uncertain, use 'null' or empty strings.
+      2. **Do not invent facts, dates, companies, or skills**. If a value is unknown, omit optional string fields and use empty arrays for list fields.
       3. **Classify each block into ONE section type** from the schema below.
       4. **Always return valid JSON** matching the schema exactly - no extra fields, no missing fields.
-      5. **Keep 'raw_text' identical** to the input block (including formatting, bullets, typos).
+      5. **Use only the exact field names and value types defined in CvSchema**: `summary` as an optional string, `skills` as a string array, `experience` as a string array, `projects` as a string array, `education` as a string array, and `other` as an optional string array.
+      6. **Preserve the candidate's original wording in the extracted text values**. Do not add a `raw_text` field.
 
       ## Input Block
       {cvText}
