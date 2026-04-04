@@ -12,10 +12,10 @@ import { PromptTemplate } from '@langchain/core/prompts';
 import { z } from 'zod/v4';
 import { CoverLetterGraph } from './graphs/CoverLetterGraph';
 import { CvEmbeddingsService } from '../../cv/embeddings/cv-summary-embeddings.service';
-import { Repository } from 'typeorm';
 import { Cv } from '@apps/shared';
 import { env } from '../../../utils/env';
 import * as crypto from 'crypto';
+import { DataSource, EntityManager } from 'typeorm';
 
 interface CoverLetterEntry {
   url: string;
@@ -61,7 +61,7 @@ export class AgentBuilder {
     coverLetterGeneratorLlm: BaseChatModel,
     critiqueLlm: BaseChatModel,
     cvEmbeddingsService: CvEmbeddingsService,
-    private readonly cvRepository: Repository<Cv>,
+    private dataSource: DataSource,
   ) {
     this.cvEmbeddingsService = cvEmbeddingsService;
     this.jobEvaluatorLlm = jobEvaluatorLlm;
@@ -71,31 +71,66 @@ export class AgentBuilder {
     ).build();
   }
 
-  private async summarizeCv(state: AgentState) {
-    console.log(`Summarizing CV...`);
-    const cvHash = crypto.createHash('md5').update(state.cvText).digest('hex');
-
-    const existingCv = await this.cvRepository.findOne({
+  private async ensureCvEntity(manager: EntityManager, cvText: string): Promise<Cv> {
+    const cvHash = crypto.createHash('md5').update(cvText).digest('hex');
+    const cvRepository = manager.getRepository(Cv);
+    let cvEntity = await cvRepository.findOne({
       where: { hash: cvHash },
     });
 
-    if (existingCv) {
-      return { cvEntityId: existingCv.id };
+    if (!cvEntity) {
+      const insertResult = await cvRepository.insert({
+        path: 'temp',
+        rawText: cvText,
+        hash: cvHash,
+        createdAt: new Date(),
+      });
+
+      const cvId = insertResult.identifiers[0]?.id;
+      if (typeof cvId !== 'number') {
+        throw new Error(`Failed to persist CV row for hash ${cvHash}`);
+      }
+
+      cvEntity = {
+        id: cvId,
+        path: 'temp',
+        rawText: cvText,
+        hash: cvHash,
+        createdAt: new Date(),
+      };
     }
 
-    const cvEntity = await this.cvRepository.save({
-      path: 'temp',
-      rawText: state.cvText,
-      hash: cvHash,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+    if (!cvEntity) {
+      throw new Error(`Failed to load CV row for hash ${cvHash}`);
+    }
+
+    return cvEntity;
+  }
+
+  private async ensureCvEmbeddings(
+    manager: EntityManager,
+    cvEntity: Cv,
+  ): Promise<void> {
+    const existingEmbeddings = await manager.query<{ id: number }[]>(
+      `
+          SELECT "id"
+          FROM "cv_embedding"
+          WHERE "cvId" = $1
+            AND "model" = $2
+          LIMIT 1
+        `,
+      [cvEntity.id, env.EMBEDDING_MODEL],
+    );
+
+    if (existingEmbeddings.length > 0) {
+      return;
+    }
 
     const cvEmbedding: {
       embedding: number[];
       weight: number;
     }[] = await this.cvEmbeddingsService.createWeightedEmbeddingsForCv(
-      state.cvText,
+      cvEntity.rawText,
     );
 
     await this.cvEmbeddingsService.insertCvEmbeddings(
@@ -108,9 +143,20 @@ export class AgentBuilder {
           createdAt: new Date(),
         };
       }),
+      manager,
     );
+  }
 
-    return { cvEntityId: cvEntity.id };
+  private async summarizeCv(state: AgentState) {
+    console.log(`Summarizing CV...`);
+
+    const cvEntityId = await this.dataSource.transaction(async (manager) => {
+      const cvEntity = await this.ensureCvEntity(manager, state.cvText);
+      await this.ensureCvEmbeddings(manager, cvEntity);
+      return cvEntity.id;
+    });
+
+    return { cvEntityId };
   }
 
   private jobSupplier(state: AgentState) {
@@ -133,7 +179,9 @@ export class AgentBuilder {
   private async evaluateJob(state: AgentState) {
     console.log(`Evaluating job: ${JSON.stringify(state.job?.title)}`);
     const jobDescriptionEmbedding: number[][] =
-      await this.cvEmbeddingsService.createEmbeddingsForJobDescription(state.job!.description);
+      await this.cvEmbeddingsService.createEmbeddingsForJobDescription(
+        state.job!.description,
+      );
     const score = await this.cvEmbeddingsService.scoreJobAndCvMatching(
       state.cvEntityId,
       jobDescriptionEmbedding,

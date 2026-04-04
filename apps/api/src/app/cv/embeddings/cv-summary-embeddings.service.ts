@@ -189,7 +189,7 @@ export class CvEmbeddingsService {
     return `[${embedding.join(',')}]`;
   }
 
-  async insertCvEmbeddings(embeddings: CvEmbeddingRecord[]): Promise<void> {
+  async insertCvEmbeddings(embeddings: CvEmbeddingRecord[], manager: any = this.pool): Promise<void> {
     if (embeddings.length === 0 || !this.pool) {
       return;
     }
@@ -210,7 +210,7 @@ export class CvEmbeddingsService {
       ];
     });
 
-    await this.pool.query(
+    await manager.query(
       `
         INSERT INTO "cv_embedding" ("cvId", "embedding", "weight", "model", "createdAt")
         VALUES ${placeholders.join(', ')}

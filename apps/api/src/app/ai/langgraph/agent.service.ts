@@ -9,9 +9,7 @@ import {
 import { JobsService } from '../../jobs/jobs.service';
 import { PdfService } from '../../documents/pdf/pdf.service';
 import { CvEmbeddingsService } from '../../cv/embeddings/cv-summary-embeddings.service';
-import { Repository } from 'typeorm';
-import { Cv } from '@apps/shared';
-import { InjectRepository } from '@nestjs/typeorm';
+import { DataSource } from 'typeorm';
 
 @Injectable()
 export class AgentService {
@@ -22,10 +20,9 @@ export class AgentService {
     private readonly jobsService: JobsService,
     private readonly pdfService: PdfService,
     private readonly cvEmbeddingsService: CvEmbeddingsService,
-    @InjectRepository(Cv)
-    private readonly cvRepository: Repository<Cv>,
     @Inject(CRITIQUE_LLM)
     private readonly critiqueLlm: BaseChatModel,
+    private readonly dataSource: DataSource,
   ) {}
 
   async executeAgent(
@@ -50,7 +47,7 @@ export class AgentService {
       this.coverLetterGeneratorLlm,
       this.critiqueLlm,
       this.cvEmbeddingsService,
-      this.cvRepository,
+      this.dataSource,
     );
     const agent = agentBuilder.build();
     const result = await agent.invoke(
