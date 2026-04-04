@@ -22,7 +22,10 @@ jobs:
       RABBITMQ_QUEUE: process_job_applications
       OLLAMA_BASE_URL: http://127.0.0.1:11434
       EMBEDDING_MODEL: nomic-embed-text-v2-moe:latest
-      CV_PARSER_MODEL: gemini-3.1-flash-lite-preview
+      CV_PARSER_MODEL: gemini-1.5-flash
+      JOB_EVALUATOR_MODEL: gemini-1.5-flash
+      COVER_LETTER_GENERATOR_MODEL: llama3.1:8b
+      CRITIQUE_MODEL: llama3.1:8b
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
     steps:
@@ -78,6 +81,9 @@ jobs:
             fi
           done
 
+      - name: Run migrations
+        run: npm run migrate
+
       - name: Verify Gemini configuration
         run: |
           if [ -z "$GEMINI_API_KEY" ]; then
@@ -85,8 +91,10 @@ jobs:
             exit 1
           fi
 
-      - name: Pull Ollama embedding model
-        run: ollama pull "$EMBEDDING_MODEL"
+      - name: Pull Ollama models
+        run: |
+          ollama pull "$EMBEDDING_MODEL"
+          ollama pull "$COVER_LETTER_GENERATOR_MODEL"
 
       - name: Run all tests
         run: npm test

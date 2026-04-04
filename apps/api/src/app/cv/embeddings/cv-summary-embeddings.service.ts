@@ -205,7 +205,7 @@ export class CvEmbeddingsService implements OnModuleInit, OnApplicationShutdown 
     ]);
     console.log(
       'Token count for job description: ',
-      jobDescription,
+      jobDescription.substring(0, 100) + '...',
       tokenCount,
     );
 
