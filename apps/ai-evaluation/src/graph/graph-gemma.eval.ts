@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { DATASET_NAME, EXPERIMENT_PREFIX } from './constants';
 import { env } from '../utils/env';
 import { createOllamaAgentGraph } from '../utils/agent-utils';
+import { ModelResponse, Ollama } from 'ollama';
 
 interface EvalInput {
   cvText: string;
@@ -20,7 +21,7 @@ interface EvalOutput {
   }>;
 }
 
-const MODELS = ['gemma4:e2b', 'gemma4:e4b', 'gemma3:12b'];
+const ollama = new Ollama();
 
 const EVALUATION_PROMPT = `You are an HR evaluating the cover letter of the candidate for the job position.
 
@@ -104,8 +105,25 @@ async function runGraph(inputs: EvalInput, model: string): Promise<EvalOutput> {
   }
 }
 
+async function fetchModelsToTest() {
+  const {
+    models,
+  }: { models: Array<ModelResponse & { remote_model?: string }> } =
+    await ollama.list();
+
+  const localGemmaModels = models
+    .filter((model) => !model.remote_model)
+    .filter((model) => model.name.includes('gemma'));
+
+  const modelNames = localGemmaModels.map((model) => model.name);
+
+  return modelNames;
+}
+
 async function main() {
-  for (const model of MODELS) {
+  const modelNames = await fetchModelsToTest();
+
+  for (const model of modelNames) {
     const results = await evaluate(
       async (inputs: EvalInput) => {
         return await runGraph(inputs, model);

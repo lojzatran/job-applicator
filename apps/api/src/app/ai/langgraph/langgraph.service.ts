@@ -118,7 +118,7 @@ export class LanggraphService {
         jobDescriptionEmbeddingVectors,
       );
 
-      console.log(`Job score: ${score}`);
+      console.log(`Job score for ${state.job?.title}: ${score}`);
 
       if (score > THRESHOLD) {
         const template = PromptTemplate.fromTemplate(`
