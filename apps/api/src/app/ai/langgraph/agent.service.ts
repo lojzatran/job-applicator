@@ -2,9 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { LanggraphService } from './langgraph.service';
 import { JobsService } from '../../jobs/jobs.service';
 import { PdfService } from '../../documents/pdf/pdf.service';
+import { createLogger } from '@apps/shared';
 
 @Injectable()
 export class AgentService {
+  private readonly logger = createLogger('agent-service');
+
   constructor(
     private readonly jobsService: JobsService,
     private readonly pdfService: PdfService,
@@ -42,7 +45,7 @@ export class AgentService {
         recursionLimit: 4 * jobs.length + 5,
       },
     );
-    console.log('Agent Finished: ' + JSON.stringify(result, null, 2));
+    this.logger.info('Agent Finished: ' + JSON.stringify(result, null, 2));
 
     await this.jobsService.updateJobApplications(
       result.coverLetters.map(

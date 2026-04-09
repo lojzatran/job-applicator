@@ -5,6 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { JobApplication } from '@apps/shared';
 import { Repository } from 'typeorm';
 import { Between } from 'typeorm';
+import { createLogger } from '@apps/shared';
 
 type StartupJobsLocalizedValue = {
   cs: string | null;
@@ -145,6 +146,8 @@ export type StartupJobsSearchOffersResponse = {
 
 @Injectable()
 export class StartupJobsService {
+  private readonly logger = createLogger('startupjobs-service');
+
   // This is fixed limit by startupjobs.cz
   private LIMIT = 20;
 
@@ -154,7 +157,7 @@ export class StartupJobsService {
   ) {}
 
   async fetchJobs(): Promise<Job[]> {
-    console.log(`Fetching jobs from startupjobs.cz...`);
+    this.logger.info('Fetching jobs from startupjobs.cz...');
     const start = new Date();
     start.setUTCHours(0, 0, 0, 0);
 

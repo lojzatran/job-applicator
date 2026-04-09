@@ -5,6 +5,9 @@ import {
   createOllamaAgentRuntime,
   seedCvEmbeddingsForRuntime,
 } from '../utils/agent-utils';
+import { createLogger } from '@apps/shared';
+
+const logger = createLogger('job-evaluator-gemma3:12b-eval');
 
 const LLM_MODEL = 'gemma3:12b';
 
@@ -51,12 +54,12 @@ async function main() {
     maxConcurrency: 2,
   });
 
-  console.log(results);
+  logger.info(results);
 }
 
 if (require.main === module) {
   main().catch((e) => {
-    console.error(e);
+    logger.error(e);
     process.exit(1);
   });
 }
