@@ -299,11 +299,14 @@ export class CvEmbeddingsService {
     await this.cvEmbeddingsRepository.insertCvEmbeddings(embeddings, manager);
   }
 
-  async ensureCvAndEmbeddings(cvText: string): Promise<number> {
+  async ensureCvAndEmbeddings(
+    cvText: string,
+    modelName: string = env.EMBEDDING_MODEL,
+  ): Promise<number> {
     return this.dataSource.transaction(async (manager) => {
       const { cvEntity, isNew } = await this.ensureCvEntity(manager, cvText);
       if (isNew) {
-        await this.ensureCvEmbeddings(manager, cvEntity);
+        await this.ensureCvEmbeddings(manager, cvEntity, modelName);
       }
       return cvEntity.id;
     });
