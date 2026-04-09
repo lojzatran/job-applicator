@@ -165,7 +165,7 @@ export class LanggraphService {
         return { isValidJob: false };
       }
     } catch (error) {
-      console.error('Failed to evaluate job', error);
+      this.logger.error(error, 'Failed to evaluate job');
       return { isValidJob: false };
     }
   }

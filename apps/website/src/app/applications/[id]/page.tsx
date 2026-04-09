@@ -10,6 +10,9 @@ import { LoadingState } from '../components/LoadingState';
 import { ApplicationDetailHeader } from './components/ApplicationDetailHeader';
 import { JobDescriptionSection } from './components/JobDescriptionSection';
 import { CoverLetterSection } from './components/CoverLetterSection';
+import { createLogger } from '@apps/shared';
+
+const logger = createLogger('application-detail-page');
 
 export default function ApplicationDetailPage({ 
   params 
@@ -30,7 +33,7 @@ export default function ApplicationDetailPage({
           setApplication(data);
         }
       } catch (error) {
-        console.error('Failed to fetch application details:', error);
+        logger.error(error, 'Failed to fetch application details');
       } finally {
         setIsLoading(false);
       }

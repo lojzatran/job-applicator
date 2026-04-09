@@ -1,5 +1,8 @@
 import { Pool } from 'pg';
 import { env } from '../shared/src/lib/utils/env';
+import { createLogger } from '@apps/shared';
+
+const logger = createLogger('ensure-database');
 
 async function ensureDatabase() {
   const targetDatabase = env.POSTGRES_DB;
@@ -32,6 +35,6 @@ async function ensureDatabase() {
 }
 
 ensureDatabase().catch((error) => {
-  console.error(error);
+  logger.error(error);
   process.exit(1);
 });
