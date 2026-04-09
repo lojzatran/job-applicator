@@ -53,3 +53,6 @@ out
 
 test-output
 uploads/*
+
+*.tsbuildinfo
+typecheck_output.txt

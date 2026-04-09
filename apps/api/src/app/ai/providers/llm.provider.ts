@@ -68,8 +68,8 @@ function createCvParserLlm() {
   }
 
   return new ChatOllama({
-    model: 'gemma3:12b',
-    baseUrl: env.OLLAMA_BASE_URL ?? 'http://localhost:11434',
+    model: env.CV_PARSER_MODEL,
+    baseUrl: env.OLLAMA_BASE_URL,
     temperature: 0,
   });
 }

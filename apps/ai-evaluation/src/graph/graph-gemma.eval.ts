@@ -20,7 +20,7 @@ interface EvalOutput {
   }>;
 }
 
-const LLM_MODEL = 'gemma3:12b';
+const MODELS = ['gemma4:e2b', 'gemma4:e4b', 'gemma3:12b'];
 
 const EVALUATION_PROMPT = `You are an HR evaluating the cover letter of the candidate for the job position.
 
@@ -83,31 +83,43 @@ async function correctnessEvaluator({
   return { key: 'correctness', score: Number(score), comment: grade.reasoning };
 }
 
-async function runGraph(inputs: EvalInput): Promise<EvalOutput> {
-  const graph = createOllamaAgentGraph(LLM_MODEL);
-  const answer = await graph.invoke(
-    {
-      cvText: inputs.cvText,
-      maxAppliedJobs: inputs.maxAppliedJobs,
-      jobs: inputs.jobs,
-    },
-    {
-      configurable: { thread_id: '1' },
-      recursionLimit: 4 * inputs.jobs.length + 5,
-    },
-  );
-  return { coverLetters: answer.coverLetters };
+async function runGraph(inputs: EvalInput, model: string): Promise<EvalOutput> {
+  const { graph, cleanup } = await createOllamaAgentGraph(model);
+
+  try {
+    const answer = await graph.invoke(
+      {
+        cvText: inputs.cvText,
+        maxAppliedJobs: inputs.maxAppliedJobs,
+        jobs: inputs.jobs,
+      },
+      {
+        configurable: { thread_id: '1' },
+        recursionLimit: 4 * inputs.jobs.length + 5,
+      },
+    );
+    return { coverLetters: answer.coverLetters };
+  } finally {
+    await cleanup();
+  }
 }
 
 async function main() {
-  const results = await evaluate(runGraph, {
-    data: DATASET_NAME,
-    evaluators: [correctnessEvaluator],
-    experimentPrefix: EXPERIMENT_PREFIX,
-    maxConcurrency: 2,
-  });
-
-  console.log(results);
+  for (const model of MODELS) {
+    const results = await evaluate(
+      async (inputs: EvalInput) => {
+        return await runGraph(inputs, model);
+      },
+      {
+        data: DATASET_NAME,
+        evaluators: [correctnessEvaluator],
+        experimentPrefix: EXPERIMENT_PREFIX + model,
+        maxConcurrency: 2,
+        metadata: { models: [model] },
+      },
+    );
+    console.log(results);
+  }
 }
 
 if (require.main === module) {

@@ -1,28 +1,14 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { AgentBuilder } from './AgentBuilder';
-import { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import {
-  COVER_LETTER_GENERATOR_LLM,
-  JOB_EVALUATOR_LLM,
-  CRITIQUE_LLM,
-} from '../ai.constants';
+import { Injectable } from '@nestjs/common';
+import { LanggraphService } from './langgraph.service';
 import { JobsService } from '../../jobs/jobs.service';
 import { PdfService } from '../../documents/pdf/pdf.service';
-import { CvEmbeddingsService } from '../../cv/embeddings/cv-summary-embeddings.service';
-import { DataSource } from 'typeorm';
 
 @Injectable()
 export class AgentService {
   constructor(
-    @Inject(JOB_EVALUATOR_LLM) private readonly jobEvaluatorLlm: BaseChatModel,
-    @Inject(COVER_LETTER_GENERATOR_LLM)
-    private readonly coverLetterGeneratorLlm: BaseChatModel,
     private readonly jobsService: JobsService,
     private readonly pdfService: PdfService,
-    private readonly cvEmbeddingsService: CvEmbeddingsService,
-    @Inject(CRITIQUE_LLM)
-    private readonly critiqueLlm: BaseChatModel,
-    private readonly dataSource: DataSource,
+    private readonly langgraphService: LanggraphService,
   ) {}
 
   async executeAgent(
@@ -42,14 +28,7 @@ export class AgentService {
       ),
     ]);
 
-    const agentBuilder = new AgentBuilder(
-      this.jobEvaluatorLlm,
-      this.coverLetterGeneratorLlm,
-      this.critiqueLlm,
-      this.cvEmbeddingsService,
-      this.dataSource,
-    );
-    const agent = agentBuilder.build();
+    const agent = this.langgraphService.build();
     const result = await agent.invoke(
       {
         cvText: cvText,

@@ -89,8 +89,8 @@ This runs the Nx Jest target for `apps/api` and picks up the `*.integration.spec
 The current API test coverage is the CV embedding integration spec, so make sure local Ollama is running and these models are available:
 
 - `OLLAMA_BASE_URL` - should point to your local Ollama server, usually `http://localhost:11434`.
-- `gemma3:12b` - model used by `CvEmbeddingsService`.
-- `nomic-embed-text:latest` - embedding model used by `CvEmbeddingsService`.
+- `gemma4:e2b` - model used by `CvEmbeddingsService`.
+- `nomic-embed-text-v2-moe:latest` - embedding model used by `CvEmbeddingsService`.
 
 ## AI Evaluation
 

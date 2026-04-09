@@ -214,7 +214,7 @@ export class StartupJobsService {
     return jobs;
   }
 
-  async saveJobs(jobs: Job[]) {
+  private async saveJobs(jobs: Job[]) {
     const jobApplications = jobs.map((job) => {
       const jobApplication = new JobApplication();
       jobApplication.job = job;

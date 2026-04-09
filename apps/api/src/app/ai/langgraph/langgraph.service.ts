@@ -9,13 +9,15 @@ import { withLangGraph } from '@langchain/langgraph/zod';
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { JobSchema } from '../../jobs/types';
 import { PromptTemplate } from '@langchain/core/prompts';
-import { z } from 'zod/v4';
+import { z } from 'zod';
 import { CoverLetterGraph } from './graphs/CoverLetterGraph';
 import { CvEmbeddingsService } from '../../cv/embeddings/cv-summary-embeddings.service';
-import { Cv } from '@apps/shared';
-import { env } from '../../../utils/env';
-import * as crypto from 'crypto';
-import { DataSource, EntityManager } from 'typeorm';
+import { Inject, Injectable } from '@nestjs/common';
+import {
+  COVER_LETTER_GENERATOR_LLM,
+  CRITIQUE_LLM,
+  JOB_EVALUATOR_LLM,
+} from '../ai.constants';
 
 interface CoverLetterEntry {
   url: string;
@@ -49,112 +51,33 @@ const AgentStateSchema = z.object({
 
 type AgentState = z.infer<typeof AgentStateSchema>;
 
-const THRESHOLD = 0.6;
+const THRESHOLD = 0.9;
 
-export class AgentBuilder {
-  private jobEvaluatorLlm: BaseChatModel;
-  private coverLetterSubgraph;
-  private cvEmbeddingsService: CvEmbeddingsService;
+@Injectable()
+export class LanggraphService {
+  private readonly coverLetterSubgraph;
 
   constructor(
-    jobEvaluatorLlm: BaseChatModel,
+    @Inject(JOB_EVALUATOR_LLM)
+    private readonly jobEvaluatorLlm: BaseChatModel,
+    @Inject(COVER_LETTER_GENERATOR_LLM)
     coverLetterGeneratorLlm: BaseChatModel,
+    @Inject(CRITIQUE_LLM)
     critiqueLlm: BaseChatModel,
-    cvEmbeddingsService: CvEmbeddingsService,
-    private dataSource: DataSource,
+    private readonly cvEmbeddingsService: CvEmbeddingsService,
   ) {
-    this.cvEmbeddingsService = cvEmbeddingsService;
-    this.jobEvaluatorLlm = jobEvaluatorLlm;
     this.coverLetterSubgraph = new CoverLetterGraph(
       coverLetterGeneratorLlm,
       critiqueLlm,
     ).build();
   }
 
-  private async ensureCvEntity(manager: EntityManager, cvText: string): Promise<Cv> {
-    const cvHash = crypto.createHash('md5').update(cvText).digest('hex');
-    const cvRepository = manager.getRepository(Cv);
-    let cvEntity = await cvRepository.findOne({
-      where: { hash: cvHash },
-    });
-
-    if (!cvEntity) {
-      const insertResult = await cvRepository.insert({
-        path: 'temp',
-        rawText: cvText,
-        hash: cvHash,
-        createdAt: new Date(),
-      });
-
-      const cvId = insertResult.identifiers[0]?.id;
-      if (typeof cvId !== 'number') {
-        throw new Error(`Failed to persist CV row for hash ${cvHash}`);
-      }
-
-      cvEntity = {
-        id: cvId,
-        path: 'temp',
-        rawText: cvText,
-        hash: cvHash,
-        createdAt: new Date(),
-      };
-    }
-
-    if (!cvEntity) {
-      throw new Error(`Failed to load CV row for hash ${cvHash}`);
-    }
-
-    return cvEntity;
-  }
-
-  private async ensureCvEmbeddings(
-    manager: EntityManager,
-    cvEntity: Cv,
-  ): Promise<void> {
-    const existingEmbeddings = await manager.query<{ id: number }[]>(
-      `
-          SELECT "id"
-          FROM "cv_embedding"
-          WHERE "cvId" = $1
-            AND "model" = $2
-          LIMIT 1
-        `,
-      [cvEntity.id, env.EMBEDDING_MODEL],
-    );
-
-    if (existingEmbeddings.length > 0) {
-      return;
-    }
-
-    const cvEmbedding: {
-      embedding: number[];
-      weight: number;
-    }[] = await this.cvEmbeddingsService.createWeightedEmbeddingsForCv(
-      cvEntity.rawText,
-    );
-
-    await this.cvEmbeddingsService.insertCvEmbeddings(
-      cvEmbedding.map((embedding) => {
-        return {
-          cvId: cvEntity.id,
-          embedding: embedding.embedding,
-          weight: embedding.weight,
-          model: env.EMBEDDING_MODEL,
-          createdAt: new Date(),
-        };
-      }),
-      manager,
-    );
-  }
-
   private async summarizeCv(state: AgentState) {
     console.log(`Summarizing CV...`);
 
-    const cvEntityId = await this.dataSource.transaction(async (manager) => {
-      const cvEntity = await this.ensureCvEntity(manager, state.cvText);
-      await this.ensureCvEmbeddings(manager, cvEntity);
-      return cvEntity.id;
-    });
+    const cvEntityId = await this.cvEmbeddingsService.ensureCvAndEmbeddings(
+      state.cvText,
+    );
 
     return { cvEntityId };
   }
@@ -180,13 +103,19 @@ export class AgentBuilder {
     console.log(`Evaluating job: ${JSON.stringify(state.job?.title)}`);
 
     try {
-      const jobDescriptionEmbedding: number[][] =
+      const jobDescriptionEmbedding =
         await this.cvEmbeddingsService.createEmbeddingsForJobDescription(
           state.job!.description,
         );
-      const score = await this.cvEmbeddingsService.scoreJobAndCvMatching(
+      const jobDescriptionEmbeddingVectors = jobDescriptionEmbedding.map(
+        (embedding) => ({
+          embedding: embedding.embedding,
+          weight: 1,
+        }),
+      );
+      const score = await this.cvEmbeddingsService.getJobAndCvMatchingScore(
         state.cvEntityId,
-        jobDescriptionEmbedding,
+        jobDescriptionEmbeddingVectors,
       );
 
       console.log(`Job score: ${score}`);
@@ -214,7 +143,7 @@ export class AgentBuilder {
           {jobDescription}
   
           OUTPUT:
-          - Return true if the candidate matches the job description
+          - Return true if the candidate meets most core requirements (not everything, but clearly relevant).
           - Return false otherwise
           - Return only true or false, no other text or formatting, so that it can be parsed to boolean.
         `);
@@ -226,10 +155,10 @@ export class AgentBuilder {
         });
 
         const response = await this.jobEvaluatorLlm
-          .withStructuredOutput(z.boolean())
+          .withStructuredOutput(z.enum(['true', 'false']))
           .invoke(prompt);
         console.log(`Evaluated job: ${response}`);
-        return { isValidJob: response };
+        return { isValidJob: response.toLowerCase() === 'true' };
       } else {
         return { isValidJob: false };
       }

@@ -31,6 +31,7 @@ This project is an **Nx Monorepo** with the following core technologies:
 - `apps/api/`: The NestJS API that consumes RabbitMQ messages, runs LangGraph, and persists job applications.
   - `src/app/`: API modules, services, controllers, and persistence.
 - `apps/website-e2e/`: Playwright end-to-end tests.
+- `apps/ai-evaluation/`: The AI evaluation application. This application is used to evaluate langgraph and should mostly import other packages to test them.
 - `libs/shared/`: Shared workspace code, if/when common utilities are extracted.
 - `libs/migrations/`: TypeORM migration scripts, datasource, and reset helpers.
 - `docs/`: Project documentation assets and helper scripts.

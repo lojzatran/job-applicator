@@ -1,53 +1,32 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { PromptTemplate } from '@langchain/core/prompts';
 import { CvSchema } from './cv-schema';
 import { RunnableSequence } from '@langchain/core/runnables';
-import { env } from '../../../utils/env';
-import { Pool } from 'pg';
 import { HumanMessage } from '@langchain/core/messages';
 import { countTokensApproximately } from 'langchain';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import { stripHtml } from 'string-strip-html';
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { CV_PARSER_LLM, EMBEDDING_MODEL } from '../../ai/ai.constants';
-import { Inject } from '@nestjs/common';
 import { Embeddings } from '@langchain/core/embeddings';
-import { OnApplicationShutdown, OnModuleInit } from '@nestjs/common';
-
-interface CvWeightedEmbedding {
-  embedding: number[];
-  weight: number;
-}
-
-interface CvEmbeddingRecord {
-  cvId: number;
-  embedding: number[];
-  weight: number;
-  model: string;
-  createdAt?: Date;
-}
+import sectionWeights from './cv-section-weights';
+import { CvEmbeddingsRepository } from './cv-embeddings.repository';
+import { env } from '../../../utils/env';
+import { EntityManager } from 'typeorm';
+import { Cv } from '@apps/shared';
+import * as crypto from 'crypto';
+import { DataSource } from 'typeorm';
+import { WeightedEmbedding, SqlExecutor } from './types';
 
 @Injectable()
-export class CvEmbeddingsService implements OnModuleInit, OnApplicationShutdown {
-  private pool: Pool | undefined;
-
-  async onModuleInit(): Promise<void> {
-    this.pool = new Pool({
-      connectionString: `postgres://${env.POSTGRES_USER}:${env.POSTGRES_PASSWORD}@${env.POSTGRES_HOST}:${env.POSTGRES_PORT}/${env.POSTGRES_DB}`,
-    });
-  }
-
-  async onApplicationShutdown(): Promise<void> {
-    if (this.pool) {
-      await this.pool.end();
-    }
-  }
-
+export class CvEmbeddingsService {
   constructor(
     @Inject(CV_PARSER_LLM)
     private readonly cvParserLlm: BaseChatModel,
     @Inject(EMBEDDING_MODEL)
     private readonly embeddingModel: Embeddings,
+    private readonly cvEmbeddingsRepository: CvEmbeddingsRepository,
+    private readonly dataSource: DataSource,
   ) {}
 
   private isEmpty(obj: Record<string, string | string[]>) {
@@ -61,7 +40,7 @@ export class CvEmbeddingsService implements OnModuleInit, OnApplicationShutdown 
 
   async createWeightedEmbeddingsForCv(
     cvText: string,
-  ): Promise<CvWeightedEmbedding[]> {
+  ): Promise<WeightedEmbedding[]> {
     const template = PromptTemplate.fromTemplate(`
       **You are a precise CV parser. Your job is to analyze raw CV text blocks and map them to a strict JSON schema.**
 
@@ -93,14 +72,14 @@ export class CvEmbeddingsService implements OnModuleInit, OnApplicationShutdown 
     return response;
   }
 
-  async createWeightedEmbeddings(
+  private async createWeightedEmbeddings(
     documents: Record<string, string | string[]>,
     cvText: string,
-  ): Promise<CvWeightedEmbedding[]> {
+  ): Promise<WeightedEmbedding[]> {
     if (this.isEmpty(documents)) {
       return this.createEmbeddingsForWeightedChunks(cvText, 1);
     }
-    const embeddingsWithWeight: CvWeightedEmbedding[] = [];
+    const embeddingsWithWeight: WeightedEmbedding[] = [];
     for (const [key, value] of Object.entries(documents)) {
       if (Array.isArray(value)) {
         const nonEmptyItems = value
@@ -129,15 +108,7 @@ export class CvEmbeddingsService implements OnModuleInit, OnApplicationShutdown 
   private async embedKeyValue(
     key: string,
     value: string,
-  ): Promise<CvWeightedEmbedding[]> {
-    const sectionWeights: Record<string, number> = {
-      summary: 0.6,
-      skills: 2.5,
-      experience: 3.0,
-      projects: 1.8,
-      education: 0.7,
-      other: 0.2,
-    };
+  ): Promise<WeightedEmbedding[]> {
     const weight = sectionWeights[key] ?? 1.0;
     return this.createEmbeddingsForWeightedChunks(`${key}: ${value}`, weight);
   }
@@ -145,32 +116,25 @@ export class CvEmbeddingsService implements OnModuleInit, OnApplicationShutdown 
   private async createEmbeddingsForWeightedChunks(
     text: string,
     weight: number,
-  ): Promise<CvWeightedEmbedding[]> {
+  ): Promise<WeightedEmbedding[]> {
     const splitter = new RecursiveCharacterTextSplitter({
       chunkSize: 500,
       chunkOverlap: 60,
     });
     const chunks = await splitter.splitText(text);
-    return this.createEmbeddingsForChunks(chunks, (chunk) => chunk.trim(), weight);
+    return this.createEmbeddingsForChunks(
+      chunks,
+      (chunk) => chunk.trim(),
+      weight,
+    );
   }
 
   private async createEmbeddingsForChunks(
     chunks: string[],
     normalizeChunk: (chunk: string) => string,
     weight: number,
-  ): Promise<CvWeightedEmbedding[]>;
-
-  private async createEmbeddingsForChunks(
-    chunks: string[],
-    normalizeChunk: (chunk: string) => string,
-  ): Promise<number[][]>;
-
-  private async createEmbeddingsForChunks(
-    chunks: string[],
-    normalizeChunk: (chunk: string) => string,
-    weight?: number,
-  ): Promise<CvWeightedEmbedding[] | number[][]> {
-    const embeddings: CvWeightedEmbedding[] = [];
+  ): Promise<WeightedEmbedding[]> {
+    const embeddings: WeightedEmbedding[] = [];
 
     for (const chunk of chunks) {
       const normalizedChunk = normalizeChunk(chunk).trim();
@@ -185,10 +149,6 @@ export class CvEmbeddingsService implements OnModuleInit, OnApplicationShutdown 
       });
     }
 
-    if (weight === undefined) {
-      return embeddings.map((item) => item.embedding);
-    }
-
     return embeddings;
   }
 
@@ -199,7 +159,7 @@ export class CvEmbeddingsService implements OnModuleInit, OnApplicationShutdown 
    */
   async createEmbeddingsForJobDescription(
     jobDescription: string,
-  ): Promise<number[][]> {
+  ): Promise<WeightedEmbedding[]> {
     const tokenCount = countTokensApproximately([
       new HumanMessage(jobDescription),
     ]);
@@ -215,13 +175,21 @@ export class CvEmbeddingsService implements OnModuleInit, OnApplicationShutdown 
         chunkOverlap: 60,
       });
       const htmlDocs = await htmlSplitter.splitText(jobDescription);
-      return this.createEmbeddingsForChunks(htmlDocs, (doc) => stripHtml(doc).result);
+      return this.createEmbeddingsForChunks(
+        htmlDocs,
+        (doc) => stripHtml(doc).result,
+        1,
+      );
     }
 
-    return this.createEmbeddingsForChunks([jobDescription], (doc) => stripHtml(doc).result);
+    return this.createEmbeddingsForChunks(
+      [jobDescription],
+      (doc) => stripHtml(doc).result,
+      1,
+    );
   }
 
-  async createEmbeddings(text: string) {
+  private async createEmbeddings(text: string) {
     try {
       const vectors = await this.embeddingModel.embedQuery(text);
       return vectors;
@@ -230,79 +198,117 @@ export class CvEmbeddingsService implements OnModuleInit, OnApplicationShutdown 
     }
   }
 
-  private toVectorLiteral(embedding: number[]): string {
-    return `[${embedding.join(',')}]`;
-  }
-
   async insertCvEmbeddings(
-    embeddings: CvEmbeddingRecord[],
-    manager: any = this.pool,
+    embeddings: {
+      cvId: number;
+      embedding: number[];
+      weight: number;
+      model: string;
+      createdAt?: Date;
+    }[],
+    manager: SqlExecutor,
   ): Promise<void> {
     if (embeddings.length === 0) {
       return;
     }
+    await this.cvEmbeddingsRepository.insertCvEmbeddings(embeddings, manager);
+  }
 
-    const executor = manager || this.pool;
-
-    if (!executor) {
-      throw new Error('Embeddings pool not initialized');
-    }
-
-    const placeholders: string[] = [];
-
-    const values = embeddings.flatMap((embedding, index) => {
-      const offset = index * 5;
-      placeholders.push(
-        `($${offset + 1}::integer, $${offset + 2}::vector, $${offset + 3}::float, $${offset + 4}::varchar, $${offset + 5}::timestamp)`,
-      );
-      return [
-        embedding.cvId,
-        this.toVectorLiteral(embedding.embedding),
-        embedding.weight,
-        embedding.model,
-        embedding.createdAt ?? new Date(),
-      ];
-    });
-
-    await executor.query(
-      `
-        INSERT INTO "cv_embedding" ("cvId", "embedding", "weight", "model", "createdAt")
-        VALUES ${placeholders.join(', ')}
-      `,
-      values,
+  async getJobAndCvMatchingScore(
+    cvId: number,
+    queryEmbeddings: WeightedEmbedding[],
+    modelName: string = env.EMBEDDING_MODEL,
+  ): Promise<number> {
+    return this.cvEmbeddingsRepository.getJobAndCvMatchingScore(
+      cvId,
+      queryEmbeddings,
+      modelName,
+      this.dataSource,
     );
   }
 
-  async scoreJobAndCvMatching(
-    cvId: number,
-    queryEmbeddings: number[][],
-    model = env.EMBEDDING_MODEL,
+  private async ensureCvEntity(
+    manager: EntityManager,
+    cvText: string,
+  ): Promise<{ cvEntity: Cv; isNew: boolean }> {
+    const cvHash = crypto.createHash('md5').update(cvText).digest('hex');
+    const cvRepository = manager.getRepository(Cv);
+    let cvEntity = await cvRepository.findOne({
+      where: { hash: cvHash },
+    });
+
+    if (!cvEntity) {
+      const insertResult = await cvRepository
+        .createQueryBuilder()
+        .insert()
+        .into(Cv)
+        .values({
+          path: 'temp',
+          rawText: cvText,
+          hash: cvHash,
+          createdAt: new Date(),
+        })
+        .orIgnore()
+        .execute();
+
+      const isNew =
+        insertResult.identifiers.length > 0 ||
+        (Array.isArray(insertResult.raw) && insertResult.raw.length > 0);
+
+      const persistedCvEntity = await cvRepository.findOne({
+        where: { hash: cvHash },
+      });
+
+      if (!persistedCvEntity) {
+        throw new Error(`Failed to persist or reload CV row for hash ${cvHash}`);
+      }
+
+      return { cvEntity: persistedCvEntity, isNew };
+    } else {
+      return { cvEntity, isNew: false };
+    }
+  }
+
+  private async ensureCvEmbeddings(
+    manager: EntityManager,
+    cvEntity: Cv,
+    modelName: string = env.EMBEDDING_MODEL,
+  ): Promise<void> {
+    const existingEmbeddings =
+      await this.cvEmbeddingsRepository.fetchCvEmbeddings(cvEntity.id, manager);
+
+    if (existingEmbeddings.length > 0) {
+      return;
+    }
+
+    const cvEmbedding: {
+      embedding: number[];
+      weight: number;
+    }[] = await this.createWeightedEmbeddingsForCv(cvEntity.rawText);
+
+    const embeddings = cvEmbedding.map((embedding) => {
+      return {
+        cvId: cvEntity.id,
+        embedding: embedding.embedding,
+        weight: embedding.weight,
+        model: modelName,
+        createdAt: new Date(),
+      };
+    });
+
+    await this.cvEmbeddingsRepository.insertCvEmbeddings(embeddings, manager);
+  }
+
+  async ensureCvAndEmbeddings(
+    cvText: string,
+    modelName: string = env.EMBEDDING_MODEL,
   ): Promise<number> {
-    if (!this.pool) {
-      throw new Error('Pool is not initialized');
-    }
-
-    let totalScore = 0;
-
-    for (const queryEmbedding of queryEmbeddings) {
-      const result = await this.pool.query<{ score: number | null }>(
-        `
-          SELECT AVG(weighted."score")::float8 AS "score"
-          FROM (
-            SELECT ce."weight" * (1 - (ce."embedding" <=> $2::vector)) AS "score"
-            FROM "cv_embedding" ce
-            WHERE ce."cvId" = $1
-              AND ce."model" = $3
-            ORDER BY (1 - (ce."embedding" <=> $2::vector)) DESC
-            LIMIT 3
-          ) weighted
-        `,
-        [cvId, this.toVectorLiteral(queryEmbedding), model],
-      );
-
-      totalScore += result.rows[0]?.score ?? 0;
-    }
-
-    return totalScore / queryEmbeddings.length;
+    return this.dataSource.transaction(async (manager) => {
+      const { cvEntity, isNew } = await this.ensureCvEntity(manager, cvText);
+      if (isNew) {
+        await this.ensureCvEmbeddings(manager, cvEntity, modelName);
+      }
+      return cvEntity.id;
+    });
   }
 }
