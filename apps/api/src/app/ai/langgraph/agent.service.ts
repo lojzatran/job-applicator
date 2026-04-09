@@ -45,7 +45,7 @@ export class AgentService {
         recursionLimit: 4 * jobs.length + 5,
       },
     );
-    this.logger.info('Agent Finished: ' + JSON.stringify(result, null, 2));
+    this.logger.info(result, 'Agent Finished');
 
     await this.jobsService.updateJobApplications(
       result.coverLetters.map(

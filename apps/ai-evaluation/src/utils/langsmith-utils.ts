@@ -32,8 +32,10 @@ export async function ensureDataset(
         outputs: example.outputs,
       })) as ExampleCreate[],
     );
+    logger.info(dataset, 'Created dataset');
+  } else {
+    logger.info(dataset, 'Dataset already exists');
   }
 
-  logger.info(`Created dataset: ${dataset.name}`);
   return dataset;
 }
