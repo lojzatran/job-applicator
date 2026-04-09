@@ -12,6 +12,12 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./env-utils": {
+      "@apps/source": "./src/lib/utils/env-utils.ts",
+      "types": "./dist/lib/utils/env-utils.d.ts",
+      "import": "./dist/lib/utils/env-utils.js",
+      "default": "./dist/lib/utils/env-utils.js"
     }
   },
   "dependencies": {

@@ -1,11 +1,11 @@
-import { AgentBuilder } from '../../apps/api/src/app/ai/langgraph/AgentBuilder';
+import { LanggraphService } from '../../apps/api/src/app/ai/langgraph/langgraph.service';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import * as fs from 'fs/promises';
 
 async function main() {
   const llm = {} as BaseChatModel;
 
-  const graph = new AgentBuilder(llm, llm, llm).build();
+  const graph = new LanggraphService(llm, llm, llm, {} as any, {} as any).build();
 
   const drawableGraph = await graph.getGraphAsync();
   const image = await drawableGraph.drawMermaidPng();

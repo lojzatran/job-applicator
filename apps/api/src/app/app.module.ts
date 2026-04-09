@@ -4,6 +4,7 @@ import { LinkedinService } from './jobs/linkedin/linkedin.service';
 import { StartupJobsService } from './jobs/startupjobs/startupjobs.service';
 import { JobsService } from './jobs/jobs.service';
 import { AgentService } from './ai/langgraph/agent.service';
+import { LanggraphService } from './ai/langgraph/langgraph.service';
 import {
   coverLetterGeneratorLlmProvider,
   cvParserLlmProvider,
@@ -16,6 +17,7 @@ import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JobApplication, dataSourceOptions } from '@apps/shared';
 import { CvEmbeddingsService } from './cv/embeddings/cv-summary-embeddings.service';
+import { CvEmbeddingsRepository } from './cv/embeddings/cv-embeddings.repository';
 import { Cv } from '@apps/shared';
 
 @Module({
@@ -30,12 +32,14 @@ import { Cv } from '@apps/shared';
     JobsService,
     StartupJobsService,
     AgentService,
+    LanggraphService,
     jobEvaluatorLlmProvider,
     coverLetterGeneratorLlmProvider,
     critiqueLlmProvider,
     cvParserLlmProvider,
     embeddingModelProvider,
     PdfService,
+    CvEmbeddingsRepository,
     CvEmbeddingsService,
   ],
 })

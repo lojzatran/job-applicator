@@ -7,12 +7,12 @@
     "api:prod": "nx build api --configuration=production && cd apps/api && node dist/main.js",
     "test": "nx run-many --targets=test --all",
     "test:unit": "nx test website && nx test api -- --testPathIgnorePatterns=integration\\.spec\\.ts$",
-    "test-integration:api": "npm run db:reset && nx test api -- --runInBand --testPathPatterns=integration\\.spec\\.ts$",
+    "test-integration:api": "POSTGRES_DB=test npm run db:reset && POSTGRES_DB=test nx test api -- --runInBand --testPathPatterns=integration\\.spec\\.ts$",
     "migrate": "typeorm migration:run -d libs/migrations/migration-data-source.cjs",
-    "db:reset": "tsx libs/migrations/reset-database.ts && npm run migrate",
+    "db:reset": "tsx libs/migrations/ensure-database.ts && tsx libs/migrations/reset-database.ts && npm run migrate",
     "export-graph": "node --import tsx docs/scripts/export-langgraph-graph.ts",
-    "ai-eval:node-job-evaluator": "tsx apps/ai-evaluation/src/node-job-evaluator/job-evaluator.dataset.ts && tsx apps/ai-evaluation/src/node-job-evaluator/job-evaluator-gemma3:12b.eval.ts",
-    "ai-eval:graph": "tsx apps/ai-evaluation/src/graph/graph-dataset.ts && tsx apps/ai-evaluation/src/graph/graph-gemma3:12b.eval.ts"
+    "ai-eval:node-job-evaluator": "POSTGRES_DB=eval npm run db:reset && POSTGRES_DB=eval tsx --tsconfig apps/ai-evaluation/tsconfig.app.json apps/ai-evaluation/src/node-job-evaluator/job-evaluator.dataset.ts && POSTGRES_DB=eval tsx --tsconfig apps/ai-evaluation/tsconfig.app.json apps/ai-evaluation/src/node-job-evaluator/job-evaluator-gemma3:12b.eval.ts",
+    "ai-eval:graph": "POSTGRES_DB=eval npm run db:reset && POSTGRES_DB=eval tsx --tsconfig apps/ai-evaluation/tsconfig.app.json apps/ai-evaluation/src/graph/graph-dataset.ts && POSTGRES_DB=eval tsx --tsconfig apps/ai-evaluation/tsconfig.app.json apps/ai-evaluation/src/graph/graph-gemma.eval.ts"
   },
   "private": true,
   "dependencies": {

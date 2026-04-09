@@ -1,7 +1,10 @@
 import { evaluate } from 'langsmith/evaluation';
 import type { Job } from '@apps/api/src/app/jobs/types';
 import { DATASET_NAME, EXPERIMENT_PREFIX } from './constants';
-import { createOllamaAgentGraph } from '../utils/agent-utils';
+import {
+  createOllamaAgentRuntime,
+  seedCvEmbeddingsForRuntime,
+} from '../utils/agent-utils';
 
 const LLM_MODEL = 'gemma3:12b';
 
@@ -18,15 +21,26 @@ async function correctnessEvaluator({
   return { key: 'correctness', score: response === reference ? 1 : 0 };
 }
 
-async function runNode(inputs: { cvText: string; job: Job }): Promise<{ response: boolean }> {
+async function runNode(inputs: {
+  cvText: string;
+  job: Job;
+}): Promise<{ response: boolean }> {
   const { cvText, job } = inputs;
-  const graph = createOllamaAgentGraph(LLM_MODEL);
-  const node = graph.nodes['job_evaluator'];
-  const response = await node.invoke({
-    cvText,
-    job,
-  });
-  return { response: response.isValidJob };
+  const runtime = await createOllamaAgentRuntime(LLM_MODEL);
+
+  try {
+    const cvEntityId = await seedCvEmbeddingsForRuntime(runtime, cvText);
+    const { graph } = runtime;
+    const node = graph.nodes['job_evaluator'];
+    const response = await node.invoke({
+      cvEntityId,
+      cvText,
+      job,
+    });
+    return { response: response.isValidJob };
+  } finally {
+    await runtime.cleanup();
+  }
 }
 
 async function main() {

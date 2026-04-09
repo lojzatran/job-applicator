@@ -1,17 +1,21 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import { Pool } from 'pg';
-import { env } from '../../../utils/env';
-import { CvEmbeddingsService } from './cv-summary-embeddings.service';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { env } from '../../../../utils/env';
+import { CvEmbeddingsService } from '../cv-summary-embeddings.service';
+import { CvEmbeddingsRepository } from '../cv-embeddings.repository';
 import * as crypto from 'crypto';
 import {
   cvParserLlmProvider,
   embeddingModelProvider,
-} from '../../ai/providers/llm.provider';
+} from '../../../ai/providers/llm.provider';
+import { dataSourceOptions } from '@apps/shared';
 
 describe('Cv Embeddings Service integration', () => {
   const databaseUrl = `postgres://${env.POSTGRES_USER}:${env.POSTGRES_PASSWORD}@${env.POSTGRES_HOST}:${env.POSTGRES_PORT}/${env.POSTGRES_DB}`;
   let moduleRef: TestingModule;
   let pool: Pool;
+  let originalCvParserModel: string;
 
   const cvText = `
     Ada Lovelace
@@ -29,6 +33,8 @@ describe('Cv Embeddings Service integration', () => {
 
   beforeAll(async () => {
     jest.setTimeout(300000);
+    originalCvParserModel = env.CV_PARSER_MODEL;
+    env.CV_PARSER_MODEL = 'gemma4:e2b';
 
     pool = new Pool({
       connectionString: databaseUrl,
@@ -41,7 +47,9 @@ describe('Cv Embeddings Service integration', () => {
     await truncateCvTables(pool);
 
     moduleRef = await Test.createTestingModule({
+      imports: [TypeOrmModule.forRoot(dataSourceOptions)],
       providers: [
+        CvEmbeddingsRepository,
         CvEmbeddingsService,
         cvParserLlmProvider,
         embeddingModelProvider,
@@ -56,6 +64,8 @@ describe('Cv Embeddings Service integration', () => {
   });
 
   afterAll(async () => {
+    env.CV_PARSER_MODEL = originalCvParserModel;
+
     if (moduleRef) {
       await moduleRef.close();
     }
@@ -168,16 +178,19 @@ describe('Cv Embeddings Service integration', () => {
         model: env.EMBEDDING_MODEL,
       }));
 
-      await service.insertCvEmbeddings(embeddings);
+      await service.insertCvEmbeddings(embeddings, pool);
 
       const results: { name: string; score: number }[] = [];
       for (const jobDescription of jobDescriptions) {
         const jobDescriptionEmbeddings =
           await service.createEmbeddingsForJobDescription(jobDescription.text);
 
-        const score = await service.scoreJobAndCvMatching(
+        const score = await service.getJobAndCvMatchingScore(
           cvId,
-          jobDescriptionEmbeddings,
+          jobDescriptionEmbeddings.map((embedding) => ({
+            embedding: embedding.embedding,
+            weight: 1,
+          })),
         );
         results.push({ name: jobDescription.name, score });
       }
@@ -206,7 +219,6 @@ describe('Cv Embeddings Service integration', () => {
       expect(bottom2Sorted).toEqual(nonItJobs);
     }, 300000);
   });
-
 });
 
 async function insertCv(
