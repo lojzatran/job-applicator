@@ -18,7 +18,7 @@ type CoverLetterState = z.infer<typeof CoverLetterSchema>;
 export class CoverLetterGraph {
   private coverLetterGeneratorLlm: BaseChatModel;
   private critiqueLlm: BaseChatModel;
-  private MAX_ITERATIONS: number = 1;
+  private readonly MAX_ITERATIONS = 1;
 
   constructor(
     coverLetterGeneratorLlm: BaseChatModel,

@@ -189,13 +189,9 @@ export class CvEmbeddingsService {
     );
   }
 
-  private async createEmbeddings(text: string) {
-    try {
-      const vectors = await this.embeddingModel.embedQuery(text);
-      return vectors;
-    } catch (error) {
-      throw error;
-    }
+  private async createEmbeddings(text: string): Promise<number[]> {
+    const vectors = await this.embeddingModel.embedQuery(text);
+    return vectors;
   }
 
   async insertCvEmbeddings(
@@ -233,7 +229,7 @@ export class CvEmbeddingsService {
   ): Promise<{ cvEntity: Cv; isNew: boolean }> {
     const cvHash = crypto.createHash('md5').update(cvText).digest('hex');
     const cvRepository = manager.getRepository(Cv);
-    let cvEntity = await cvRepository.findOne({
+    const cvEntity = await cvRepository.findOne({
       where: { hash: cvHash },
     });
 
@@ -260,7 +256,9 @@ export class CvEmbeddingsService {
       });
 
       if (!persistedCvEntity) {
-        throw new Error(`Failed to persist or reload CV row for hash ${cvHash}`);
+        throw new Error(
+          `Failed to persist or reload CV row for hash ${cvHash}`,
+        );
       }
 
       return { cvEntity: persistedCvEntity, isNew };
