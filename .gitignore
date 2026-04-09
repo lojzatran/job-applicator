@@ -53,3 +53,5 @@ out
 
 test-output
 uploads/*
+
+*.tsbuildinfo
