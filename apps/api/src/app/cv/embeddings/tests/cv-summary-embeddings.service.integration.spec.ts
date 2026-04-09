@@ -15,7 +15,6 @@ describe('Cv Embeddings Service integration', () => {
   const databaseUrl = `postgres://${env.POSTGRES_USER}:${env.POSTGRES_PASSWORD}@${env.POSTGRES_HOST}:${env.POSTGRES_PORT}/${env.POSTGRES_DB}`;
   let moduleRef: TestingModule;
   let pool: Pool;
-  let originalCvParserModel: string;
 
   const cvText = `
     Ada Lovelace
@@ -33,8 +32,6 @@ describe('Cv Embeddings Service integration', () => {
 
   beforeAll(async () => {
     jest.setTimeout(300000);
-    originalCvParserModel = env.CV_PARSER_MODEL;
-    env.CV_PARSER_MODEL = 'gemma4:e2b';
 
     pool = new Pool({
       connectionString: databaseUrl,
@@ -64,8 +61,6 @@ describe('Cv Embeddings Service integration', () => {
   });
 
   afterAll(async () => {
-    env.CV_PARSER_MODEL = originalCvParserModel;
-
     if (moduleRef) {
       await moduleRef.close();
     }
