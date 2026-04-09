@@ -9,7 +9,7 @@ import { withLangGraph } from '@langchain/langgraph/zod';
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { JobSchema } from '../../jobs/types';
 import { PromptTemplate } from '@langchain/core/prompts';
-import { z } from 'zod/v4';
+import { z } from 'zod';
 import { CoverLetterGraph } from './graphs/CoverLetterGraph';
 import { CvEmbeddingsService } from '../../cv/embeddings/cv-summary-embeddings.service';
 import { Inject, Injectable } from '@nestjs/common';

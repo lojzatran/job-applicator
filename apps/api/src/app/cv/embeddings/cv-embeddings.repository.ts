@@ -81,6 +81,7 @@ export class CvEmbeddingsRepository {
   async fetchCvEmbeddings(
     cvId: number,
     manager: SqlExecutor,
+    modelName: string = env.EMBEDDING_MODEL,
   ): Promise<{ id: number }[]> {
     return await manager.query<{ id: number }[]>(
       `
@@ -90,7 +91,7 @@ export class CvEmbeddingsRepository {
               AND "model" = $2
             LIMIT 1
           `,
-      [cvId, env.EMBEDDING_MODEL],
+      [cvId, modelName],
     );
   }
 }

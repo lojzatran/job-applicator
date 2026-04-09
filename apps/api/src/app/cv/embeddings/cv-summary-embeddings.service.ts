@@ -272,6 +272,7 @@ export class CvEmbeddingsService {
   private async ensureCvEmbeddings(
     manager: EntityManager,
     cvEntity: Cv,
+    modelName: string = env.EMBEDDING_MODEL,
   ): Promise<void> {
     const existingEmbeddings =
       await this.cvEmbeddingsRepository.fetchCvEmbeddings(cvEntity.id, manager);
@@ -290,7 +291,7 @@ export class CvEmbeddingsService {
         cvId: cvEntity.id,
         embedding: embedding.embedding,
         weight: embedding.weight,
-        model: env.EMBEDDING_MODEL,
+        model: modelName,
         createdAt: new Date(),
       };
     });

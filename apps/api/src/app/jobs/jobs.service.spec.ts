@@ -4,11 +4,14 @@ import { JobApplication } from '@apps/shared';
 import { JobsService } from './jobs.service';
 import { LinkedinService } from './linkedin/linkedin.service';
 import { StartupJobsService } from './startupjobs/startupjobs.service';
+import { Job } from './types';
 
 describe('JobsService', () => {
   let service: JobsService;
   let linkedinService: jest.Mocked<LinkedinService>;
   let startupjobsService: jest.Mocked<StartupJobsService>;
+
+  const asJobs = (jobs: Partial<Job>[]) => jobs as Job[];
 
   beforeEach(async () => {
     const mockLinkedinService = {
@@ -57,11 +60,11 @@ describe('JobsService', () => {
   });
 
   it('should fetch jobs from linkedin and startupjobs when both are enabled', async () => {
-    const mockLinkedinJobs: any[] = [{ id: '1', source: 'linkedin' }];
-    const mockStartupJobs: any[] = [{ id: '2', source: 'startupjobs' }];
-    
-    linkedinService.fetchJobs.mockResolvedValue(mockLinkedinJobs);
-    startupjobsService.fetchJobs.mockResolvedValue(mockStartupJobs);
+    const mockLinkedinJobs: Partial<Job>[] = [{ id: '1', source: 'linkedin' }];
+    const mockStartupJobs: Partial<Job>[] = [{ id: '2', source: 'startupjobs' }];
+
+    linkedinService.fetchJobs.mockResolvedValue(asJobs(mockLinkedinJobs));
+    startupjobsService.fetchJobs.mockResolvedValue(asJobs(mockStartupJobs));
 
     const result = await service.fetchJobs(true, true);
 
@@ -71,9 +74,9 @@ describe('JobsService', () => {
   });
 
   it('should fetch jobs from linkedin only when linkedin is enabled and startupjobs is disabled', async () => {
-    const mockLinkedinJobs: any[] = [{ id: '1', source: 'linkedin' }];
-    
-    linkedinService.fetchJobs.mockResolvedValue(mockLinkedinJobs);
+    const mockLinkedinJobs: Partial<Job>[] = [{ id: '1', source: 'linkedin' }];
+
+    linkedinService.fetchJobs.mockResolvedValue(asJobs(mockLinkedinJobs));
 
     const result = await service.fetchJobs(true, false);
 
@@ -83,9 +86,9 @@ describe('JobsService', () => {
   });
 
   it('should fetch jobs from startupjobs only when startupjobs is enabled and linkedin is disabled', async () => {
-    const mockStartupJobs: any[] = [{ id: '2', source: 'startupjobs' }];
-    
-    startupjobsService.fetchJobs.mockResolvedValue(mockStartupJobs);
+    const mockStartupJobs: Partial<Job>[] = [{ id: '2', source: 'startupjobs' }];
+
+    startupjobsService.fetchJobs.mockResolvedValue(asJobs(mockStartupJobs));
 
     const result = await service.fetchJobs(false, true);
 
