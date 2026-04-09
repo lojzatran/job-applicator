@@ -33,7 +33,7 @@ export class JobsService {
     job: Job,
     coverLetter: string,
   ): Promise<JobApplication> {
-    let jobApplication = new JobApplication();
+    const jobApplication = new JobApplication();
     jobApplication.job = job;
     jobApplication.coverLetter = coverLetter;
     jobApplication.createdAt = new Date();
