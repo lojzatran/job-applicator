@@ -25,7 +25,9 @@ const sharedEnvShape = {
   JOB_EVALUATOR_MODEL: z.string().optional(),
   COVER_LETTER_GENERATOR_MODEL: z.string().optional(),
   CRITIQUE_MODEL: z.string().optional(),
-  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  NODE_ENV: z
+    .enum(['development', 'production', 'test'])
+    .default('development'),
 };
 
 function loadEnvFile(path: string) {

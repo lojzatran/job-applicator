@@ -9,9 +9,6 @@ import { ApplicationsHeader } from './components/ApplicationsHeader';
 import { ApplicationsTable } from './components/ApplicationsTable';
 import { LoadingState } from './components/LoadingState';
 import { EmptyState } from './components/EmptyState';
-import { createLogger } from '@apps/shared';
-
-const logger = createLogger('applications-page');
 
 export default function ApplicationsPage() {
   const { isDarkMode, toggleDarkMode } = useThemePreference();
@@ -27,7 +24,7 @@ export default function ApplicationsPage() {
           setApplications(data);
         }
       } catch (error) {
-        logger.error(error, 'Failed to fetch applications');
+        console.error('[applications-page] Failed to fetch applications', error);
       } finally {
         setIsLoading(false);
       }
