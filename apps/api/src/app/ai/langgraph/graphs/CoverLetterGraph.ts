@@ -1,24 +1,29 @@
-import { END, START, StateGraph } from '@langchain/langgraph';
+import { END, START, StateGraph, Annotation } from '@langchain/langgraph';
 import { z } from 'zod';
 import { JobSchema } from '../../../jobs/types';
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { PromptTemplate } from '@langchain/core/prompts';
 import { getBufferString } from '@langchain/core/messages';
+import { createLogger } from '@apps/shared';
 
-const CoverLetterSchema = z.object({
-  cvText: z.string(),
-  job: JobSchema,
-  coverLetter: z.string(),
-  critique: z.string(),
-  counter: z.number().default(0),
+const CoverLetterAnnotation = Annotation.Root({
+  cvText: Annotation<string>,
+  job: Annotation<z.infer<typeof JobSchema>>,
+  coverLetter: Annotation<string>,
+  critique: Annotation<string>,
+  counter: Annotation<number>({
+    reducer: (curr, next) => next ?? curr,
+    default: () => 0,
+  }),
 });
 
-type CoverLetterState = z.infer<typeof CoverLetterSchema>;
+type CoverLetterState = typeof CoverLetterAnnotation.State;
 
 export class CoverLetterGraph {
   private coverLetterGeneratorLlm: BaseChatModel;
   private critiqueLlm: BaseChatModel;
   private readonly MAX_ITERATIONS = 1;
+  private readonly logger = createLogger(CoverLetterGraph.name);
 
   constructor(
     coverLetterGeneratorLlm: BaseChatModel,
@@ -133,10 +138,16 @@ export class CoverLetterGraph {
   }
 
   private increaseCounter(state: CoverLetterState) {
+    this.logger.debug(
+      `Increasing counter from ${state.counter} to ${state.counter + 1}`,
+    );
     return { counter: state.counter + 1 };
   }
 
   private shouldContinue(state: CoverLetterState) {
+    this.logger.debug(
+      `Should continue: ${state.counter} <= ${this.MAX_ITERATIONS}`,
+    );
     if (state.counter > this.MAX_ITERATIONS) {
       return END;
     }
@@ -144,11 +155,11 @@ export class CoverLetterGraph {
   }
 
   build() {
-    const workflow = new StateGraph(CoverLetterSchema);
+    const workflow = new StateGraph(CoverLetterAnnotation);
 
     workflow
       .addNode('generate_cover_letter', this.generateCoverLetter.bind(this))
-      .addNode('increase_counter', this.increaseCounter)
+      .addNode('increase_counter', this.increaseCounter.bind(this))
       .addNode('critique_cover_letter', this.critiqueCoverLetter.bind(this))
       .addNode('rewrite_cover_letter', this.rewriteCoverLetter.bind(this))
       .addEdge(START, 'generate_cover_letter')

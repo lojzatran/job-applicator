@@ -4,8 +4,8 @@ import {
   END,
   START,
   CompiledStateGraph,
+  Annotation,
 } from '@langchain/langgraph';
-import { withLangGraph } from '@langchain/langgraph/zod';
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { JobSchema } from '../../jobs/types';
 import { PromptTemplate } from '@langchain/core/prompts';
@@ -25,39 +25,36 @@ interface CoverLetterEntry {
   coverLetter: string;
 }
 
-const CoverLetterEntrySchema = z.object({
-  url: z.string(),
-  coverLetter: z.string(),
-});
 
-const AgentStateSchema = z.object({
-  isValidJob: z.boolean(),
-  job: JobSchema.optional(),
-  maxAppliedJobs: z.number(),
-  appliedJobsCount: z.number().default(0),
-  jobs: z.array(JobSchema),
-  cvText: z.string(),
-  cvEntityId: z.number(),
-  coverLetters: withLangGraph(z.array(CoverLetterEntrySchema), {
-    reducer: {
-      schema: CoverLetterEntrySchema,
-      fn: (
-        currentCoverLetters: CoverLetterEntry[],
-        newCoverLetter: CoverLetterEntry,
-      ) => [...(currentCoverLetters ?? []), newCoverLetter],
+const AgentStateAnnotation = Annotation.Root({
+  isValidJob: Annotation<boolean>,
+  job: Annotation<z.infer<typeof JobSchema> | undefined>,
+  maxAppliedJobs: Annotation<number>,
+  appliedJobsCount: Annotation<number>({
+    reducer: (curr, next) => next,
+    default: () => 0,
+  }),
+  jobs: Annotation<z.infer<typeof JobSchema>[]>,
+  cvText: Annotation<string>,
+  cvEntityId: Annotation<number>,
+  coverLetters: Annotation<CoverLetterEntry[], CoverLetterEntry | CoverLetterEntry[]>({
+    reducer: (curr, update) => {
+      const current = curr ?? [];
+      const updates = Array.isArray(update) ? update : [update];
+      return [...current, ...updates];
     },
     default: () => [],
   }),
 });
 
-type AgentState = z.infer<typeof AgentStateSchema>;
+type AgentState = typeof AgentStateAnnotation.State;
 
 const THRESHOLD = 0.9;
 
 @Injectable()
 export class LanggraphService {
   private readonly coverLetterSubgraph;
-  private readonly logger = createLogger('langgraph-service');
+  private readonly logger = createLogger(LanggraphService.name);
 
   constructor(
     @Inject(JOB_EVALUATOR_LLM)
@@ -85,14 +82,14 @@ export class LanggraphService {
   }
 
   private jobSupplier(state: AgentState) {
-    this.logger.info(`Job supplier: ${JSON.stringify(state.jobs)}`);
+    this.logger.trace(`Job supplier: ${JSON.stringify(state.jobs)}`);
     const [job, ...remainingJobs] = state.jobs;
-    this.logger.info(`Job supplier: ${JSON.stringify(job)}`);
+    this.logger.trace(`Job supplier: ${JSON.stringify(job)}`);
     return { job, jobs: remainingJobs };
   }
 
   private shouldContinue(state: AgentState) {
-    this.logger.info(
+    this.logger.trace(
       `Should continue: ${state.appliedJobsCount} >= ${state.maxAppliedJobs}`,
     );
     if (!state.job || state.appliedJobsCount >= state.maxAppliedJobs) {
@@ -159,7 +156,7 @@ export class LanggraphService {
         const response = await this.jobEvaluatorLlm
           .withStructuredOutput(z.enum(['true', 'false']))
           .invoke(prompt);
-        this.logger.info(`Evaluated job: ${response}`);
+        this.logger.info(`Evaluated job by LLM: ${response}`);
         return { isValidJob: response.toLowerCase() === 'true' };
       } else {
         return { isValidJob: false };
@@ -184,6 +181,7 @@ export class LanggraphService {
       cvText: state.cvText,
       job: state.job,
     });
+    this.logger.debug(`Applied jobs count: ${state.appliedJobsCount}`);
     return {
       appliedJobsCount: state.appliedJobsCount + 1,
       coverLetters: {
@@ -194,7 +192,7 @@ export class LanggraphService {
   }
 
   build(): CompiledStateGraph<any, any, any, any, any, any> {
-    return new StateGraph(AgentStateSchema)
+    return new StateGraph(AgentStateAnnotation)
       .addNode('job_supplier', this.jobSupplier.bind(this))
       .addNode('cv_summarizer', this.summarizeCv.bind(this))
       .addNode('job_evaluator', this.evaluateJob.bind(this), {

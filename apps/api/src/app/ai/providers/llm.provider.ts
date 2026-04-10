@@ -11,18 +11,17 @@ import { env } from '../../../utils/env';
 import { OllamaEmbeddings } from '@langchain/ollama';
 
 function createJobEvaluatorLlm() {
-  if (!env.JOB_EVALUATOR_MODEL) {
-    throw new Error(
-      'Missing JOB_EVALUATOR_MODEL configuration. Set JOB_EVALUATOR_MODEL before starting the API.',
-    );
-  }
-
   if (env.GEMINI_API_KEY) {
     return new ChatGoogleGenerativeAI({
       apiKey: env.GEMINI_API_KEY,
-      model: env.JOB_EVALUATOR_MODEL,
+      model: env.GEMINI_JOB_EVALUATOR_MODEL,
     });
   } else {
+    if (!env.JOB_EVALUATOR_MODEL) {
+      throw new Error(
+        'Missing JOB_EVALUATOR_MODEL configuration. Set JOB_EVALUATOR_MODEL before starting the API.',
+      );
+    }
     return new ChatOllama({
       model: env.JOB_EVALUATOR_MODEL,
       baseUrl: env.OLLAMA_BASE_URL,
@@ -63,7 +62,7 @@ function createCvParserLlm() {
   if (env.GEMINI_API_KEY) {
     return new ChatGoogleGenerativeAI({
       apiKey: env.GEMINI_API_KEY,
-      model: env.CV_PARSER_MODEL,
+      model: env.GEMINI_CV_PARSER_MODEL,
     });
   }
 
