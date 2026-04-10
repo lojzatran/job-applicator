@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { PromptTemplate } from '@langchain/core/prompts';
+import { ChatPromptTemplate } from '@langchain/core/prompts';
 import { CvSchema } from './cv-schema';
 import { RunnableSequence } from '@langchain/core/runnables';
 import { HumanMessage } from '@langchain/core/messages';
@@ -44,28 +44,47 @@ export class CvEmbeddingsService {
   async createWeightedEmbeddingsForCv(
     cvText: string,
   ): Promise<WeightedEmbedding[]> {
-    const template = PromptTemplate.fromTemplate(`
-      **You are a precise CV parser. Your job is to analyze raw CV text blocks and map them to a strict JSON schema.**
+    const template = ChatPromptTemplate.fromMessages([
+      [
+        'system',
+        `**You are a high-fidelity CV parsing agent. Your goal is to map the raw CV text into a structured JSON format.**
 
       ## Instructions
 
-      1. **NEVER rewrite, summarize, or improve the candidate's text**. Preserve exact original wording.
-      2. **Do not invent facts, dates, companies, or skills**. If a value is unknown, omit optional string fields and use empty arrays for list fields.
-      3. **Classify each block into ONE section type** from the schema below.
-      4. **Always return valid JSON** matching the schema exactly - no extra fields, no missing fields.
-      5. **Use only the exact field names and value types defined in CvSchema**: 'summary' as an optional string, 'skills' as a string array, 'experience' as a string array, 'projects' as a string array, 'education' as a string array, and 'other' as an optional string array.
-      6. **Preserve the candidate's original wording in the extracted text values**. Do not add a 'raw_text' field.
+      1. **Preserve Exact Wording**: NEVER rewrite, summarize, or improve the candidate's text. Copy and paste the original text into the fields.
+      2. **Isolate Sections**: Distribute the CV content across the appropriate fields. Do NOT put information belonging to skills, experience, or education into the 'summary' field.
+      3. **Field Mapping Logic**:
+         - **summary**: Use only the "About Me" or "Professional Profile" section. If the CV lacks a summary, leave this empty.
+         - **skills**: Map the list of technologies, tools, and soft skills here.
+         - **experience**: Map each work history entry. Format each string as: \`<companyName> - <jobTitle>: <jobDescription>\`.
+         - **projects**: Map each project. Format each string as: \`<projectName>: <projectDescription>\`.
+         - **education**: Map educational history. Format each string as: \`<school> - <degree> - <description optional>\`.
+         - **other**: Maps any text that does not belong to the categories above.
+      4. **Handle Missing Data**: If a section is missing from the CV, return an empty array (for list fields) or omit the field (for optional strings). Do not invent facts.
 
-      ## Input Block
-      {cvText}
-    `);
+      ## Example
+      Input: "John Doe. Java developer with 5 years exp. Experience: Acme Corp - Senior Dev: Built web apps. Education: MIT - CS degree. Skills: Java, Spring."
+      Output: {{
+        "summary": "Java developer with 5 years exp.",
+        "skills": ["Java", "Spring"],
+        "experience": ["Acme Corp - Senior Dev: Built web apps."],
+        "projects": [],
+        "education": ["MIT - CS degree."],
+        "other": ["John Doe."]
+      }}`,
+      ],
+      ['human', '## Input CV Text\n{cvText}'],
+    ]);
 
-    const llm = this.cvParserLlm.withStructuredOutput(CvSchema);
+    const llm = this.cvParserLlm.withStructuredOutput(CvSchema, {
+      method: 'jsonSchema',
+    });
 
     const chain = RunnableSequence.from([
       template,
       llm,
       async (input) => {
+        this.logger.debug(`Parsed CV: ${JSON.stringify(input)}`);
         return this.createWeightedEmbeddings(input, cvText);
       },
     ]);
