@@ -11,6 +11,7 @@ import { ApplicationDetailHeader } from './components/ApplicationDetailHeader';
 import { JobDescriptionSection } from './components/JobDescriptionSection';
 import { CoverLetterSection } from './components/CoverLetterSection';
 
+
 export default function ApplicationDetailPage({ 
   params 
 }: { 
@@ -30,7 +31,7 @@ export default function ApplicationDetailPage({
           setApplication(data);
         }
       } catch (error) {
-        console.error('Failed to fetch application details:', error);
+        console.error('[application-detail-page] Failed to fetch application details', error);
       } finally {
         setIsLoading(false);
       }

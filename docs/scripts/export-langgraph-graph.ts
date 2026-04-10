@@ -4,6 +4,9 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
+import { createLogger } from '@apps/shared';
+
+const logger = createLogger('export-langgraph-graph');
 
 async function main() {
   const llm = {} as BaseChatModel;
@@ -22,6 +25,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error('Failed to export LangGraph graph:', error);
+  logger.error(error, 'Failed to export LangGraph graph');
   process.exitCode = 1;
 });

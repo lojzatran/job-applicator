@@ -1,5 +1,8 @@
 import { Client, type Dataset } from 'langsmith';
 import type { ExampleCreate } from 'langsmith/schemas';
+import { createLogger } from '@apps/shared';
+
+const logger = createLogger('langsmith-utils');
 
 export interface DatasetExampleSeed {
   inputs: Record<string, unknown>;
@@ -29,8 +32,10 @@ export async function ensureDataset(
         outputs: example.outputs,
       })) as ExampleCreate[],
     );
+    logger.info(dataset, 'Created dataset');
+  } else {
+    logger.info(dataset, 'Dataset already exists');
   }
 
-  console.log(`Created dataset: ${dataset.name}`);
   return dataset;
 }

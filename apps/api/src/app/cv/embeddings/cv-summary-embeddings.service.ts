@@ -17,9 +17,12 @@ import { Cv } from '@apps/shared';
 import * as crypto from 'crypto';
 import { DataSource } from 'typeorm';
 import { WeightedEmbedding, SqlExecutor } from './types';
+import { createLogger } from '@apps/shared';
 
 @Injectable()
 export class CvEmbeddingsService {
+  private readonly logger = createLogger('cv-embeddings-service');
+
   constructor(
     @Inject(CV_PARSER_LLM)
     private readonly cvParserLlm: BaseChatModel,
@@ -163,10 +166,12 @@ export class CvEmbeddingsService {
     const tokenCount = countTokensApproximately([
       new HumanMessage(jobDescription),
     ]);
-    console.log(
-      'Token count for job description: ',
-      jobDescription.substring(0, 100) + '...',
-      tokenCount,
+    this.logger.info(
+      {
+        tokenCount,
+        jobDescription: jobDescription.substring(0, 100) + '...',
+      },
+      'Token count for job',
     );
 
     if (tokenCount > 500) {

@@ -1,5 +1,7 @@
 import { Pool } from 'pg';
-import { env } from '../shared/src/lib/utils/env';
+import { env, createLogger } from '@apps/shared';
+
+const logger = createLogger('reset-database');
 
 async function resetDatabase() {
   const pool = new Pool({

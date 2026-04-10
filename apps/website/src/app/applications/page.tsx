@@ -24,7 +24,7 @@ export default function ApplicationsPage() {
           setApplications(data);
         }
       } catch (error) {
-        console.error('Failed to fetch applications:', error);
+        console.error('[applications-page] Failed to fetch applications', error);
       } finally {
         setIsLoading(false);
       }

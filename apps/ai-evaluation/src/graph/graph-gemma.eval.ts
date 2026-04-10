@@ -6,6 +6,9 @@ import { z } from 'zod';
 import { DATASET_NAME, EXPERIMENT_PREFIX } from './constants';
 import { env } from '../utils/env';
 import { createOllamaAgentGraph } from '../utils/agent-utils';
+import { createLogger } from '@apps/shared';
+
+const logger = createLogger('graph-gemma-eval');
 
 interface EvalInput {
   cvText: string;
@@ -118,13 +121,13 @@ async function main() {
         metadata: { models: [model] },
       },
     );
-    console.log(results);
+    logger.info(results);
   }
 }
 
 if (require.main === module) {
   main().catch((e) => {
-    console.error(e);
+    logger.error(e);
     process.exit(1);
   });
 }

@@ -18,6 +18,7 @@ import {
   CRITIQUE_LLM,
   JOB_EVALUATOR_LLM,
 } from '../ai.constants';
+import { createLogger } from '@apps/shared';
 
 interface CoverLetterEntry {
   url: string;
@@ -56,6 +57,7 @@ const THRESHOLD = 0.9;
 @Injectable()
 export class LanggraphService {
   private readonly coverLetterSubgraph;
+  private readonly logger = createLogger('langgraph-service');
 
   constructor(
     @Inject(JOB_EVALUATOR_LLM)
@@ -73,7 +75,7 @@ export class LanggraphService {
   }
 
   private async summarizeCv(state: AgentState) {
-    console.log(`Summarizing CV...`);
+    this.logger.info('Summarizing CV...');
 
     const cvEntityId = await this.cvEmbeddingsService.ensureCvAndEmbeddings(
       state.cvText,
@@ -83,14 +85,14 @@ export class LanggraphService {
   }
 
   private jobSupplier(state: AgentState) {
-    console.log(`Job supplier: ${JSON.stringify(state.jobs)}`);
+    this.logger.info(`Job supplier: ${JSON.stringify(state.jobs)}`);
     const [job, ...remainingJobs] = state.jobs;
-    console.log(`Job supplier: ${JSON.stringify(job)}`);
+    this.logger.info(`Job supplier: ${JSON.stringify(job)}`);
     return { job, jobs: remainingJobs };
   }
 
   private shouldContinue(state: AgentState) {
-    console.log(
+    this.logger.info(
       `Should continue: ${state.appliedJobsCount} >= ${state.maxAppliedJobs}`,
     );
     if (!state.job || state.appliedJobsCount >= state.maxAppliedJobs) {
@@ -100,7 +102,7 @@ export class LanggraphService {
   }
 
   private async evaluateJob(state: AgentState) {
-    console.log(`Evaluating job: ${JSON.stringify(state.job?.title)}`);
+    this.logger.info(`Evaluating job: ${JSON.stringify(state.job?.title)}`);
 
     try {
       const jobDescriptionEmbedding =
@@ -118,7 +120,7 @@ export class LanggraphService {
         jobDescriptionEmbeddingVectors,
       );
 
-      console.log(`Job score: ${score}`);
+      this.logger.info(`Job score for ${state.job?.title}: ${score}`);
 
       if (score > THRESHOLD) {
         const template = PromptTemplate.fromTemplate(`
@@ -157,20 +159,20 @@ export class LanggraphService {
         const response = await this.jobEvaluatorLlm
           .withStructuredOutput(z.enum(['true', 'false']))
           .invoke(prompt);
-        console.log(`Evaluated job: ${response}`);
+        this.logger.info(`Evaluated job: ${response}`);
         return { isValidJob: response.toLowerCase() === 'true' };
       } else {
         return { isValidJob: false };
       }
     } catch (error) {
-      console.error('Failed to evaluate job', error);
+      this.logger.error(error, 'Failed to evaluate job');
       return { isValidJob: false };
     }
   }
 
   private filterJobs(state: AgentState) {
     const isValidJob = state.isValidJob;
-    console.log(`Filter jobs: ${isValidJob}`);
+    this.logger.info(`Filter jobs: ${isValidJob}`);
     if (isValidJob) {
       return 'cover_letter_generator';
     }
@@ -201,11 +203,11 @@ export class LanggraphService {
       .addNode('cover_letter_generator', this.generateCoverLetter.bind(this))
       .addEdge(START, 'cv_summarizer')
       .addEdge('cv_summarizer', 'job_supplier')
-      .addConditionalEdges('job_supplier', this.shouldContinue, [
+      .addConditionalEdges('job_supplier', this.shouldContinue.bind(this), [
         'job_evaluator',
         END,
       ])
-      .addConditionalEdges('job_evaluator', this.filterJobs, [
+      .addConditionalEdges('job_evaluator', this.filterJobs.bind(this), [
         'cover_letter_generator',
         'job_supplier',
       ])

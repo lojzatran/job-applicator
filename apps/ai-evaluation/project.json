@@ -1,0 +1,89 @@
+{
+  "name": "@apps/ai-evaluation",
+  "root": "apps/ai-evaluation",
+  "sourceRoot": "apps/ai-evaluation/src",
+  "projectType": "application",
+  "tags": ["npm:private"],
+  "targets": {
+    "build": {
+      "executor": "@nx/esbuild:esbuild",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "platform": "node",
+        "outputPath": "apps/ai-evaluation/dist",
+        "format": ["cjs"],
+        "bundle": false,
+        "main": "apps/ai-evaluation/src/main.ts",
+        "tsConfig": "apps/ai-evaluation/tsconfig.app.json",
+        "assets": ["apps/ai-evaluation/src/assets"],
+        "esbuildOptions": {
+          "sourcemap": false,
+          "outExtension": {
+            ".js": ".js"
+          }
+        }
+      },
+      "configurations": {
+        "development": {
+          "esbuildOptions": {
+            "sourcemap": true,
+            "outExtension": {
+              ".js": ".js"
+            }
+          }
+        },
+        "production": {
+          "esbuildOptions": {
+            "sourcemap": false,
+            "outExtension": {
+              ".js": ".js"
+            }
+          }
+        }
+      }
+    },
+    "prune-lockfile": {
+      "dependsOn": ["build"],
+      "cache": true,
+      "executor": "@nx/js:prune-lockfile",
+      "outputs": [
+        "{workspaceRoot}/apps/ai-evaluation/dist/package.json",
+        "{workspaceRoot}/apps/ai-evaluation/dist/package-lock.json"
+      ],
+      "options": {
+        "buildTarget": "build"
+      }
+    },
+    "copy-workspace-modules": {
+      "dependsOn": ["build"],
+      "cache": true,
+      "outputs": ["{workspaceRoot}/apps/ai-evaluation/dist/workspace_modules"],
+      "executor": "@nx/js:copy-workspace-modules",
+      "options": {
+        "buildTarget": "build"
+      }
+    },
+    "prune": {
+      "dependsOn": ["prune-lockfile", "copy-workspace-modules"],
+      "executor": "nx:noop"
+    },
+    "serve": {
+      "continuous": true,
+      "executor": "@nx/js:node",
+      "defaultConfiguration": "development",
+      "dependsOn": ["build"],
+      "options": {
+        "buildTarget": "@apps/ai-evaluation:build",
+        "runBuildTargetDependencies": false
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "@apps/ai-evaluation:build:development"
+        },
+        "production": {
+          "buildTarget": "@apps/ai-evaluation:build:production"
+        }
+      }
+    }
+  }
+}

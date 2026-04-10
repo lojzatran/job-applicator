@@ -1,6 +1,9 @@
 import { Client } from 'langsmith';
 import { DATASET_NAME } from './constants';
 import { ensureDataset } from '../utils/langsmith-utils';
+import { createLogger } from '@apps/shared';
+
+const logger = createLogger('job-evaluator-dataset');
 
 async function main() {
   const client = new Client();
@@ -79,7 +82,7 @@ async function main() {
 
 if (require.main === module) {
   main().catch((e) => {
-    console.error(e);
+    logger.error(e);
     process.exit(1);
   });
 }

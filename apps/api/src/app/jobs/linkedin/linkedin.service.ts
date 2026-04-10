@@ -7,16 +7,19 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { JobApplication } from '@apps/shared';
 import { Repository } from 'typeorm';
 import { Between } from 'typeorm';
+import { createLogger } from '@apps/shared';
 
 @Injectable()
 export class LinkedinService {
+  private readonly logger = createLogger('linkedin-service');
+
   constructor(
     @InjectRepository(JobApplication)
     private readonly jobApplicationRepository: Repository<JobApplication>,
   ) {}
 
   async fetchJobs(): Promise<Job[]> {
-    console.log(`Fetching jobs from linkedin...`);
+    this.logger.info('Fetching jobs from linkedin...');
     const start = new Date();
     start.setUTCHours(0, 0, 0, 0);
 
