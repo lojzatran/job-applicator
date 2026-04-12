@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { extname, join, resolve } from 'node:path';
 import { NextResponse } from 'next/server';
 import amqplib from 'amqplib';
@@ -94,32 +94,37 @@ export async function POST(request: Request) {
 
   await writeFile(filePath, buffer);
 
-  const threadId = uuidv4();
+  try {
+    const threadId = uuidv4();
 
-  const jobProcessingRun = await saveJobApplicationProcessingRun({
-    threadId,
-  });
+    const jobProcessingRun = await saveJobApplicationProcessingRun({
+      threadId,
+    });
 
-  await sendToQueue({
-    filePath,
-    linkedinEnabled,
-    startupJobsEnabled,
-    maxJobs,
-    threadId,
-  });
+    await sendToQueue({
+      filePath,
+      linkedinEnabled,
+      startupJobsEnabled,
+      maxJobs,
+      threadId,
+    });
 
-  return NextResponse.json({
-    message: 'File uploaded successfully.',
-    linkedinEnabled,
-    startupJobsEnabled,
-    maxJobs,
-    file: {
-      originalName: fileEntry.name,
-      storedName,
-      path: filePath,
-      mimeType: fileEntry.type,
-      size: fileEntry.size,
-    },
-    jobProcessingRun,
-  });
+    return NextResponse.json({
+      message: 'File uploaded successfully.',
+      linkedinEnabled,
+      startupJobsEnabled,
+      maxJobs,
+      file: {
+        originalName: fileEntry.name,
+        storedName,
+        path: filePath,
+        mimeType: fileEntry.type,
+        size: fileEntry.size,
+      },
+      jobProcessingRun,
+    });
+  } catch (error) {
+    await rm(filePath, { force: true });
+    throw error;
+  }
 }

@@ -21,13 +21,16 @@ export const JobProcessingRunBadge = () => {
   return (
     <div
       className="max-w-[14rem] rounded-2xl border border-slate-200 bg-white/90 px-3 py-2 text-left shadow-xl shadow-slate-200/50 backdrop-blur-xl dark:border-slate-700 dark:bg-slate-900/80 dark:shadow-none"
-      aria-label={
-        isActive
-          ? `Active job processing run ${jobProcessingRun?.threadId}`
-          : 'No active job processing run'
-      }
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
     >
-      <div className="flex items-center gap-2">
+      <span className="sr-only">
+        {isActive
+          ? `Active job processing run ${jobProcessingRun?.threadId}`
+          : 'No active job processing run'}
+      </span>
+      <div className="flex items-center gap-2" aria-hidden="true">
         <span
           className={`h-2 w-2 rounded-full ${
             isActive
@@ -39,7 +42,7 @@ export const JobProcessingRunBadge = () => {
           Job Run
         </span>
       </div>
-      <p className="mt-1 truncate font-mono text-[11px] font-semibold text-slate-700 dark:text-slate-200">
+      <p aria-hidden="true" className="mt-1 truncate font-mono text-[11px] font-semibold text-slate-700 dark:text-slate-200">
         {formattedThreadId}
       </p>
     </div>
