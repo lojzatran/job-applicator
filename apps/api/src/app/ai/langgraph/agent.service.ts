@@ -2,17 +2,51 @@ import { Injectable } from '@nestjs/common';
 import { LanggraphService } from './langgraph.service';
 import { JobsService } from '../../jobs/jobs.service';
 import { PdfService } from '../../documents/pdf/pdf.service';
-import { createLogger } from '@apps/shared';
+import { createLogger, JobApplicationProcessingRun } from '@apps/shared';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 
 @Injectable()
 export class AgentService {
-  private readonly logger = createLogger('agent-service');
+  private readonly logger = createLogger(AgentService.name);
 
   constructor(
     private readonly jobsService: JobsService,
     private readonly pdfService: PdfService,
     private readonly langgraphService: LanggraphService,
+    @InjectRepository(JobApplicationProcessingRun)
+    private readonly jobApplicationProcessingRunRepository: Repository<JobApplicationProcessingRun>,
   ) {}
+
+  private async initializeProcessingRun(threadId: string, totalJobs: number) {
+    const existingRun =
+      await this.jobApplicationProcessingRunRepository.findOneBy({
+        threadId,
+      });
+
+    if (existingRun) {
+      await this.jobApplicationProcessingRunRepository.update(
+        { threadId },
+        {
+          status: 'processing',
+          totalJobs,
+        },
+      );
+      return;
+    }
+
+    await this.jobApplicationProcessingRunRepository.save(
+      this.jobApplicationProcessingRunRepository.create({
+        threadId,
+        status: 'processing',
+        totalJobs,
+        evaluatedJobApplications: 0,
+        dismissedJobApplications: 0,
+        appliedJobApplications: 0,
+        createdAt: new Date(),
+      }),
+    );
+  }
 
   async executeAgent(
     filePath: string,
@@ -31,8 +65,10 @@ export class AgentService {
       ),
     ]);
 
+    await this.initializeProcessingRun(options.threadId, jobs.length);
+
     const agent = this.langgraphService.build();
-    const result = await agent.invoke(
+    const result: AsyncGenerator<any, void, unknown> = await agent.stream(
       {
         cvText: cvText,
         maxAppliedJobs: options.maxJobs,
@@ -43,17 +79,77 @@ export class AgentService {
         // recursion is a super-step, and in my graph there are currently 4 super-steps for each job.
         // I also add a buffer of 5 (random number) just be sure.
         recursionLimit: 4 * jobs.length + 5,
+        streamMode: 'updates',
       },
     );
-    this.logger.info(result, 'Agent Finished');
+    for await (const chunk of result) {
+      if (chunk.job_evaluator?.evaluatedJobsCount !== undefined) {
+        this.logger.debug(
+          'Evaluated Jobs Count: ' + chunk.job_evaluator.evaluatedJobsCount,
+        );
+        await this.jobApplicationProcessingRunRepository.update(
+          { threadId: options.threadId },
+          {
+            evaluatedJobApplications: chunk.job_evaluator.evaluatedJobsCount,
+          },
+        );
+      }
 
-    await this.jobsService.updateJobApplications(
-      result.coverLetters.map(
-        (coverLetter: { url: string; coverLetter: string }) => ({
-          url: coverLetter.url,
-          coverLetter: coverLetter.coverLetter,
-        }),
-      ),
+      if (chunk.job_evaluator?.dismissedJobsCount !== undefined) {
+        this.logger.debug(
+          'Dismissed Jobs Count: ' + chunk.job_evaluator.dismissedJobsCount,
+        );
+        await this.jobApplicationProcessingRunRepository.update(
+          { threadId: options.threadId },
+          {
+            dismissedJobApplications: chunk.job_evaluator.dismissedJobsCount,
+          },
+        );
+      }
+
+      if (chunk.cover_letter_generator?.appliedJobsCount !== undefined) {
+        this.logger.debug(
+          'Applied Jobs Count: ' +
+            chunk.cover_letter_generator.appliedJobsCount,
+        );
+        await this.jobApplicationProcessingRunRepository.update(
+          { threadId: options.threadId },
+          {
+            appliedJobApplications:
+              chunk.cover_letter_generator.appliedJobsCount,
+          },
+        );
+      }
+
+      if (chunk.cover_letter_generator?.coverLetters) {
+        this.logger.debug(
+          'Cover Letters: ' +
+            JSON.stringify(chunk.cover_letter_generator.coverLetters),
+        );
+        const coverLetters = Array.isArray(
+          chunk.cover_letter_generator.coverLetters,
+        )
+          ? chunk.cover_letter_generator.coverLetters
+          : [chunk.cover_letter_generator.coverLetters];
+
+        await this.jobsService.updateJobApplications(
+          coverLetters.map(
+            (coverLetter: { url: string; coverLetter: string }) => ({
+              url: coverLetter.url,
+              coverLetter: coverLetter.coverLetter,
+            }),
+          ),
+        );
+      }
+    }
+
+    this.logger.info('Agent Finished');
+
+    await this.jobApplicationProcessingRunRepository.update(
+      { threadId: options.threadId },
+      {
+        status: 'completed',
+      },
     );
   }
 }

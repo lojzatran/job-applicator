@@ -76,6 +76,7 @@ Use `nx` to run tasks. In case `nx` is not found, use `npx nx`.
 6. **Manual UI testing**: Whenever a task is finished, try to run the application in development mode and verify that the app is running and not failing.
 7. **Keep methods short**: Keep methods short and focused on a single responsibility. If a method is too long, split it into smaller methods and give it a descriptive name.
 8. **Use the current year**: Always use the current year by default if not explicitly written otherwise.
+9. **Logging**: Use `createLogger()` from `@apps/shared` instead of `console` to log outputs for all server codes. This ensures consistent formatting (Pino) and proper log levels (info/debug) across the monorepo.
 
 ## Typescript usage
 

@@ -21,7 +21,7 @@ import { createLogger } from '@apps/shared';
 
 @Injectable()
 export class CvEmbeddingsService {
-  private readonly logger = createLogger('cv-embeddings-service');
+  private readonly logger = createLogger(CvEmbeddingsService.name);
 
   constructor(
     @Inject(CV_PARSER_LLM)

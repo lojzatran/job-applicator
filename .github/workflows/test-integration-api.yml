@@ -19,7 +19,6 @@ jobs:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: job_applicator
       RABBITMQ_URL: amqp://127.0.0.1:5672
-      RABBITMQ_QUEUE: process_job_applications
       OLLAMA_BASE_URL: http://127.0.0.1:11434
       EMBEDDING_MODEL: nomic-embed-text-v2-moe:latest
       GEMINI_CV_PARSER_MODEL: gemini-3.1-flash-lite-preview

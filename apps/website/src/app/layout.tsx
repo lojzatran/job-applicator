@@ -1,9 +1,11 @@
 import './global.css';
 import { ThemePreferenceProvider } from './context/theme-preference-context';
+import { JobProcessingRunProvider } from './context/job-processing-run-context';
 
 export const metadata = {
   title: 'Job Applicator AI | Automate Your Job Search',
-  description: 'Apply to jobs with AI-powered cover letters and personalized matching.',
+  description:
+    'Apply to jobs with AI-powered cover letters and personalized matching.',
 };
 
 export default function RootLayout({
@@ -14,7 +16,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body>
-        <ThemePreferenceProvider>{children}</ThemePreferenceProvider>
+        <ThemePreferenceProvider>
+          <JobProcessingRunProvider>{children}</JobProcessingRunProvider>
+        </ThemePreferenceProvider>
       </body>
     </html>
   );

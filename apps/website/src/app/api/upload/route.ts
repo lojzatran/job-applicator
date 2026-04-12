@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import amqplib from 'amqplib';
 import { env } from '@apps/shared';
 import { v4 as uuidv4 } from 'uuid';
+import { saveJobApplicationProcessingRun } from '../../lib/db/db-client';
 
 export const runtime = 'nodejs';
 
@@ -44,25 +45,27 @@ const sendToQueue = async ({
   linkedinEnabled,
   startupJobsEnabled,
   maxJobs,
+  threadId,
 }: {
   filePath: string;
   linkedinEnabled: boolean;
   startupJobsEnabled: boolean;
   maxJobs: number;
+  threadId: string;
 }) => {
   const connection = await amqplib.connect(env.RABBITMQ_URL);
   const channel = await connection.createConfirmChannel();
-  await channel.assertQueue(env.RABBITMQ_QUEUE, { durable: false });
+  await channel.assertQueue(env.RABBITMQ_QUEUE_PROCESS, { durable: false });
 
   channel.sendToQueue(
-    env.RABBITMQ_QUEUE,
+    env.RABBITMQ_QUEUE_PROCESS,
     Buffer.from(
       JSON.stringify({
         filePath,
         linkedinEnabled,
         startupJobsEnabled,
         maxJobs,
-        threadId: uuidv4(),
+        threadId,
       }),
     ),
     { persistent: false },
@@ -91,11 +94,18 @@ export async function POST(request: Request) {
 
   await writeFile(filePath, buffer);
 
+  const threadId = uuidv4();
+
+  const jobProcessingRun = await saveJobApplicationProcessingRun({
+    threadId,
+  });
+
   await sendToQueue({
     filePath,
     linkedinEnabled,
     startupJobsEnabled,
     maxJobs,
+    threadId,
   });
 
   return NextResponse.json({
@@ -110,5 +120,6 @@ export async function POST(request: Request) {
       mimeType: fileEntry.type,
       size: fileEntry.size,
     },
+    jobProcessingRun,
   });
 }

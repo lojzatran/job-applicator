@@ -2,6 +2,7 @@ import { JobApplication } from '../entities/job-application.entity';
 import { Cv } from '../entities/cv.entity';
 import { DataSourceOptions } from 'typeorm';
 import { env } from '../utils/env';
+import { JobApplicationProcessingRun } from '../entities/job-application-processing-run.entity';
 
 export const postgresConnectionOptions = {
   type: 'postgres',
@@ -17,7 +18,7 @@ export const dataSourceOptions = {
   ...postgresConnectionOptions,
   synchronize: false,
   logging: ['error'],
-  entities: [JobApplication, Cv],
+  entities: [JobApplication, Cv, JobApplicationProcessingRun],
   subscribers: [],
   migrations: [],
 } as DataSourceOptions;

@@ -1,5 +1,5 @@
 import { Pool } from 'pg';
-import { env } from '../shared/src/lib/utils/env';
+import { env } from '../../shared/src/lib/utils/env';
 import { createLogger } from '@apps/shared';
 
 const logger = createLogger('ensure-database');
