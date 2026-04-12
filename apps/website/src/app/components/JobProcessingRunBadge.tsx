@@ -13,7 +13,9 @@ const formatJobProcessingRunId = (jobProcessingRunId: string | number) => {
 
 export const JobProcessingRunBadge = () => {
   const { jobProcessingRun } = useJobProcessingRun();
-  const isActive = jobProcessingRun?.status === 'active';
+  const isActive =
+    jobProcessingRun?.status === 'pending' ||
+    jobProcessingRun?.status === 'processing';
   const formattedThreadId = jobProcessingRun?.threadId
     ? formatJobProcessingRunId(jobProcessingRun.threadId)
     : 'No active run';
@@ -42,7 +44,10 @@ export const JobProcessingRunBadge = () => {
           Job Run
         </span>
       </div>
-      <p aria-hidden="true" className="mt-1 truncate font-mono text-[11px] font-semibold text-slate-700 dark:text-slate-200">
+      <p
+        aria-hidden="true"
+        className="mt-1 truncate font-mono text-[11px] font-semibold text-slate-700 dark:text-slate-200"
+      >
         {formattedThreadId}
       </p>
     </div>

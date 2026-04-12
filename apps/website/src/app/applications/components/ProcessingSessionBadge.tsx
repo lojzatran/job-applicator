@@ -1,6 +1,8 @@
+import { JobProcessingRunStatus } from '../../types/job-processing-run';
+
 interface ProcessingSessionBadgeProps {
   jobProcessingRun: {
-    status: string;
+    status: JobProcessingRunStatus;
   };
 }
 

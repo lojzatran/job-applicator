@@ -87,20 +87,21 @@ export class AgentService {
 
     try {
       const agent = this.langgraphService.build();
-      const result: AsyncGenerator<StreamChunk, void, unknown> = await agent.stream(
-        {
-          cvText: cvText,
-          maxAppliedJobs: options.maxJobs,
-          jobs: jobs,
-        },
-        {
-          configurable: { thread_id: options.threadId },
-          // recursion is a super-step, and in my graph there are currently 4 super-steps for each job.
-          // I also add a buffer of 5 (random number) just be sure.
-          recursionLimit: 4 * jobs.length + 5,
-          streamMode: 'updates',
-        },
-      );
+      const result: AsyncGenerator<StreamChunk, void, unknown> =
+        await agent.stream(
+          {
+            cvText: cvText,
+            maxAppliedJobs: options.maxJobs,
+            jobs: jobs,
+          },
+          {
+            configurable: { thread_id: options.threadId },
+            // recursion is a super-step, and in my graph there are currently 4 super-steps for each job.
+            // I also add a buffer of 5 (random number) just be sure.
+            recursionLimit: 4 * jobs.length + 5,
+            streamMode: 'updates',
+          },
+        );
       for await (const chunk of result) {
         if (chunk.job_evaluator?.evaluatedJobsCount !== undefined) {
           this.logger.debug(

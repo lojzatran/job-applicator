@@ -40,7 +40,9 @@ export default function Index() {
     openFilePicker,
   } = useResumeUpload();
   const { jobProcessingRun } = useJobProcessingRun();
-  const isActive = jobProcessingRun?.status === 'active';
+  const isActive =
+    jobProcessingRun?.status === 'pending' ||
+    jobProcessingRun?.status === 'processing';
 
   return (
     <div className={isDarkMode ? 'dark' : ''}>
