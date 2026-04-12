@@ -17,7 +17,7 @@ require('ts-node/register/transpile-only');
 
 const {
   dataSourceOptions,
-} = require('../shared/src/lib/db/datasource.config.ts');
+} = require('../../shared/src/lib/db/datasource.config.ts');
 
 const { config: loadDotenv } = require('dotenv');
 const { resolve } = require('path');
@@ -27,7 +27,9 @@ loadDotenv({ path: resolve(process.cwd(), '.env') });
 
 const migrationDataSource = new DataSource({
   ...dataSourceOptions,
-  migrations: [resolve(process.cwd(), 'libs/migrations/**/*{.ts,.js}')],
+  migrations: [
+    resolve(process.cwd(), 'libs/migrations/src/scripts/*{.ts,.js}'),
+  ],
 });
 
 module.exports.default = migrationDataSource;

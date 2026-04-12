@@ -1,3 +1,5 @@
+import { JobApplicationProcessingRun } from './job-processing-run';
+
 export type UploadResponse = {
   message: string;
   linkedinEnabled: boolean;
@@ -10,4 +12,5 @@ export type UploadResponse = {
     mimeType: string;
     size: number;
   };
+  jobProcessingRun: JobApplicationProcessingRun;
 };

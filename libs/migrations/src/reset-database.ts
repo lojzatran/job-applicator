@@ -52,6 +52,6 @@ async function resetDatabase() {
 }
 
 resetDatabase().catch((error) => {
-  console.error(error);
+  logger.error(error);
   process.exit(1);
 });

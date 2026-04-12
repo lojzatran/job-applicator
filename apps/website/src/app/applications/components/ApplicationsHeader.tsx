@@ -1,20 +1,30 @@
 'use client';
 
 import Link from 'next/link';
+import { useJobProcessingRun } from '../../hooks/useJobProcessingRun';
+import { ProcessingSessionBadge } from './ProcessingSessionBadge';
+import { ProcessingMetrics } from './ProcessingMetrics';
 
 interface ApplicationsHeaderProps {
   count: number;
 }
 
 export const ApplicationsHeader = ({ count }: ApplicationsHeaderProps) => {
+  const { jobProcessingRun } = useJobProcessingRun();
   return (
     <div className="mb-10 flex flex-col items-center justify-between gap-4 sm:flex-row sm:items-end">
       <div>
-        <Link 
-          href="/" 
+        <Link
+          href="/"
           className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            className="h-4 w-4"
+          >
             <path d="M19 12H5M12 19l-7-7 7-7" />
           </svg>
           Back to Dashboard
@@ -26,9 +36,31 @@ export const ApplicationsHeader = ({ count }: ApplicationsHeaderProps) => {
           Tracking your personalized job application journey
         </p>
       </div>
-      
-      <div className="rounded-2xl bg-white/50 px-4 py-2 text-sm font-semibold text-slate-600 backdrop-blur-sm dark:bg-slate-900/50 dark:text-slate-400 shadow-sm border border-slate-100 dark:border-slate-800">
-        {count} Applications Total
+
+      <div className="flex flex-col items-end gap-3">
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <div className="group rounded-2xl bg-white/50 px-4 py-2 text-sm font-bold text-slate-600 backdrop-blur-sm dark:bg-slate-900/50 dark:text-slate-400 shadow-sm border border-slate-100 dark:border-slate-800 transition-all hover:border-slate-200 dark:hover:border-slate-700">
+            <span className="text-emerald-600 dark:text-emerald-400 transition-transform group-hover:scale-110 inline-block">
+              {count}
+            </span>
+            <span className="ml-1.5 opacity-80 uppercase tracking-tight text-[0.7rem]">
+              Total Apps
+            </span>
+          </div>
+        </div>
+
+        <div
+          aria-live="polite"
+          aria-atomic="true"
+          className="flex flex-col items-end gap-3"
+        >
+          {jobProcessingRun && (
+            <>
+              <ProcessingSessionBadge jobProcessingRun={jobProcessingRun} />
+              <ProcessingMetrics jobProcessingRun={jobProcessingRun} />
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

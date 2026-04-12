@@ -25,7 +25,6 @@ interface CoverLetterEntry {
   coverLetter: string;
 }
 
-
 const AgentStateAnnotation = Annotation.Root({
   isValidJob: Annotation<boolean>,
   job: Annotation<z.infer<typeof JobSchema> | undefined>,
@@ -34,10 +33,21 @@ const AgentStateAnnotation = Annotation.Root({
     reducer: (curr, next) => next,
     default: () => 0,
   }),
+  evaluatedJobsCount: Annotation<number>({
+    reducer: (curr, next) => next,
+    default: () => 0,
+  }),
+  dismissedJobsCount: Annotation<number>({
+    reducer: (curr, next) => next,
+    default: () => 0,
+  }),
   jobs: Annotation<z.infer<typeof JobSchema>[]>,
   cvText: Annotation<string>,
   cvEntityId: Annotation<number>,
-  coverLetters: Annotation<CoverLetterEntry[], CoverLetterEntry | CoverLetterEntry[]>({
+  coverLetters: Annotation<
+    CoverLetterEntry[],
+    CoverLetterEntry | CoverLetterEntry[]
+  >({
     reducer: (curr, update) => {
       const current = curr ?? [];
       const updates = Array.isArray(update) ? update : [update];
@@ -157,13 +167,26 @@ export class LanggraphService {
           .withStructuredOutput(z.enum(['true', 'false']))
           .invoke(prompt);
         this.logger.info(`Evaluated job by LLM: ${response}`);
-        return { isValidJob: response.toLowerCase() === 'true' };
+        const isValidJob = response.toLowerCase() === 'true';
+        return {
+          isValidJob,
+          evaluatedJobsCount: state.evaluatedJobsCount + 1,
+          dismissedJobsCount: state.dismissedJobsCount + (isValidJob ? 0 : 1),
+        };
       } else {
-        return { isValidJob: false };
+        return {
+          isValidJob: false,
+          evaluatedJobsCount: state.evaluatedJobsCount + 1,
+          dismissedJobsCount: state.dismissedJobsCount + 1,
+        };
       }
     } catch (error) {
       this.logger.error(error, 'Failed to evaluate job');
-      return { isValidJob: false };
+      return {
+        isValidJob: false,
+        evaluatedJobsCount: state.evaluatedJobsCount + 1,
+        dismissedJobsCount: state.dismissedJobsCount + 1,
+      };
     }
   }
 
@@ -184,10 +207,12 @@ export class LanggraphService {
     this.logger.debug(`Applied jobs count: ${state.appliedJobsCount}`);
     return {
       appliedJobsCount: state.appliedJobsCount + 1,
-      coverLetters: {
-        url: state.job!.url,
-        coverLetter: response.coverLetter,
-      },
+      coverLetters: [
+        {
+          url: state.job!.url,
+          coverLetter: response.coverLetter,
+        },
+      ],
     };
   }
 

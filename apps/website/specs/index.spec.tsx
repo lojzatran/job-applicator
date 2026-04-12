@@ -1,7 +1,7 @@
-import React from 'react';
 import { render } from '@testing-library/react';
 import Page from '../src/app/page';
 import { ThemePreferenceProvider } from '../src/app/context/theme-preference-context';
+import { JobProcessingRunProvider } from '../src/app/context/job-processing-run-context';
 
 beforeEach(() => {
   Object.defineProperty(window, 'matchMedia', {
@@ -22,9 +22,11 @@ beforeEach(() => {
 describe('Page', () => {
   it('should render successfully', () => {
     const { baseElement } = render(
-      <ThemePreferenceProvider>
-        <Page />
-      </ThemePreferenceProvider>,
+      <JobProcessingRunProvider>
+        <ThemePreferenceProvider>
+          <Page />
+        </ThemePreferenceProvider>
+      </JobProcessingRunProvider>,
     );
     expect(baseElement).toBeTruthy();
   });

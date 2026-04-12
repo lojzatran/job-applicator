@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { BackgroundDecor } from '../components/BackgroundDecor';
+import { JobProcessingRunBadge } from '../components/JobProcessingRunBadge';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { useThemePreference } from '../hooks/useThemePreference';
 import { JobApplication } from './types';
@@ -18,13 +19,16 @@ export default function ApplicationsPage() {
   useEffect(() => {
     async function fetchApplications() {
       try {
-        const response = await fetch('/api/applications');
+        const response = await fetch(`/api/applications`);
         if (response.ok) {
           const data = await response.json();
           setApplications(data);
         }
       } catch (error) {
-        console.error('[applications-page] Failed to fetch applications', error);
+        console.error(
+          '[applications-page] Failed to fetch applications',
+          error,
+        );
       } finally {
         setIsLoading(false);
       }
@@ -35,7 +39,10 @@ export default function ApplicationsPage() {
   return (
     <div className={isDarkMode ? 'dark' : ''}>
       <div className="min-h-screen bg-stone-100 text-slate-900 transition-colors duration-500 selection:bg-emerald-500 selection:text-white dark:bg-slate-950 dark:text-slate-100">
-        <ThemeToggle isDarkMode={isDarkMode} onToggle={toggleDarkMode} />
+        <div className="absolute right-6 top-6 z-10 flex flex-col items-end gap-3 sm:right-8 sm:top-8">
+          <JobProcessingRunBadge />
+          <ThemeToggle isDarkMode={isDarkMode} onToggle={toggleDarkMode} />
+        </div>
 
         <main className="mx-auto min-h-screen w-full max-w-5xl px-4 py-12 font-sans sm:px-6">
           <ApplicationsHeader count={applications.length} />

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { BackgroundDecor } from './components/BackgroundDecor';
 import { LinkedInToggle } from './components/LinkedInToggle';
+import { JobProcessingRunBadge } from './components/JobProcessingRunBadge';
 import { PageHero } from './components/PageHero';
 import { ResumeDropzone } from './components/ResumeDropzone';
 import { MaxJobsField } from './components/MaxJobsField';
@@ -11,7 +12,9 @@ import { SubmitButton } from './components/SubmitButton';
 import { StartupJobsToggle } from './components/StartupJobsToggle';
 import { ThemeToggle } from './components/ThemeToggle';
 import { useResumeUpload } from './hooks/useResumeUpload';
+import { ProcessingState } from './components/ProcessingState';
 import { useThemePreference } from './hooks/useThemePreference';
+import { useJobProcessingRun } from './hooks/useJobProcessingRun';
 
 export default function Index() {
   const { isDarkMode, toggleDarkMode } = useThemePreference();
@@ -36,48 +39,62 @@ export default function Index() {
     handleSubmit,
     openFilePicker,
   } = useResumeUpload();
+  const { jobProcessingRun } = useJobProcessingRun();
+  const isActive =
+    jobProcessingRun?.status === 'pending' ||
+    jobProcessingRun?.status === 'processing';
 
   return (
     <div className={isDarkMode ? 'dark' : ''}>
       <div className="min-h-screen bg-stone-100 text-slate-900 transition-colors duration-500 selection:bg-emerald-500 selection:text-white dark:bg-slate-950 dark:text-slate-100">
-        <ThemeToggle isDarkMode={isDarkMode} onToggle={toggleDarkMode} />
+        <div className="absolute right-6 top-6 z-10 flex flex-col items-end gap-3 sm:right-8 sm:top-8">
+          <JobProcessingRunBadge />
+          <ThemeToggle isDarkMode={isDarkMode} onToggle={toggleDarkMode} />
+        </div>
 
         <main className="mx-auto flex min-h-screen w-full max-w-xl flex-col items-center justify-center px-4 py-12 font-sans sm:px-6 sm:py-10">
           <div className="w-full animate-in fade-in slide-in-from-bottom-8 duration-700">
             <PageHero />
 
-            <section className="rounded-[2rem] border border-slate-200 bg-white/90 p-6 shadow-2xl shadow-stone-300/50 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/60 dark:shadow-none sm:rounded-[2.5rem] sm:p-8">
-              <form onSubmit={handleSubmit} className="space-y-8 sm:space-y-9">
-                <ResumeDropzone
-                  fileInputRef={fileInputRef}
-                  selectedFile={selectedFile}
-                  isDragging={isDragging}
-                  onFileChange={handleFileChange}
-                  onDrop={handleDrop}
-                  onDragEnter={handleDragEnter}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onOpenFilePicker={openFilePicker}
-                />
+            {isActive ? (
+              <ProcessingState />
+            ) : (
+              <section className="rounded-[2rem] border border-slate-200 bg-white/90 p-6 shadow-2xl shadow-stone-300/50 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/60 dark:shadow-none sm:rounded-[2.5rem] sm:p-8">
+                <form
+                  onSubmit={handleSubmit}
+                  className="space-y-8 sm:space-y-9"
+                >
+                  <ResumeDropzone
+                    fileInputRef={fileInputRef}
+                    selectedFile={selectedFile}
+                    isDragging={isDragging}
+                    onFileChange={handleFileChange}
+                    onDrop={handleDrop}
+                    onDragEnter={handleDragEnter}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onOpenFilePicker={openFilePicker}
+                  />
 
-                <StatusMessage tone="error" message={validationMessage} />
-                <StatusMessage tone="success" message={readyMessage} />
+                  <StatusMessage tone="error" message={validationMessage} />
+                  <StatusMessage tone="success" message={readyMessage} />
 
-                <LinkedInToggle
-                  enabled={linkedinEnabled}
-                  onToggle={() => setLinkedinEnabled(!linkedinEnabled)}
-                />
+                  <LinkedInToggle
+                    enabled={linkedinEnabled}
+                    onToggle={() => setLinkedinEnabled(!linkedinEnabled)}
+                  />
 
-                <StartupJobsToggle
-                  enabled={startupJobsEnabled}
-                  onToggle={() => setStartupJobsEnabled(!startupJobsEnabled)}
-                />
+                  <StartupJobsToggle
+                    enabled={startupJobsEnabled}
+                    onToggle={() => setStartupJobsEnabled(!startupJobsEnabled)}
+                  />
 
-                <MaxJobsField value={maxJobs} onChange={setMaxJobs} />
+                  <MaxJobsField value={maxJobs} onChange={setMaxJobs} />
 
-                <SubmitButton isUploading={isUploading} />
-              </form>
-            </section>
+                  <SubmitButton isUploading={isUploading} />
+                </form>
+              </section>
+            )}
 
             <div className="mt-8 flex justify-center">
               <Link

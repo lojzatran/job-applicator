@@ -1,9 +1,10 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { extname, join, resolve } from 'node:path';
 import { NextResponse } from 'next/server';
 import amqplib from 'amqplib';
 import { env } from '@apps/shared';
 import { v4 as uuidv4 } from 'uuid';
+import { saveJobApplicationProcessingRun } from '../../lib/db/db-client';
 
 export const runtime = 'nodejs';
 
@@ -44,32 +45,37 @@ const sendToQueue = async ({
   linkedinEnabled,
   startupJobsEnabled,
   maxJobs,
+  threadId,
 }: {
   filePath: string;
   linkedinEnabled: boolean;
   startupJobsEnabled: boolean;
   maxJobs: number;
+  threadId: string;
 }) => {
   const connection = await amqplib.connect(env.RABBITMQ_URL);
-  const channel = await connection.createConfirmChannel();
-  await channel.assertQueue(env.RABBITMQ_QUEUE, { durable: false });
+  try {
+    const channel = await connection.createConfirmChannel();
+    await channel.assertQueue(env.RABBITMQ_QUEUE_PROCESS, { durable: false });
 
-  channel.sendToQueue(
-    env.RABBITMQ_QUEUE,
-    Buffer.from(
-      JSON.stringify({
-        filePath,
-        linkedinEnabled,
-        startupJobsEnabled,
-        maxJobs,
-        threadId: uuidv4(),
-      }),
-    ),
-    { persistent: false },
-  );
+    channel.sendToQueue(
+      env.RABBITMQ_QUEUE_PROCESS,
+      Buffer.from(
+        JSON.stringify({
+          filePath,
+          linkedinEnabled,
+          startupJobsEnabled,
+          maxJobs,
+          threadId,
+        }),
+      ),
+      { persistent: false },
+    );
 
-  await channel.waitForConfirms();
-  await connection.close();
+    await channel.waitForConfirms();
+  } finally {
+    await connection.close();
+  }
 };
 
 export async function POST(request: Request) {
@@ -91,24 +97,37 @@ export async function POST(request: Request) {
 
   await writeFile(filePath, buffer);
 
-  await sendToQueue({
-    filePath,
-    linkedinEnabled,
-    startupJobsEnabled,
-    maxJobs,
-  });
+  try {
+    const threadId = uuidv4();
 
-  return NextResponse.json({
-    message: 'File uploaded successfully.',
-    linkedinEnabled,
-    startupJobsEnabled,
-    maxJobs,
-    file: {
-      originalName: fileEntry.name,
-      storedName,
-      path: filePath,
-      mimeType: fileEntry.type,
-      size: fileEntry.size,
-    },
-  });
+    const jobProcessingRun = await saveJobApplicationProcessingRun({
+      threadId,
+    });
+
+    await sendToQueue({
+      filePath,
+      linkedinEnabled,
+      startupJobsEnabled,
+      maxJobs,
+      threadId,
+    });
+
+    return NextResponse.json({
+      message: 'File uploaded successfully.',
+      linkedinEnabled,
+      startupJobsEnabled,
+      maxJobs,
+      file: {
+        originalName: fileEntry.name,
+        storedName,
+        path: filePath,
+        mimeType: fileEntry.type,
+        size: fileEntry.size,
+      },
+      jobProcessingRun,
+    });
+  } catch (error) {
+    await rm(filePath, { force: true });
+    throw error;
+  }
 }

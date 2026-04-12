@@ -2,6 +2,7 @@
 
 import { ChangeEvent, DragEvent, FormEvent, useRef, useState } from 'react';
 import { UploadResponse } from '../types/upload';
+import { useJobProcessingRun } from './useJobProcessingRun';
 
 const acceptedExtensions = ['pdf', 'doc', 'docx'];
 
@@ -16,6 +17,7 @@ const validateFile = (file: File) => {
 };
 
 export const useResumeUpload = () => {
+  const { setJobProcessingRun } = useJobProcessingRun();
   const [linkedinEnabled, setLinkedinEnabled] = useState(false);
   const [startupJobsEnabled, setStartupJobsEnabled] = useState(false);
   const [maxJobs, setMaxJobs] = useState(5);
@@ -110,6 +112,7 @@ export const useResumeUpload = () => {
       }
 
       const successPayload = payload as UploadResponse;
+      setJobProcessingRun(successPayload.jobProcessingRun);
       setReadyMessage(
         `${successPayload.message} Saved as ${successPayload.file.storedName}${successPayload.linkedinEnabled ? ' with LinkedIn enabled.' : '.'}`,
       );
