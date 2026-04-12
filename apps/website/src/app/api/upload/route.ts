@@ -54,25 +54,28 @@ const sendToQueue = async ({
   threadId: string;
 }) => {
   const connection = await amqplib.connect(env.RABBITMQ_URL);
-  const channel = await connection.createConfirmChannel();
-  await channel.assertQueue(env.RABBITMQ_QUEUE_PROCESS, { durable: false });
+  try {
+    const channel = await connection.createConfirmChannel();
+    await channel.assertQueue(env.RABBITMQ_QUEUE_PROCESS, { durable: false });
 
-  channel.sendToQueue(
-    env.RABBITMQ_QUEUE_PROCESS,
-    Buffer.from(
-      JSON.stringify({
-        filePath,
-        linkedinEnabled,
-        startupJobsEnabled,
-        maxJobs,
-        threadId,
-      }),
-    ),
-    { persistent: false },
-  );
+    channel.sendToQueue(
+      env.RABBITMQ_QUEUE_PROCESS,
+      Buffer.from(
+        JSON.stringify({
+          filePath,
+          linkedinEnabled,
+          startupJobsEnabled,
+          maxJobs,
+          threadId,
+        }),
+      ),
+      { persistent: false },
+    );
 
-  await channel.waitForConfirms();
-  await connection.close();
+    await channel.waitForConfirms();
+  } finally {
+    await connection.close();
+  }
 };
 
 export async function POST(request: Request) {

@@ -6,6 +6,23 @@ import { createLogger, JobApplicationProcessingRun } from '@apps/shared';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
+export interface CoverLetterData {
+  url: string;
+  coverLetter: string;
+}
+
+export interface StreamChunk {
+  job_evaluator?: {
+    isValidJob?: boolean;
+    evaluatedJobsCount?: number;
+    dismissedJobsCount?: number;
+  };
+  cover_letter_generator?: {
+    appliedJobsCount?: number;
+    coverLetters?: CoverLetterData | CoverLetterData[];
+  };
+}
+
 @Injectable()
 export class AgentService {
   private readonly logger = createLogger(AgentService.name);
@@ -19,6 +36,14 @@ export class AgentService {
   ) {}
 
   private async initializeProcessingRun(threadId: string, totalJobs: number) {
+    const baseJobApplicationProcessingRun = {
+      status: 'processing',
+      totalJobs,
+      evaluatedJobApplications: 0,
+      dismissedJobApplications: 0,
+      appliedJobApplications: 0,
+    } as JobApplicationProcessingRun;
+
     const existingRun =
       await this.jobApplicationProcessingRunRepository.findOneBy({
         threadId,
@@ -27,22 +52,15 @@ export class AgentService {
     if (existingRun) {
       await this.jobApplicationProcessingRunRepository.update(
         { threadId },
-        {
-          status: 'processing',
-          totalJobs,
-        },
+        baseJobApplicationProcessingRun,
       );
       return;
     }
 
     await this.jobApplicationProcessingRunRepository.save(
       this.jobApplicationProcessingRunRepository.create({
+        ...baseJobApplicationProcessingRun,
         threadId,
-        status: 'processing',
-        totalJobs,
-        evaluatedJobApplications: 0,
-        dismissedJobApplications: 0,
-        appliedJobApplications: 0,
         createdAt: new Date(),
       }),
     );
@@ -69,7 +87,7 @@ export class AgentService {
 
     try {
       const agent = this.langgraphService.build();
-      const result: AsyncGenerator<any, void, unknown> = await agent.stream(
+      const result: AsyncGenerator<StreamChunk, void, unknown> = await agent.stream(
         {
           cvText: cvText,
           maxAppliedJobs: options.maxJobs,
@@ -127,19 +145,16 @@ export class AgentService {
             'Cover Letters: ' +
               JSON.stringify(chunk.cover_letter_generator.coverLetters),
           );
-          const coverLetters = Array.isArray(
-            chunk.cover_letter_generator.coverLetters,
-          )
-            ? chunk.cover_letter_generator.coverLetters
-            : [chunk.cover_letter_generator.coverLetters];
+          const rawCoverLetters = chunk.cover_letter_generator.coverLetters;
+          const coverLetters = Array.isArray(rawCoverLetters)
+            ? rawCoverLetters
+            : [rawCoverLetters];
 
           await this.jobsService.updateJobApplications(
-            coverLetters.map(
-              (coverLetter: { url: string; coverLetter: string }) => ({
-                url: coverLetter.url,
-                coverLetter: coverLetter.coverLetter,
-              }),
-            ),
+            coverLetters.map((coverLetter) => ({
+              url: coverLetter.url,
+              coverLetter: coverLetter.coverLetter,
+            })),
           );
         }
       }
