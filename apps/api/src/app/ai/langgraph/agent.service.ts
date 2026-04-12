@@ -67,89 +67,99 @@ export class AgentService {
 
     await this.initializeProcessingRun(options.threadId, jobs.length);
 
-    const agent = this.langgraphService.build();
-    const result: AsyncGenerator<any, void, unknown> = await agent.stream(
-      {
-        cvText: cvText,
-        maxAppliedJobs: options.maxJobs,
-        jobs: jobs,
-      },
-      {
-        configurable: { thread_id: options.threadId },
-        // recursion is a super-step, and in my graph there are currently 4 super-steps for each job.
-        // I also add a buffer of 5 (random number) just be sure.
-        recursionLimit: 4 * jobs.length + 5,
-        streamMode: 'updates',
-      },
-    );
-    for await (const chunk of result) {
-      if (chunk.job_evaluator?.evaluatedJobsCount !== undefined) {
-        this.logger.debug(
-          'Evaluated Jobs Count: ' + chunk.job_evaluator.evaluatedJobsCount,
-        );
-        await this.jobApplicationProcessingRunRepository.update(
-          { threadId: options.threadId },
-          {
-            evaluatedJobApplications: chunk.job_evaluator.evaluatedJobsCount,
-          },
-        );
-      }
+    try {
+      const agent = this.langgraphService.build();
+      const result: AsyncGenerator<any, void, unknown> = await agent.stream(
+        {
+          cvText: cvText,
+          maxAppliedJobs: options.maxJobs,
+          jobs: jobs,
+        },
+        {
+          configurable: { thread_id: options.threadId },
+          // recursion is a super-step, and in my graph there are currently 4 super-steps for each job.
+          // I also add a buffer of 5 (random number) just be sure.
+          recursionLimit: 4 * jobs.length + 5,
+          streamMode: 'updates',
+        },
+      );
+      for await (const chunk of result) {
+        if (chunk.job_evaluator?.evaluatedJobsCount !== undefined) {
+          this.logger.debug(
+            'Evaluated Jobs Count: ' + chunk.job_evaluator.evaluatedJobsCount,
+          );
+          await this.jobApplicationProcessingRunRepository.update(
+            { threadId: options.threadId },
+            {
+              evaluatedJobApplications: chunk.job_evaluator.evaluatedJobsCount,
+            },
+          );
+        }
 
-      if (chunk.job_evaluator?.dismissedJobsCount !== undefined) {
-        this.logger.debug(
-          'Dismissed Jobs Count: ' + chunk.job_evaluator.dismissedJobsCount,
-        );
-        await this.jobApplicationProcessingRunRepository.update(
-          { threadId: options.threadId },
-          {
-            dismissedJobApplications: chunk.job_evaluator.dismissedJobsCount,
-          },
-        );
-      }
+        if (chunk.job_evaluator?.dismissedJobsCount !== undefined) {
+          this.logger.debug(
+            'Dismissed Jobs Count: ' + chunk.job_evaluator.dismissedJobsCount,
+          );
+          await this.jobApplicationProcessingRunRepository.update(
+            { threadId: options.threadId },
+            {
+              dismissedJobApplications: chunk.job_evaluator.dismissedJobsCount,
+            },
+          );
+        }
 
-      if (chunk.cover_letter_generator?.appliedJobsCount !== undefined) {
-        this.logger.debug(
-          'Applied Jobs Count: ' +
-            chunk.cover_letter_generator.appliedJobsCount,
-        );
-        await this.jobApplicationProcessingRunRepository.update(
-          { threadId: options.threadId },
-          {
-            appliedJobApplications:
+        if (chunk.cover_letter_generator?.appliedJobsCount !== undefined) {
+          this.logger.debug(
+            'Applied Jobs Count: ' +
               chunk.cover_letter_generator.appliedJobsCount,
-          },
-        );
+          );
+          await this.jobApplicationProcessingRunRepository.update(
+            { threadId: options.threadId },
+            {
+              appliedJobApplications:
+                chunk.cover_letter_generator.appliedJobsCount,
+            },
+          );
+        }
+
+        if (chunk.cover_letter_generator?.coverLetters) {
+          this.logger.debug(
+            'Cover Letters: ' +
+              JSON.stringify(chunk.cover_letter_generator.coverLetters),
+          );
+          const coverLetters = Array.isArray(
+            chunk.cover_letter_generator.coverLetters,
+          )
+            ? chunk.cover_letter_generator.coverLetters
+            : [chunk.cover_letter_generator.coverLetters];
+
+          await this.jobsService.updateJobApplications(
+            coverLetters.map(
+              (coverLetter: { url: string; coverLetter: string }) => ({
+                url: coverLetter.url,
+                coverLetter: coverLetter.coverLetter,
+              }),
+            ),
+          );
+        }
       }
 
-      if (chunk.cover_letter_generator?.coverLetters) {
-        this.logger.debug(
-          'Cover Letters: ' +
-            JSON.stringify(chunk.cover_letter_generator.coverLetters),
-        );
-        const coverLetters = Array.isArray(
-          chunk.cover_letter_generator.coverLetters,
-        )
-          ? chunk.cover_letter_generator.coverLetters
-          : [chunk.cover_letter_generator.coverLetters];
+      this.logger.info('Agent Finished');
 
-        await this.jobsService.updateJobApplications(
-          coverLetters.map(
-            (coverLetter: { url: string; coverLetter: string }) => ({
-              url: coverLetter.url,
-              coverLetter: coverLetter.coverLetter,
-            }),
-          ),
-        );
-      }
+      await this.jobApplicationProcessingRunRepository.update(
+        { threadId: options.threadId },
+        {
+          status: 'completed',
+        },
+      );
+    } catch (error) {
+      await this.jobApplicationProcessingRunRepository.update(
+        { threadId: options.threadId },
+        {
+          status: 'failed',
+        },
+      );
+      throw error;
     }
-
-    this.logger.info('Agent Finished');
-
-    await this.jobApplicationProcessingRunRepository.update(
-      { threadId: options.threadId },
-      {
-        status: 'completed',
-      },
-    );
   }
 }

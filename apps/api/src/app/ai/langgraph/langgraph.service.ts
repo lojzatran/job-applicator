@@ -167,9 +167,11 @@ export class LanggraphService {
           .withStructuredOutput(z.enum(['true', 'false']))
           .invoke(prompt);
         this.logger.info(`Evaluated job by LLM: ${response}`);
+        const isValidJob = response.toLowerCase() === 'true';
         return {
-          isValidJob: response.toLowerCase() === 'true',
+          isValidJob,
           evaluatedJobsCount: state.evaluatedJobsCount + 1,
+          dismissedJobsCount: state.dismissedJobsCount + (isValidJob ? 0 : 1),
         };
       } else {
         return {

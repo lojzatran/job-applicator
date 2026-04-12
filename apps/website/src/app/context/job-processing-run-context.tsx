@@ -72,7 +72,7 @@ export const JobProcessingRunProvider = ({
           if (!res.ok) throw new Error('Request failed');
 
           const json = await res.json();
-          if (json.status === 'completed') {
+          if (json.status === 'completed' || json.status === 'failed') {
             setJobProcessingRun(null);
           } else {
             setJobProcessingRun(json);
@@ -80,7 +80,7 @@ export const JobProcessingRunProvider = ({
         } catch (error: unknown) {
           if (error instanceof Error && error.name !== 'AbortError') {
             console.error(error);
-            localStorage.removeItem('jobProcessingRun');
+            setJobProcessingRun(null);
           }
         }
       }, 1000);

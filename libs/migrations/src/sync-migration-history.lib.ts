@@ -67,41 +67,46 @@ export async function syncMigrationHistory(): Promise<void> {
   });
 
   try {
-    const existingHistory = await pool.query<MigrationRecord>(`
-      SELECT "timestamp"::text AS "timestamp", "name"
-      FROM "migrations"
-      ORDER BY "id" ASC
-    `);
-
-    if (areMigrationRecordsEqual(existingHistory.rows, expectedRecords)) {
-      logger.info('Migration history is already in sync.');
-      return;
-    }
-
-    await pool.query('BEGIN');
+    const client = await pool.connect();
 
     try {
-      await pool.query(`CREATE TABLE IF NOT EXISTS "migrations" (
+      await client.query('BEGIN');
+
+      await client.query(`CREATE TABLE IF NOT EXISTS "migrations" (
         "id" SERIAL NOT NULL,
         "timestamp" bigint NOT NULL,
         "name" character varying NOT NULL,
         CONSTRAINT "PK_migrations" PRIMARY KEY ("id")
       )`);
 
-      await pool.query(`TRUNCATE TABLE "migrations" RESTART IDENTITY`);
+      const existingHistory = await client.query<MigrationRecord>(`
+        SELECT "timestamp"::text AS "timestamp", "name"
+        FROM "migrations"
+        ORDER BY "id" ASC
+      `);
+
+      if (areMigrationRecordsEqual(existingHistory.rows, expectedRecords)) {
+        await client.query('COMMIT');
+        logger.info('Migration history is already in sync.');
+        return;
+      }
+
+      await client.query(`TRUNCATE TABLE "migrations" RESTART IDENTITY`);
 
       for (const record of expectedRecords) {
-        await pool.query(
+        await client.query(
           `INSERT INTO "migrations" ("timestamp", "name") VALUES ($1, $2)`,
           [record.timestamp, record.name],
         );
       }
 
-      await pool.query('COMMIT');
+      await client.query('COMMIT');
       logger.info('Migration history synchronized.');
     } catch (error) {
-      await pool.query('ROLLBACK');
+      await client.query('ROLLBACK');
       throw error;
+    } finally {
+      client.release();
     }
   } finally {
     await pool.end();
