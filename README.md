@@ -17,7 +17,7 @@ Job Applicator helps you discover jobs from multiple sources, evaluate how well 
 - `POSTGRES_PASSWORD` - Database password.
 - `POSTGRES_DB` - Database name.
 - `RABBITMQ_URL` - RabbitMQ connection string, usually `amqp://localhost` for local development.
-- `RABBITMQ_QUEUE` - Queue name used for job-processing messages.
+- `RABBITMQ_QUEUE_PROCESS` - Queue name used for job-processing messages.
 - `JOB_EVALUATOR_MODEL` - LLM model name used to evaluate whether a job matches the CV.
 - `OLLAMA_BASE_URL` - Required when using Ollama-based models for job evaluation, cover letters, and critique.
 - `COVER_LETTER_GENERATOR_MODEL` - LLM model name used to generate the cover letter.
@@ -221,3 +221,8 @@ The main graph works as follows:
 - `CoverLetterGraph` adds a critique-and-rewrite loop so the generated letter is refined before it is stored.
 
 The graph keeps track of how many jobs have already been processed and stops once it reaches the configured maximum.
+
+## Production deployment
+### Docker
+To build a docker container for API, run the following command
+`docker build --no-cache --progress=plain -f apps/api/Dockerfile -t job-applicator-api:latest .`
