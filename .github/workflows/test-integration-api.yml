@@ -1,9 +1,7 @@
 name: test
 
 on:
-  push:
-    branches:
-      - '**'
+  workflow_call:
 
 jobs:
   test:
@@ -97,6 +95,7 @@ jobs:
         run: |
           ollama pull "$EMBEDDING_MODEL"
           ollama pull "$COVER_LETTER_GENERATOR_MODEL"
+          ollama pull "$CRITIQUE_MODEL"
 
       - name: Run all tests
         run: npm test

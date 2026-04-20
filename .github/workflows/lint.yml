@@ -1,8 +1,7 @@
 name: linting
+
 on:
-  push:
-    branches:
-      - '**'
+  workflow_call:
 
 jobs:
   lint:
@@ -25,3 +24,6 @@ jobs:
 
       - name: Run typecheck
         run: npm run typecheck
+
+      - name: Check formatting
+        run: npx prettier --check .
