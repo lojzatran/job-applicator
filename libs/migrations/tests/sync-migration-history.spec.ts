@@ -91,13 +91,13 @@ describe('sync-migration-history', () => {
       importer,
     );
 
-    expect(migrationClasses.map((migrationClass) => migrationClass.name)).toEqual(
-      [
-        'CreateJobApplication1774427783302',
-        'UpdateJobApplication1774427783303',
-        'AddUniqueThreadIdToJobApplicationProcessingRun1775979793346',
-      ],
-    );
+    expect(
+      migrationClasses.map((migrationClass) => migrationClass.name),
+    ).toEqual([
+      'CreateJobApplication1774427783302',
+      'UpdateJobApplication1774427783303',
+      'AddUniqueThreadIdToJobApplicationProcessingRun1775979793346',
+    ]);
   });
 
   it('detects matching migration histories', () => {

@@ -19,12 +19,14 @@ describe('cleanHtml', () => {
     });
 
     it('should remove attributes from nested tags', () => {
-      const input = '<div style="color:red"><span class="bold">Text</span></div>';
+      const input =
+        '<div style="color:red"><span class="bold">Text</span></div>';
       expect(cleanHtml(input)).toBe('<div><span>Text</span></div>');
     });
 
     it('should remove multiple attributes on the same element', () => {
-      const input = '<a href="https://example.com" target="_blank" rel="noopener">Link</a>';
+      const input =
+        '<a href="https://example.com" target="_blank" rel="noopener">Link</a>';
       expect(cleanHtml(input)).toBe('<a>Link</a>');
     });
   });
@@ -74,7 +76,9 @@ describe('cleanHtml', () => {
         </div>
       `;
       const result = cleanHtml(input);
-      expect(result).toBe('<div><h1> Job Title </h1><p>Description text</p></div>');
+      expect(result).toBe(
+        '<div><h1> Job Title </h1><p>Description text</p></div>',
+      );
     });
   });
 });

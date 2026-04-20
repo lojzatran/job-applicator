@@ -105,7 +105,7 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-    - uploads:/app/uploads
+      - uploads:/app/uploads
 
   db-reset:
     build:
@@ -122,7 +122,6 @@ services:
         condition: service_healthy
     profiles:
       - tools
-
 
 volumes:
   ollama_data:
