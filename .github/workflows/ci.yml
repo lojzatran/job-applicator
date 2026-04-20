@@ -17,6 +17,7 @@ jobs:
 
   test-integration-api:
     uses: ./.github/workflows/test-integration-api.yml
+    secrets: inherit
 
   deploy:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
