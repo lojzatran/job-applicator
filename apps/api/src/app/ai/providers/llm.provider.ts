@@ -10,6 +10,12 @@ import {
 import { env } from '../../../utils/env';
 import { OllamaEmbeddings } from '@langchain/ollama';
 
+function createOllamaHeaders(): Record<string, string> {
+  return env.OLLAMA_API_KEY
+    ? { Authorization: `Bearer ${env.OLLAMA_API_KEY}` }
+    : {};
+}
+
 function createJobEvaluatorLlm() {
   if (env.GEMINI_API_KEY) {
     return new ChatGoogleGenerativeAI({
@@ -25,9 +31,7 @@ function createJobEvaluatorLlm() {
     return new ChatOllama({
       model: env.JOB_EVALUATOR_MODEL,
       baseUrl: env.OLLAMA_BASE_URL,
-      headers: env.OLLAMA_API_KEY ? {
-        Authorization: `Bearer ${env.OLLAMA_API_KEY}`,
-      } : {},
+      headers: createOllamaHeaders(),
       temperature: 0,
     });
   }
@@ -43,9 +47,7 @@ function createCoverLetterGeneratorLlm() {
   return new ChatOllama({
     model: env.COVER_LETTER_GENERATOR_MODEL,
     baseUrl: env.OLLAMA_BASE_URL,
-    headers: env.OLLAMA_API_KEY ? {
-        Authorization: `Bearer ${env.OLLAMA_API_KEY}`,
-      } : {},
+    headers: createOllamaHeaders(),
     temperature: 0.7,
   });
 }
@@ -60,9 +62,7 @@ function createCritiqueLlm() {
   return new ChatOllama({
     model: env.CRITIQUE_MODEL,
     baseUrl: env.OLLAMA_BASE_URL,
-    headers: env.OLLAMA_API_KEY ? {
-        Authorization: `Bearer ${env.OLLAMA_API_KEY}`,
-      } : {},
+    headers: createOllamaHeaders(),
     temperature: 0.7,
   });
 }
@@ -78,9 +78,7 @@ function createCvParserLlm() {
   return new ChatOllama({
     model: env.CV_PARSER_MODEL,
     baseUrl: env.OLLAMA_BASE_URL,
-    headers: env.OLLAMA_API_KEY ? {
-        Authorization: `Bearer ${env.OLLAMA_API_KEY}`,
-      } : {},
+    headers: createOllamaHeaders(),
     temperature: 0,
   });
 }

@@ -36,7 +36,7 @@ services:
     profiles:
       - ai
     build:
-      dockerfile: ollama.Dockerfile
+      dockerfile: Dockerfile.ollama
     ports:
       - '11434:11434'
     volumes:
