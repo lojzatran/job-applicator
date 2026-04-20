@@ -43,8 +43,8 @@ jobs:
       - name: Build all projects
         run: npm run build
 
-      - name: Start services
-        run: docker compose up -d
+      - name: Start infrastructure
+        run: docker compose --profile "infrastructure" up -d
 
       - name: Install Ollama
         run: curl -fsSL https://ollama.com/install.sh | sh

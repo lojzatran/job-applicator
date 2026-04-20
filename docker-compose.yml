@@ -12,6 +12,8 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
+    profiles:
+      - infrastructure
   postgres:
     image: pgvector/pgvector:pg18
     ports:
@@ -28,7 +30,11 @@ services:
       timeout: 5s
       retries: 10
       start_period: 10s
+    profiles:
+      - infrastructure
   ollama:
+    profiles:
+      - ai
     build:
       dockerfile: ollama.Dockerfile
     ports:
@@ -42,6 +48,8 @@ services:
       retries: 20
       start_period: 60s
   api:
+    profiles:
+      - app
     build:
       context: .
       dockerfile: apps/api/Dockerfile
@@ -75,6 +83,8 @@ services:
       - uploads:/app/uploads
 
   website:
+    profiles:
+      - app
     build:
       context: .
       dockerfile: apps/website/Dockerfile

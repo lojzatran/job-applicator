@@ -259,7 +259,7 @@ docker compose --profile "*" up -d
 To start the normal stack using the persisted database and configuration, run:
 
 ```sh
-docker compose up -d
+docker compose --profile app --profile infrastructure up -d
 ```
 
 To build a docker container for API, run the following command:
