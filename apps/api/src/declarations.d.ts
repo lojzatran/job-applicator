@@ -4,10 +4,24 @@ declare module 'linkedin-jobs-api' {
     keyword?: string;
     location?: string;
     dateSincePosted?: 'past month' | 'past week' | '24hr' | string;
-    jobType?: 'full time' | 'part time' | 'contract' | 'temporary' | 'volunteer' | 'internship' | string;
+    jobType?:
+      | 'full time'
+      | 'part time'
+      | 'contract'
+      | 'temporary'
+      | 'volunteer'
+      | 'internship'
+      | string;
     remoteFilter?: 'on-site' | 'remote' | 'hybrid' | string;
     salary?: '40000' | '60000' | '80000' | '100000' | '120000' | string;
-    experienceLevel?: 'internship' | 'entry level' | 'associate' | 'senior' | 'director' | 'executive' | string;
+    experienceLevel?:
+      | 'internship'
+      | 'entry level'
+      | 'associate'
+      | 'senior'
+      | 'director'
+      | 'executive'
+      | string;
     sortBy?: 'recent' | 'relevant' | string;
     limit?: number | string;
     page?: number | string;
@@ -26,7 +40,9 @@ declare module 'linkedin-jobs-api' {
     agoTime: string;
   }
 
-  export function query(queryObject: LinkedInQueryObject): Promise<LinkedInJob[]>;
+  export function query(
+    queryObject: LinkedInQueryObject,
+  ): Promise<LinkedInJob[]>;
   export function clearCache(): void;
   export function getCacheSize(): number;
 

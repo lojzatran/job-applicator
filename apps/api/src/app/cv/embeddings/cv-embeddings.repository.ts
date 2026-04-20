@@ -4,7 +4,6 @@ import { CvEmbeddingRecord, SqlExecutor, WeightedEmbedding } from './types';
 
 @Injectable()
 export class CvEmbeddingsRepository {
-
   async insertCvEmbeddings(
     embeddings: CvEmbeddingRecord[],
     manager: SqlExecutor,

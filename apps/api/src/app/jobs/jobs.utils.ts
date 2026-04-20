@@ -21,8 +21,8 @@ export const cleanHtml = (html: string): string => {
     $('body')
       .html()
       ?.replace(/<!--[\s\S]*?-->/g, '') // Remove comments
-      .replace(/\s+/g, ' ')           // Normalize whitespace
-      .replace(/>\s+</g, '><')          // Remove space between tags
+      .replace(/\s+/g, ' ') // Normalize whitespace
+      .replace(/>\s+</g, '><') // Remove space between tags
       .trim() || ''
   );
 };

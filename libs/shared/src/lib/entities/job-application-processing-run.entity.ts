@@ -1,6 +1,6 @@
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
-@Entity()
+@Entity('job_application_processing_run')
 export class JobApplicationProcessingRun {
   @PrimaryGeneratedColumn()
   id!: number;

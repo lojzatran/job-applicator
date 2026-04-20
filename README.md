@@ -22,6 +22,8 @@ Job Applicator helps you discover jobs from multiple sources, evaluate how well 
 - `OLLAMA_BASE_URL` - Required when using Ollama-based models for job evaluation, cover letters, and critique.
 - `COVER_LETTER_GENERATOR_MODEL` - LLM model name used to generate the cover letter.
 - `CRITIQUE_MODEL` - LLM model name used to critique and rewrite the cover letter.
+- `CV_PARSER_MODEL` - LLM model name used to parse the CV.
+- `STORAGE_DIR` - Path to the directory where CVs are stored.
 
 Optional but supported:
 
@@ -223,6 +225,20 @@ The main graph works as follows:
 The graph keeps track of how many jobs have already been processed and stops once it reaches the configured maximum.
 
 ## Production deployment
+
 ### Docker
+
+To run the full stack locally with an empty database using Docker, run:
+`docker compose --profile "*" up -d`
+
+To run the full stack locally using Docker, run:
+`docker compose up -d`
+
 To build a docker container for API, run the following command
 `docker build --no-cache --progress=plain -f apps/api/Dockerfile -t job-applicator-api:latest .`
+
+To build a docker container for website, run the following command
+`docker build --no-cache --progress=plain -f apps/website/Dockerfile -t job-applicator-website:latest .`
+
+To run the website in a docker container, run the following command
+`docker run -d -p 3000:3000 job-applicator-website:latest`

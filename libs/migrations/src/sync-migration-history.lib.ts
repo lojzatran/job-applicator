@@ -1,7 +1,8 @@
 import { readdirSync } from 'fs';
 import { resolve } from 'path';
 import { Pool } from 'pg';
-import { createLogger, env } from '@apps/shared';
+import { env } from '../../shared/src/lib/utils/env';
+import { createLogger } from '../../shared/src/lib/logger/pinoLogger';
 
 export interface MigrationRecord {
   timestamp: string;

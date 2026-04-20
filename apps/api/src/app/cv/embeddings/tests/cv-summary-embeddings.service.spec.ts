@@ -81,14 +81,19 @@ function createService(
 
 function createDataSource(): DataSource {
   return {
-    transaction: jest.fn(async (callback: (manager: EntityManager) => Promise<unknown>) => {
-      return callback({} as EntityManager);
-    }),
+    transaction: jest.fn(
+      async (callback: (manager: EntityManager) => Promise<unknown>) => {
+        return callback({} as EntityManager);
+      },
+    ),
   } as unknown as DataSource;
 }
 
 function createRepository(): jest.Mocked<
-  Pick<CvEmbeddingsRepository, 'insertCvEmbeddings' | 'getJobAndCvMatchingScore'>
+  Pick<
+    CvEmbeddingsRepository,
+    'insertCvEmbeddings' | 'getJobAndCvMatchingScore'
+  >
 > {
   return {
     insertCvEmbeddings: jest.fn().mockResolvedValue(undefined),

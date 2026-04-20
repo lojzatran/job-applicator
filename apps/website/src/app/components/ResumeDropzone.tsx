@@ -12,7 +12,7 @@ interface ResumeDropzoneProps {
   onDragOver: (event: DragEvent<HTMLLabelElement>) => void;
   onDragLeave: (event: DragEvent<HTMLLabelElement>) => void;
   onOpenFilePicker: () => void;
-};
+}
 
 const formatFileSize = (fileSize: number) => {
   if (fileSize < 1024 * 1024) {
@@ -50,8 +50,8 @@ export const ResumeDropzone = ({
           </div>
         </div>
         <p className="text-sm leading-6 text-slate-500 dark:text-slate-400">
-          Drop in the resume you want to tailor. The file will be uploaded to the
-          project storage before the application workflow continues.
+          Drop in the resume you want to tailor. The file will be uploaded to
+          the project storage before the application workflow continues.
         </p>
       </div>
 

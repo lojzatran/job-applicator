@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { readFile } from 'node:fs/promises';
 import { pageTextFromContent } from './pdf.utils';
 import { PdfTextContent } from './pdf.types';
 
@@ -8,7 +9,10 @@ export class PdfService {
     const pdfjsLib = await import(
       /* webpackIgnore: true */ 'pdfjs-dist/legacy/build/pdf.mjs'
     );
-    const pdf = await pdfjsLib.getDocument(filePath).promise;
+    const fileBuffer = await readFile(filePath);
+    const pdf = await pdfjsLib.getDocument({
+      data: new Uint8Array(fileBuffer),
+    }).promise;
 
     const totalPageCount = pdf.numPages;
     const countPromises: Promise<string>[] = [];

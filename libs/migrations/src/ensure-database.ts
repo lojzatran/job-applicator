@@ -1,6 +1,6 @@
 import { Pool } from 'pg';
 import { env } from '../../shared/src/lib/utils/env';
-import { createLogger } from '@apps/shared';
+import { createLogger } from '../../shared/src/lib/logger/pinoLogger';
 
 const logger = createLogger('ensure-database');
 

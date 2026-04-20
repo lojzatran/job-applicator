@@ -18,8 +18,6 @@ const sharedEnvShape = {
   POSTGRES_USER: z.string(),
   POSTGRES_PASSWORD: z.string(),
   POSTGRES_DB: z.string(),
-  RABBITMQ_URL: z.string(),
-  RABBITMQ_QUEUE_PROCESS: z.string().default('job_application.process'),
   NODE_ENV: z
     .enum(['development', 'production', 'test'])
     .default('development'),
