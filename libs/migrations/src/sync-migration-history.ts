@@ -1,5 +1,5 @@
 import { syncMigrationHistory } from './sync-migration-history.lib';
-import { createLogger } from '../../shared/src/lib/logger/pinoLogger';
+import { createLogger } from '@apps/shared/pinoLogger';
 
 const logger = createLogger('sync-migration-history');
 

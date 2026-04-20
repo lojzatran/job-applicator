@@ -88,7 +88,7 @@ function createCvParserLlm() {
 function embeddingModel() {
   const embeddingModel = new OllamaEmbeddings({
     model: env.EMBEDDING_MODEL,
-    baseUrl: env.OLLAMA_EMBEDDING_BASE_URL ?? 'http://localhost:11434',
+    baseUrl: env.OLLAMA_EMBEDDING_BASE_URL,
   });
 
   return embeddingModel;

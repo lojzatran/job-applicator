@@ -1,8 +1,10 @@
 import { readdirSync } from 'fs';
 import { resolve } from 'path';
+import { pathToFileURL } from 'url';
 import { Pool } from 'pg';
-import { env } from '../../shared/src/lib/utils/env';
-import { createLogger } from '../../shared/src/lib/logger/pinoLogger';
+import type { MigrationInterface } from 'typeorm';
+import { createLogger } from '@apps/shared/pinoLogger';
+import { env } from '@apps/shared/env';
 
 export interface MigrationRecord {
   timestamp: string;
@@ -10,9 +12,15 @@ export interface MigrationRecord {
 }
 
 export type MigrationDirectoryReader = (path: string) => readonly string[];
+export type MigrationModuleImporter = (
+  path: string,
+) => Promise<Record<string, unknown>>;
+export type MigrationClass = new () => MigrationInterface;
 
 const logger = createLogger('sync-migration-history');
 const defaultReadDir: MigrationDirectoryReader = (path) => readdirSync(path);
+const defaultImportModule: MigrationModuleImporter = async (path) =>
+  import(pathToFileURL(path).href);
 
 export function buildMigrationRecord(fileName: string): MigrationRecord {
   const match = fileName.match(/^(\d+)-(.+)\.(?:ts|js)$/);
@@ -40,6 +48,66 @@ export function getExpectedMigrationRecords(
     .filter((fileName) => fileName.endsWith('.ts') || fileName.endsWith('.js'))
     .map((fileName) => buildMigrationRecord(fileName))
     .sort((left, right) => Number(left.timestamp) - Number(right.timestamp));
+}
+
+export function getExpectedMigrationFileNames(
+  migrationsDirectory = resolve(process.cwd(), 'libs/migrations/src/scripts'),
+  readDir: MigrationDirectoryReader = defaultReadDir,
+): string[] {
+  return readDir(migrationsDirectory)
+    .filter((fileName) => fileName.endsWith('.ts') || fileName.endsWith('.js'))
+    .sort(
+      (left, right) =>
+        Number(buildMigrationRecord(left).timestamp) -
+        Number(buildMigrationRecord(right).timestamp),
+    );
+}
+
+export async function loadMigrationClasses(
+  migrationsDirectory = resolve(process.cwd(), 'libs/migrations/src/scripts'),
+  readDir: MigrationDirectoryReader = defaultReadDir,
+  importModule: MigrationModuleImporter = defaultImportModule,
+): Promise<MigrationClass[]> {
+  const migrationFileNames = getExpectedMigrationFileNames(
+    migrationsDirectory,
+    readDir,
+  );
+
+  const migrationClasses: MigrationClass[] = [];
+
+  for (const fileName of migrationFileNames) {
+    const migrationRecord = buildMigrationRecord(fileName);
+    const migrationPath = resolve(migrationsDirectory, fileName);
+
+    let moduleExports: Record<string, unknown>;
+
+    try {
+      moduleExports = await importModule(migrationPath);
+    } catch (error) {
+      throw new Error(
+        `Failed to load migration module "${fileName}" from "${migrationPath}".`,
+        {
+          cause: error,
+        },
+      );
+    }
+
+    const migrationClass = moduleExports[migrationRecord.name];
+
+    if (typeof migrationClass !== 'function') {
+      const availableExports = Object.keys(moduleExports);
+      throw new Error(
+        [
+          `Migration "${fileName}" must export a class named "${migrationRecord.name}".`,
+          `Available exports: ${availableExports.length > 0 ? availableExports.join(', ') : '(none)'}`,
+        ].join(' '),
+      );
+    }
+
+    migrationClasses.push(migrationClass as MigrationClass);
+  }
+
+  return migrationClasses;
 }
 
 export function areMigrationRecordsEqual(

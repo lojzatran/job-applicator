@@ -1,6 +1,6 @@
 import { Pool } from 'pg';
-import { env } from '../../shared/src/lib/utils/env';
-import { createLogger } from '../../shared/src/lib/logger/pinoLogger';
+import { createLogger } from '@apps/shared/pinoLogger';
+import { env } from '@apps/shared/env';
 
 const logger = createLogger('reset-database');
 

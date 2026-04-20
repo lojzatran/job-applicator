@@ -23,10 +23,10 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NX_DAEMON=false
 
-COPY --from=builder /app/node_modules ./node_modules
 COPY package.json package-lock.json nx.json tsconfig.base.json ./
 COPY apps/api/package.json apps/api/package.json
 COPY libs/shared/package.json libs/shared/package.json
+RUN npm ci --omit=dev
 COPY --from=builder /app/apps/api/dist apps/api/dist
 COPY --from=builder /app/libs/shared/dist libs/shared/dist
 
