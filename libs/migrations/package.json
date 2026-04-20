@@ -1,0 +1,17 @@
+{
+  "name": "db-reset-tools",
+  "private": true,
+  "scripts": {
+    "db:reset": "tsx --tsconfig tsconfig.base.json libs/migrations/src/ensure-database.ts && tsx --tsconfig tsconfig.base.json libs/migrations/src/reset-database.ts && npm run migrate",
+    "migrate": "tsx --tsconfig tsconfig.base.json libs/migrations/src/migrate.ts"
+  },
+  "dependencies": {
+    "@apps/shared": "file:libs/shared",
+    "dotenv": "^17.3.1",
+    "pino": "^10.3.1",
+    "pg": "^8.20.0",
+    "tsx": "^4.21.0",
+    "typeorm": "^0.3.28",
+    "zod": "^4.3.6"
+  }
+}

@@ -1,9 +1,7 @@
 name: test
 
 on:
-  push:
-    branches:
-      - '**'
+  workflow_call:
 
 jobs:
   test:
@@ -43,8 +41,8 @@ jobs:
       - name: Build all projects
         run: npm run build
 
-      - name: Start services
-        run: docker compose up -d
+      - name: Start infrastructure
+        run: docker compose --profile "infrastructure" up -d
 
       - name: Install Ollama
         run: curl -fsSL https://ollama.com/install.sh | sh
@@ -97,6 +95,7 @@ jobs:
         run: |
           ollama pull "$EMBEDDING_MODEL"
           ollama pull "$COVER_LETTER_GENERATOR_MODEL"
+          ollama pull "$CRITIQUE_MODEL"
 
       - name: Run all tests
         run: npm test

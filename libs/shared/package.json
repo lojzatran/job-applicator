@@ -18,6 +18,18 @@
       "types": "./dist/lib/utils/env-utils.d.ts",
       "import": "./dist/lib/utils/env-utils.js",
       "default": "./dist/lib/utils/env-utils.js"
+    },
+    "./env": {
+      "@apps/source": "./src/lib/utils/env.ts",
+      "types": "./dist/lib/utils/env.d.ts",
+      "import": "./dist/lib/utils/env.js",
+      "default": "./dist/lib/utils/env.js"
+    },
+    "./pinoLogger": {
+      "@apps/source": "./src/lib/logger/pinoLogger.ts",
+      "types": "./dist/lib/logger/pinoLogger.d.ts",
+      "import": "./dist/lib/logger/pinoLogger.js",
+      "default": "./dist/lib/logger/pinoLogger.js"
     }
   },
   "dependencies": {

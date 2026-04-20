@@ -8,14 +8,15 @@
     "test": "nx run-many --targets=test --all",
     "test:unit": "nx test website && nx test api -- --testPathIgnorePatterns=integration\\.spec\\.ts$ && npx jest --runInBand --config libs/migrations/tests/jest.config.cjs",
     "test-integration:api": "POSTGRES_DB=test npm run db:reset && POSTGRES_DB=test nx test api -- --runInBand --testPathPatterns=integration\\.spec\\.ts$",
-    "migrate": "typeorm migration:run -d libs/migrations/src/migration-data-source.cjs && tsx libs/migrations/src/sync-migration-history.ts",
+    "migrate": "tsx libs/migrations/src/migrate.ts",
     "db:reset": "tsx libs/migrations/src/ensure-database.ts && tsx libs/migrations/src/reset-database.ts && npm run migrate",
     "export-graph": "tsx --tsconfig tsconfig.base.json docs/scripts/export-langgraph-graph.ts",
     "ai-eval:node-job-evaluator": "POSTGRES_DB=eval npm run db:reset && POSTGRES_DB=eval tsx --tsconfig apps/ai-evaluation/tsconfig.app.json apps/ai-evaluation/src/node-job-evaluator/job-evaluator.dataset.ts && POSTGRES_DB=eval tsx --tsconfig apps/ai-evaluation/tsconfig.app.json apps/ai-evaluation/src/node-job-evaluator/job-evaluator-gemma3:12b.eval.ts",
     "ai-eval:graph": "POSTGRES_DB=eval npm run db:reset && POSTGRES_DB=eval tsx --tsconfig apps/ai-evaluation/tsconfig.app.json apps/ai-evaluation/src/graph/graph-dataset.ts && POSTGRES_DB=eval tsx --tsconfig apps/ai-evaluation/tsconfig.app.json apps/ai-evaluation/src/graph/graph-gemma.eval.ts",
     "lint": "nx run-many --targets=lint --all",
     "typecheck": "nx run-many --targets=typecheck --all",
-    "build": "npx nx run-many -t build --all"
+    "build": "npx nx run-many -t build --all",
+    "format": "prettier --write ."
   },
   "private": true,
   "dependencies": {

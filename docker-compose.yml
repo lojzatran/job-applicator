@@ -12,6 +12,8 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
+    profiles:
+      - infrastructure
   postgres:
     image: pgvector/pgvector:pg18
     ports:
@@ -28,3 +30,99 @@ services:
       timeout: 5s
       retries: 10
       start_period: 10s
+    profiles:
+      - infrastructure
+  ollama:
+    profiles:
+      - ai
+    build:
+      dockerfile: Dockerfile.ollama
+    ports:
+      - '11434:11434'
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:11434/api/tags']
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
+  api:
+    profiles:
+      - app
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    ports:
+      - '3000:3000'
+    environment:
+      - NODE_ENV=production
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=job_applicator
+      - JOB_EVALUATOR_MODEL=gemma3:4b-cloud
+      - OLLAMA_BASE_URL=https://ollama.com
+      - COVER_LETTER_GENERATOR_MODEL=gemma3:4b-cloud
+      - CV_PARSER_MODEL=gemma3:4b-cloud
+      - CRITIQUE_MODEL=gemma3:4b-cloud
+      - STORAGE_DIR=/app/uploads
+      - OLLAMA_EMBEDDING_BASE_URL=http://ollama:11434
+      - EMBEDDING_MODEL=nomic-embed-text-v2-moe:latest
+      - OLLAMA_API_KEY=${OLLAMA_API_KEY}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    volumes:
+      - uploads:/app/uploads
+
+  website:
+    profiles:
+      - app
+    build:
+      context: .
+      dockerfile: apps/website/Dockerfile
+    ports:
+      - '3001:3000'
+    environment:
+      - NODE_ENV=production
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=job_applicator
+      - STORAGE_DIR=/app/uploads
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    volumes:
+      - uploads:/app/uploads
+
+  db-reset:
+    build:
+      context: .
+      dockerfile: Dockerfile.db-reset
+    environment:
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=job_applicator
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - tools
+
+volumes:
+  ollama_data:
+  uploads:

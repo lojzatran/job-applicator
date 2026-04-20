@@ -10,6 +10,12 @@ import {
 import { env } from '../../../utils/env';
 import { OllamaEmbeddings } from '@langchain/ollama';
 
+function createOllamaHeaders(): Record<string, string> {
+  return env.OLLAMA_API_KEY
+    ? { Authorization: `Bearer ${env.OLLAMA_API_KEY}` }
+    : {};
+}
+
 function createJobEvaluatorLlm() {
   if (env.GEMINI_API_KEY) {
     return new ChatGoogleGenerativeAI({
@@ -25,6 +31,7 @@ function createJobEvaluatorLlm() {
     return new ChatOllama({
       model: env.JOB_EVALUATOR_MODEL,
       baseUrl: env.OLLAMA_BASE_URL,
+      headers: createOllamaHeaders(),
       temperature: 0,
     });
   }
@@ -40,6 +47,7 @@ function createCoverLetterGeneratorLlm() {
   return new ChatOllama({
     model: env.COVER_LETTER_GENERATOR_MODEL,
     baseUrl: env.OLLAMA_BASE_URL,
+    headers: createOllamaHeaders(),
     temperature: 0.7,
   });
 }
@@ -54,6 +62,7 @@ function createCritiqueLlm() {
   return new ChatOllama({
     model: env.CRITIQUE_MODEL,
     baseUrl: env.OLLAMA_BASE_URL,
+    headers: createOllamaHeaders(),
     temperature: 0.7,
   });
 }
@@ -69,6 +78,7 @@ function createCvParserLlm() {
   return new ChatOllama({
     model: env.CV_PARSER_MODEL,
     baseUrl: env.OLLAMA_BASE_URL,
+    headers: createOllamaHeaders(),
     temperature: 0,
   });
 }
@@ -76,7 +86,8 @@ function createCvParserLlm() {
 function embeddingModel() {
   const embeddingModel = new OllamaEmbeddings({
     model: env.EMBEDDING_MODEL,
-    baseUrl: env.OLLAMA_BASE_URL ?? 'http://localhost:11434',
+    // this always has to be local because there is no embedding model on cloud
+    baseUrl: env.OLLAMA_EMBEDDING_BASE_URL,
   });
 
   return embeddingModel;

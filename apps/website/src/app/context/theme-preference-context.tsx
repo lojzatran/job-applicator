@@ -51,9 +51,7 @@ export const ThemePreferenceProvider = ({
   };
 
   return (
-    <ThemePreferenceContext.Provider
-      value={{ isDarkMode, toggleDarkMode }}
-    >
+    <ThemePreferenceContext.Provider value={{ isDarkMode, toggleDarkMode }}>
       {children}
     </ThemePreferenceContext.Provider>
   );

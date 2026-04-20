@@ -13,7 +13,12 @@ async function main() {
 
   const cvEmbeddingsService = {} as unknown as CvEmbeddingsService;
 
-  const graph = new LanggraphService(llm, llm, llm, cvEmbeddingsService).build();
+  const graph = new LanggraphService(
+    llm,
+    llm,
+    llm,
+    cvEmbeddingsService,
+  ).build();
 
   const drawableGraph = await graph.getGraphAsync();
   const image = await drawableGraph.drawMermaidPng();

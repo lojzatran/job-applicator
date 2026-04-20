@@ -1,0 +1,17 @@
+node_modules
+dist
+.nx
+.git
+.cache
+coverage
+tmp
+apps/**/dist
+libs/**/dist
+**/.DS_Store
+.agents
+.github
+.vscode
+.env
+.env.*
+Dockerfile*
+docker-compose*.yml

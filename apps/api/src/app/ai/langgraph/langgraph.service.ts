@@ -152,9 +152,9 @@ export class LanggraphService {
           {jobDescription}
   
           OUTPUT:
-          - Return true if the candidate meets most core requirements (not everything, but clearly relevant).
-          - Return false otherwise
-          - Return only true or false, no other text or formatting, so that it can be parsed to boolean.
+          - Return a JSON object with the key "isValidJob" set to true if the candidate meets most core requirements.
+          - Set "isValidJob" to false otherwise.
+          - Example: {{ "isValidJob": true }}
         `);
 
         const prompt = await template.invoke({
@@ -164,10 +164,17 @@ export class LanggraphService {
         });
 
         const response = await this.jobEvaluatorLlm
-          .withStructuredOutput(z.enum(['true', 'false']))
+          .withStructuredOutput(
+            z.object({
+              isValidJob: z.union([z.boolean(), z.string()]),
+            }),
+          )
           .invoke(prompt);
-        this.logger.info(`Evaluated job by LLM: ${response}`);
-        const isValidJob = response.toLowerCase() === 'true';
+        this.logger.info(`Evaluated job by LLM: ${JSON.stringify(response)}`);
+        const isValidJob =
+          typeof response.isValidJob === 'boolean'
+            ? response.isValidJob
+            : response.isValidJob.trim().toLowerCase() === 'true';
         return {
           isValidJob,
           evaluatedJobsCount: state.evaluatedJobsCount + 1,

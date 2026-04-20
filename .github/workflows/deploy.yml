@@ -1,0 +1,104 @@
+name: Docker Build and Push
+
+on:
+  workflow_call:
+
+jobs:
+  docker-build-and-push:
+    runs-on: ubuntu-latest
+    env:
+      DOCKERHUB_USERNAME: lojzatran
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_TOKEN }}
+
+      - name: Metadata for job-applicator-api
+        id: meta-job-applicator-api
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.DOCKERHUB_USERNAME }}/job-applicator-api
+          tags: |
+            type=semver,pattern={{version}}
+            type=raw,value=latest
+
+      - name: Build and push job-applicator-api image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          push: true
+          tags: ${{ steps.meta-job-applicator-api.outputs.tags }}
+          labels: ${{ steps.meta-job-applicator-api.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Metadata for job-applicator-website
+        id: meta-job-applicator-website
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.DOCKERHUB_USERNAME }}/job-applicator-website
+          tags: |
+            type=semver,pattern={{version}}
+            type=raw,value=latest
+
+      - name: Build and push job-applicator-website image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/website/Dockerfile
+          push: true
+          tags: ${{ steps.meta-job-applicator-website.outputs.tags }}
+          labels: ${{ steps.meta-job-applicator-website.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Metadata for job-applicator-db-reset
+        id: meta-job-applicator-db-reset
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.DOCKERHUB_USERNAME }}/job-applicator-db-reset
+          tags: |
+            type=semver,pattern={{version}}
+            type=raw,value=latest
+
+      - name: Build and push job-applicator-db-reset image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.db-reset
+          push: true
+          tags: ${{ steps.meta-job-applicator-db-reset.outputs.tags }}
+          labels: ${{ steps.meta-job-applicator-db-reset.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Metadata for job-applicator-ollama
+        id: meta-job-applicator-ollama
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.DOCKERHUB_USERNAME }}/job-applicator-ollama
+          tags: |
+            type=semver,pattern={{version}}
+            type=raw,value=latest
+
+      - name: Build and push job-applicator-ollama image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.ollama
+          push: true
+          tags: ${{ steps.meta-job-applicator-ollama.outputs.tags }}
+          labels: ${{ steps.meta-job-applicator-ollama.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

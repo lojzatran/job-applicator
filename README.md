@@ -11,24 +11,56 @@ Job Applicator helps you discover jobs from multiple sources, evaluate how well 
 
 ## Required env vars
 
+### Database
+
 - `POSTGRES_HOST` - PostgreSQL host, usually `localhost` for local development.
 - `POSTGRES_PORT` - PostgreSQL port, usually `5432`.
 - `POSTGRES_USER` - Database user.
 - `POSTGRES_PASSWORD` - Database password.
 - `POSTGRES_DB` - Database name.
+
+### Queue
+
 - `RABBITMQ_URL` - RabbitMQ connection string, usually `amqp://localhost` for local development.
-- `RABBITMQ_QUEUE` - Queue name used for job-processing messages.
-- `JOB_EVALUATOR_MODEL` - LLM model name used to evaluate whether a job matches the CV.
-- `OLLAMA_BASE_URL` - Required when using Ollama-based models for job evaluation, cover letters, and critique.
-- `COVER_LETTER_GENERATOR_MODEL` - LLM model name used to generate the cover letter.
-- `CRITIQUE_MODEL` - LLM model name used to critique and rewrite the cover letter.
+- `RABBITMQ_QUEUE_PROCESS` - (Optional) Queue name used for job-processing messages. Defaults to `job_application.process`.
 
-Optional but supported:
+### AI & Models
 
-- `GEMINI_API_KEY` - If set, the job evaluator uses Gemini instead of Ollama.
+- `EMBEDDING_MODEL` - Model name for generating embeddings (e.g., `nomic-embed-text-v2-moe:latest`).
+- `JOB_EVALUATOR_MODEL` - Ollama model name used to evaluate whether a job matches the CV.
+- `CV_PARSER_MODEL` - Ollama model name used to parse the CV.
+- `COVER_LETTER_GENERATOR_MODEL` - Ollama model name used to generate the cover letter.
+- `CRITIQUE_MODEL` - Ollama model name used to critique and rewrite the cover letter.
+- `OLLAMA_BASE_URL` - Base URL for the Ollama API (e.g., `http://localhost:11434`).
+- `OLLAMA_EMBEDDING_BASE_URL` - Base URL for the Ollama embedding API.
+- `OLLAMA_API_KEY` - (Optional) API key for Ollama if running behind an authenticated proxy.
+
+### Storage
+
+- `STORAGE_DIR` - Path to the directory where CVs and uploads are stored.
+
+## Optional but supported
+
+### Gemini Configuration
+
+If `GEMINI_API_KEY` is set, the app can use Gemini models instead of Ollama for supported tasks.
+
+- `GEMINI_API_KEY` - Google Gemini API key.
+- `GEMINI_CV_PARSER_MODEL` - Gemini model for CV parsing (Default: `gemini-3.1-flash-lite-preview`).
+- `GEMINI_JOB_EVALUATOR_MODEL` - Gemini model for job evaluation (Default: `gemini-3.1-flash-lite-preview`).
+- `GEMINI_COVER_LETTER_GENERATOR_MODEL` - Gemini model for cover letter generation (Default: `gemini-3.1-flash-lite-preview`).
+- `GEMINI_CRITIQUE_MODEL` - Gemini model for cover letter critique (Default: `gemini-3.1-flash-lite-preview`).
+
+### LangSmith Tracing
+
 - `LANGSMITH_PROJECT` - LangSmith project name for tracing.
-- `LANGSMITH_TRACING` - Enables LangSmith tracing.
+- `LANGSMITH_TRACING` - Set to `true` to enable LangSmith tracing.
 - `LANGSMITH_API_KEY` - LangSmith API key.
+
+### Other
+
+- `NODE_ENV` - Environment mode (`development`, `production`, `test`). Defaults to `development`.
+- `SKIP_ENV_VALIDATION` - Set to `true` to bypass environment variable validation (useful for builds).
 
 ## Run Tasks
 
@@ -221,3 +253,43 @@ The main graph works as follows:
 - `CoverLetterGraph` adds a critique-and-rewrite loop so the generated letter is refined before it is stored.
 
 The graph keeps track of how many jobs have already been processed and stops once it reaches the configured maximum.
+
+## Production deployment
+
+### Docker
+
+To start the full stack with an empty database and profile intended for a fresh state, run:
+
+```sh
+docker compose --profile "*" up -d
+```
+
+To start the normal stack using the persisted database and configuration, run:
+
+```sh
+docker compose --profile app --profile infrastructure up -d
+```
+
+To stop all the docker containers, run the following command:
+
+```sh
+docker compose --profile "*" down
+```
+
+To build a docker container for API, run the following command:
+
+```sh
+docker build --no-cache --progress=plain -f apps/api/Dockerfile -t job-applicator-api:latest .
+```
+
+To build a docker container for the website, run the following command:
+
+```sh
+docker build --no-cache --progress=plain -f apps/website/Dockerfile -t job-applicator-website:latest .
+```
+
+To run the website in a docker container, use the command below. Note that the container requires several environment variables (such as `STORAGE_DIR`, `RABBITMQ_URL`, and `POSTGRES_*`) to boot correctly. It is recommended to use an `--env-file` or prefer running via the `docker-compose.yml` file as the standalone `docker run` will not boot as-is without these variables:
+
+```sh
+docker run -d -p 3000:3000 job-applicator-website:latest
+```

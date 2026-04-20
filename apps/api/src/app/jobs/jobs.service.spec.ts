@@ -51,8 +51,12 @@ describe('JobsService', () => {
     }).compile();
 
     service = module.get<JobsService>(JobsService);
-    linkedinService = module.get(LinkedinService) as jest.Mocked<LinkedinService>;
-    startupjobsService = module.get(StartupJobsService) as jest.Mocked<StartupJobsService>;
+    linkedinService = module.get(
+      LinkedinService,
+    ) as jest.Mocked<LinkedinService>;
+    startupjobsService = module.get(
+      StartupJobsService,
+    ) as jest.Mocked<StartupJobsService>;
   });
 
   afterEach(() => {
@@ -61,7 +65,9 @@ describe('JobsService', () => {
 
   it('should fetch jobs from linkedin and startupjobs when both are enabled', async () => {
     const mockLinkedinJobs: Partial<Job>[] = [{ id: '1', source: 'linkedin' }];
-    const mockStartupJobs: Partial<Job>[] = [{ id: '2', source: 'startupjobs' }];
+    const mockStartupJobs: Partial<Job>[] = [
+      { id: '2', source: 'startupjobs' },
+    ];
 
     linkedinService.fetchJobs.mockResolvedValue(asJobs(mockLinkedinJobs));
     startupjobsService.fetchJobs.mockResolvedValue(asJobs(mockStartupJobs));
@@ -86,7 +92,9 @@ describe('JobsService', () => {
   });
 
   it('should fetch jobs from startupjobs only when startupjobs is enabled and linkedin is disabled', async () => {
-    const mockStartupJobs: Partial<Job>[] = [{ id: '2', source: 'startupjobs' }];
+    const mockStartupJobs: Partial<Job>[] = [
+      { id: '2', source: 'startupjobs' },
+    ];
 
     startupjobsService.fetchJobs.mockResolvedValue(asJobs(mockStartupJobs));
 

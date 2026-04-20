@@ -1,5 +1,9 @@
 import { resolve } from 'path';
-import { combineEnvSchemas, createEnv, sharedEnvSchema } from '@apps/shared/env-utils';
+import {
+  combineEnvSchemas,
+  createEnv,
+  sharedEnvSchema,
+} from '@apps/shared/env-utils';
 import { z } from 'zod';
 
 const workspaceEnvPath = resolve(process.cwd(), '.env');
