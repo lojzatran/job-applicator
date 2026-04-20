@@ -2,10 +2,18 @@ FROM alpine/ollama
 
 RUN apk add --no-cache curl
 
-RUN ollama serve & \
-    SERVER_PID=$! && \
-    until curl -sf http://localhost:11434/api/tags > /dev/null; do sleep 1; done && \
-    ollama pull nomic-embed-text-v2-moe:latest && \
-    kill "$SERVER_PID" || true
+RUN set -e; \
+    ollama serve & \
+    SERVER_PID=$!; \
+    trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT; \
+    i=1; \
+    while [ "$i" -le 60 ]; do \
+      curl -sf http://localhost:11434/api/tags > /dev/null && break; \
+      [ "$i" -eq 60 ] && exit 1; \
+      i=$((i + 1)); \
+      sleep 1; \
+    done; \
+    ollama pull nomic-embed-text-v2-moe:latest
+
 
 EXPOSE 11434

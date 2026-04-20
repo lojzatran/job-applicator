@@ -88,6 +88,7 @@ function createCvParserLlm() {
 function embeddingModel() {
   const embeddingModel = new OllamaEmbeddings({
     model: env.EMBEDDING_MODEL,
+    // this always has to be local because there is no embedding model on cloud
     baseUrl: env.OLLAMA_EMBEDDING_BASE_URL,
   });
 

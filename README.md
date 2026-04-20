@@ -12,6 +12,7 @@ Job Applicator helps you discover jobs from multiple sources, evaluate how well 
 ## Required env vars
 
 ### Database
+
 - `POSTGRES_HOST` - PostgreSQL host, usually `localhost` for local development.
 - `POSTGRES_PORT` - PostgreSQL port, usually `5432`.
 - `POSTGRES_USER` - Database user.
@@ -19,10 +20,12 @@ Job Applicator helps you discover jobs from multiple sources, evaluate how well 
 - `POSTGRES_DB` - Database name.
 
 ### Queue
+
 - `RABBITMQ_URL` - RabbitMQ connection string, usually `amqp://localhost` for local development.
 - `RABBITMQ_QUEUE_PROCESS` - (Optional) Queue name used for job-processing messages. Defaults to `job_application.process`.
 
 ### AI & Models
+
 - `EMBEDDING_MODEL` - Model name for generating embeddings (e.g., `nomic-embed-text-v2-moe:latest`).
 - `JOB_EVALUATOR_MODEL` - Ollama model name used to evaluate whether a job matches the CV.
 - `CV_PARSER_MODEL` - Ollama model name used to parse the CV.
@@ -33,12 +36,15 @@ Job Applicator helps you discover jobs from multiple sources, evaluate how well 
 - `OLLAMA_API_KEY` - (Optional) API key for Ollama if running behind an authenticated proxy.
 
 ### Storage
+
 - `STORAGE_DIR` - Path to the directory where CVs and uploads are stored.
 
 ## Optional but supported
 
 ### Gemini Configuration
+
 If `GEMINI_API_KEY` is set, the app can use Gemini models instead of Ollama for supported tasks.
+
 - `GEMINI_API_KEY` - Google Gemini API key.
 - `GEMINI_CV_PARSER_MODEL` - Gemini model for CV parsing (Default: `gemini-3.1-flash-lite-preview`).
 - `GEMINI_JOB_EVALUATOR_MODEL` - Gemini model for job evaluation (Default: `gemini-3.1-flash-lite-preview`).
@@ -46,11 +52,13 @@ If `GEMINI_API_KEY` is set, the app can use Gemini models instead of Ollama for 
 - `GEMINI_CRITIQUE_MODEL` - Gemini model for cover letter critique (Default: `gemini-3.1-flash-lite-preview`).
 
 ### LangSmith Tracing
+
 - `LANGSMITH_PROJECT` - LangSmith project name for tracing.
 - `LANGSMITH_TRACING` - Set to `true` to enable LangSmith tracing.
 - `LANGSMITH_API_KEY` - LangSmith API key.
 
 ### Other
+
 - `NODE_ENV` - Environment mode (`development`, `production`, `test`). Defaults to `development`.
 - `SKIP_ENV_VALIDATION` - Set to `true` to bypass environment variable validation (useful for builds).
 
@@ -260,6 +268,12 @@ To start the normal stack using the persisted database and configuration, run:
 
 ```sh
 docker compose --profile app --profile infrastructure up -d
+```
+
+To stop all the docker containers, run the following command:
+
+```sh
+docker compose --profile "*" down
 ```
 
 To build a docker container for API, run the following command:
