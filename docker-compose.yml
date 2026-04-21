@@ -35,8 +35,9 @@ services:
   ollama:
     profiles:
       - ai
-    build:
-      dockerfile: Dockerfile.ollama
+    image: lojzatran/job-applicator-ollama:latest
+    # build:
+    #   dockerfile: Dockerfile.ollama
     ports:
       - '11434:11434'
     volumes:
@@ -50,9 +51,10 @@ services:
   api:
     profiles:
       - app
-    build:
-      context: .
-      dockerfile: apps/api/Dockerfile
+    # build:
+      # context: .
+      # dockerfile: apps/api/Dockerfile
+    image: lojzatran/job-applicator-api:latest
     ports:
       - '3000:3000'
     environment:
@@ -85,9 +87,10 @@ services:
   website:
     profiles:
       - app
-    build:
-      context: .
-      dockerfile: apps/website/Dockerfile
+    # build:
+    #   context: .
+    #   dockerfile: apps/website/Dockerfile
+    image: lojzatran/job-applicator-website:latest
     ports:
       - '3001:3000'
     environment:
@@ -108,9 +111,10 @@ services:
       - uploads:/app/uploads
 
   db-reset:
-    build:
-      context: .
-      dockerfile: Dockerfile.db-reset
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile.db-reset
+    image: lojzatran/job-applicator-db-reset:latest
     environment:
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
