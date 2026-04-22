@@ -11,8 +11,6 @@ interface LoginFormProps {
   nextPath: string;
 }
 
-const supabase = createClient();
-
 export const LoginForm = ({ nextPath }: LoginFormProps) => {
   const router = useRouter();
   const safeNextPath = getSafeNextPath(nextPath);
@@ -32,6 +30,7 @@ export const LoginForm = ({ nextPath }: LoginFormProps) => {
     setError('');
     setMessage('');
     setIsSubmitting(true);
+    const supabase = createClient();
 
     const trimmedEmail = email.trim();
 
@@ -71,6 +70,7 @@ export const LoginForm = ({ nextPath }: LoginFormProps) => {
     setError('');
     setMessage('');
     setIsOAuthSubmitting(true);
+    const supabase = createClient();
 
     const { data, error: authError } = await supabase.auth.signInWithOAuth({
       provider: 'facebook',

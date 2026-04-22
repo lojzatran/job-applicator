@@ -16,6 +16,17 @@ function isApiPath(pathname: string) {
   return pathname.startsWith('/api/');
 }
 
+function copyCookies<T extends NextResponse>(
+  nextResponse: T,
+  response: NextResponse,
+) {
+  response.cookies.getAll().forEach((cookie) => {
+    nextResponse.cookies.set(cookie.name, cookie.value, cookie);
+  });
+
+  return nextResponse;
+}
+
 export async function proxy(request: NextRequest) {
   const response = NextResponse.next({
     request,
@@ -40,7 +51,10 @@ export async function proxy(request: NextRequest) {
 
   if (!user && !isPublicPath(request.nextUrl.pathname)) {
     if (isApiPath(request.nextUrl.pathname)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return copyCookies(
+        NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
+        response,
+      );
     }
 
     const loginUrl = new URL('/login', request.url);
@@ -49,14 +63,17 @@ export async function proxy(request: NextRequest) {
       getSafeNextPath(`${request.nextUrl.pathname}${request.nextUrl.search}`),
     );
 
-    return NextResponse.redirect(loginUrl);
+    return copyCookies(NextResponse.redirect(loginUrl), response);
   }
 
   if (user && request.nextUrl.pathname === '/login') {
     const nextPath = getSafeNextPath(
       request.nextUrl.searchParams.get('next') ?? undefined,
     );
-    return NextResponse.redirect(new URL(nextPath, request.url));
+    return copyCookies(
+      NextResponse.redirect(new URL(nextPath, request.url)),
+      response,
+    );
   }
 
   return response;

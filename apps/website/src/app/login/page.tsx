@@ -5,19 +5,20 @@ import { getSafeNextPath } from '@/app/lib/redirect';
 import { LoginForm } from './components/LoginForm';
 
 interface LoginPageProps {
-  searchParams?: {
+  searchParams?: Promise<{
     next?: string;
     error?: string;
-  };
+  }>;
 }
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const resolvedSearchParams = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const nextPath = getSafeNextPath(searchParams?.next);
+  const nextPath = getSafeNextPath(resolvedSearchParams?.next);
 
   if (user) {
     redirect(nextPath);
@@ -77,7 +78,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
             <LoginForm nextPath={nextPath} />
 
-            {searchParams?.error ? (
+            {resolvedSearchParams?.error ? (
               <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">
                 Authentication failed. Please try again.
               </p>

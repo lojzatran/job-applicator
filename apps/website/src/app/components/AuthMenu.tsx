@@ -9,8 +9,6 @@ interface UserSummary {
   email?: string | null;
 }
 
-const supabase = createClient();
-
 export const AuthMenu = () => {
   const router = useRouter();
   const [user, setUser] = useState<UserSummary | null>(null);
@@ -18,6 +16,7 @@ export const AuthMenu = () => {
 
   useEffect(() => {
     let isMounted = true;
+    const supabase = createClient();
 
     async function loadUser() {
       const {
@@ -50,6 +49,7 @@ export const AuthMenu = () => {
   }, []);
 
   const handleSignOut = async () => {
+    const supabase = createClient();
     await supabase.auth.signOut();
     router.refresh();
     router.push('/login');
