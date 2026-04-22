@@ -42,7 +42,9 @@ jobs:
         run: npm run build
 
       - name: Start infrastructure
-        run: docker compose --profile "infrastructure" up -d
+        run: |
+          cd deployment
+          docker compose --profile "infrastructure" up -d
 
       - name: Install Ollama
         run: curl -fsSL https://ollama.com/install.sh | sh
@@ -107,4 +109,5 @@ jobs:
             kill "$(cat /tmp/ollama.pid)" || true
           fi
 
+          cd deployment
           docker compose down -v --remove-orphans

@@ -52,8 +52,8 @@ services:
     profiles:
       - app
     # build:
-      # context: .
-      # dockerfile: apps/api/Dockerfile
+    #   context: .
+    #   dockerfile: apps/api/Dockerfile
     image: lojzatran/job-applicator-api:latest
     ports:
       - '3000:3000'
