@@ -24,6 +24,14 @@ Job Applicator helps you discover jobs from multiple sources, evaluate how well 
 - `RABBITMQ_URL` - RabbitMQ connection string, usually `amqp://localhost` for local development.
 - `RABBITMQ_QUEUE_PROCESS` - (Optional) Queue name used for job-processing messages. Defaults to `job_application.process`.
 
+### Website / Supabase
+
+The following keys could be retrieved from your supabase project settings (https://supabase.com/dashboard/project/<your-project-key>/settings/api-keys).
+
+- `NEXT_PUBLIC_SUPABASE_URL` - Supabase project URL used by the website auth flow.
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Public Supabase anon key used by the browser and server clients.
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` - Optional alternative to the anon key if that is what your Supabase project exposes.
+
 ### AI & Models
 
 - `EMBEDDING_MODEL` - Model name for generating embeddings (e.g., `nomic-embed-text-v2-moe:latest`).

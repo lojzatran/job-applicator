@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { BackgroundDecor } from './components/BackgroundDecor';
+import { AuthMenu } from './components/AuthMenu';
 import { LinkedInToggle } from './components/LinkedInToggle';
 import { JobProcessingRunBadge } from './components/JobProcessingRunBadge';
 import { PageHero } from './components/PageHero';
@@ -48,6 +49,7 @@ export default function Index() {
     <div className={isDarkMode ? 'dark' : ''}>
       <div className="min-h-screen bg-stone-100 text-slate-900 transition-colors duration-500 selection:bg-emerald-500 selection:text-white dark:bg-slate-950 dark:text-slate-100">
         <div className="absolute right-6 top-6 z-10 flex flex-col items-end gap-3 sm:right-8 sm:top-8">
+          <AuthMenu />
           <JobProcessingRunBadge />
           <ThemeToggle isDarkMode={isDarkMode} onToggle={toggleDarkMode} />
         </div>
