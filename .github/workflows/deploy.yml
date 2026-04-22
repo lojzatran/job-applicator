@@ -135,5 +135,5 @@ jobs:
           key: ${{ secrets.DEPLOY_KEY }}
           script: |
             cd ~/job-applicator
-            docker compose --profile "*" down
-            docker compose --profile "*" up -d
+            docker compose --profile infrastructure --profile ai --profile app pull
+            docker compose --profile infrastructure --profile ai --profile app up -d --pull always --remove-orphans
