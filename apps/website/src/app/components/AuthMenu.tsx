@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/app/lib/supabase/client';
+import { AuthChangeEvent, Session } from '@supabase/supabase-js';
 
 interface UserSummary {
   email?: string | null;
@@ -35,10 +36,12 @@ export const AuthMenu = () => {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, currentSession) => {
-      setUser(currentSession?.user ?? null);
-      setIsLoading(false);
-    });
+    } = supabase.auth.onAuthStateChange(
+      (_event: AuthChangeEvent, currentSession: Session | null) => {
+        setUser(currentSession?.user ?? null);
+        setIsLoading(false);
+      },
+    );
 
     return () => {
       isMounted = false;
