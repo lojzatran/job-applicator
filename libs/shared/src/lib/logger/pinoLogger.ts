@@ -1,5 +1,4 @@
 import pino, { Logger, TransportSingleOptions } from 'pino';
-import { env } from '../utils/env';
 
 const REDACT_PATHS = [
   'authorization',
@@ -28,7 +27,7 @@ function isTerminalStdout(): boolean {
 }
 
 function getDevTransport(): TransportSingleOptions | undefined {
-  if (env.NODE_ENV !== 'development' || !isTerminalStdout()) {
+  if (process.env.NODE_ENV !== 'development' || !isTerminalStdout()) {
     return undefined;
   }
 
@@ -48,7 +47,7 @@ function getDevTransport(): TransportSingleOptions | undefined {
 
 export function createLogger(name: string): Logger {
   return pino({
-    level: env.NODE_ENV === 'production' ? 'info' : 'debug',
+    level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
     name,
     timestamp: pino.stdTimeFunctions.isoTime,
     serializers: {

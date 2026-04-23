@@ -91,20 +91,26 @@ services:
     profiles:
       - app
     # build:
-    #   context: .
+    #   context: ..
     #   dockerfile: apps/website/Dockerfile
+    #   args:
+    #     NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+    #     NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+    #     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
     image: lojzatran/job-applicator-website:latest
     ports:
       - '3001:3000'
+    env_file:
+      - .env
     environment:
-      - NODE_ENV=production
-      - RABBITMQ_URL=amqp://rabbitmq:5672
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=job_applicator
-      - STORAGE_DIR=/app/uploads
+      NODE_ENV: production
+      RABBITMQ_URL: amqp://rabbitmq:5672
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: '5432'
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: job_applicator
+      STORAGE_DIR: /app/uploads
     depends_on:
       rabbitmq:
         condition: service_healthy
