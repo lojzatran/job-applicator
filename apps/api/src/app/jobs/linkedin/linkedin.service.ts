@@ -99,6 +99,7 @@ export class LinkedinService {
       const jobApplication = new JobApplication();
       jobApplication.job = job;
       jobApplication.url = job.url;
+      jobApplication.source = job.source;
       jobApplication.createdAt = new Date();
       return jobApplication;
     });

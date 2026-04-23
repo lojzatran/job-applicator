@@ -29,19 +29,6 @@ export class JobsService {
     return [...linkedInJobs, ...startupJobs];
   }
 
-  async saveJobApplication(
-    job: Job,
-    coverLetter: string,
-  ): Promise<JobApplication> {
-    const jobApplication = new JobApplication();
-    jobApplication.job = job;
-    jobApplication.coverLetter = coverLetter;
-    jobApplication.createdAt = new Date();
-    const savedJobApplication =
-      await this.jobApplicationRepository.save(jobApplication);
-    return savedJobApplication;
-  }
-
   async updateJobApplications(
     updates: {
       url: string;
