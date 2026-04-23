@@ -11,7 +11,7 @@ export class AddJobDescriptionToJobApplication1775979793347
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `ALTER TABLE "job_application" DROP COLUMN "jobDescription"`,
+      `ALTER TABLE "job_application" DROP COLUMN IF EXISTS "jobDescription"`,
     );
   }
 }

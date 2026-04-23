@@ -101,6 +101,7 @@ export class LinkedinService {
       jobApplication.url = job.url;
       jobApplication.source = job.source;
       jobApplication.createdAt = new Date();
+      jobApplication.jobDescription = job.description;
       return jobApplication;
     });
     await this.jobApplicationRepository.insert(jobApplications);
