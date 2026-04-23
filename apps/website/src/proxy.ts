@@ -1,6 +1,7 @@
 import { createServerClient, type SetAllCookies } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { getSafeNextPath } from './app/lib/redirect';
+import { getPublicAppUrl } from './app/lib/public-url';
 import { getSupabaseAnonKey, getSupabaseUrl } from './app/lib/supabase/config';
 
 const PUBLIC_PATHS = ['/login', '/auth/callback'];
@@ -31,6 +32,7 @@ export async function proxy(request: NextRequest) {
   const response = NextResponse.next({
     request,
   });
+  const publicAppUrl = getPublicAppUrl(request.nextUrl.origin);
 
   const supabase = createServerClient(getSupabaseUrl(), getSupabaseAnonKey(), {
     cookies: {
@@ -58,12 +60,15 @@ export async function proxy(request: NextRequest) {
     }
 
     const loginUrl = new URL('/login', request.url);
+    const publicLoginUrl = new URL('/login', publicAppUrl);
     loginUrl.searchParams.set(
       'next',
       getSafeNextPath(`${request.nextUrl.pathname}${request.nextUrl.search}`),
     );
 
-    return copyCookies(NextResponse.redirect(loginUrl), response);
+    publicLoginUrl.search = loginUrl.search;
+
+    return copyCookies(NextResponse.redirect(publicLoginUrl), response);
   }
 
   if (user && request.nextUrl.pathname === '/login') {
@@ -71,7 +76,7 @@ export async function proxy(request: NextRequest) {
       request.nextUrl.searchParams.get('next') ?? undefined,
     );
     return copyCookies(
-      NextResponse.redirect(new URL(nextPath, request.url)),
+      NextResponse.redirect(new URL(nextPath, publicAppUrl)),
       response,
     );
   }

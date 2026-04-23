@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createLogger } from '@apps/shared/pinoLogger';
 import { createClient } from '@/app/lib/supabase/server';
+import { getPublicAppUrl } from '@/app/lib/public-url';
 import { getSafeNextPath } from '@/app/lib/redirect';
 
 const logger = createLogger('auth-callback');
@@ -10,6 +11,7 @@ export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
   const nextPath = getSafeNextPath(searchParams.get('next') ?? undefined);
+  const publicAppUrl = getPublicAppUrl(origin);
 
   try {
     if (code) {
@@ -17,7 +19,7 @@ export async function GET(request: Request) {
       const { error } = await supabase.auth.exchangeCodeForSession(code);
 
       if (!error) {
-        return NextResponse.redirect(new URL(nextPath, origin));
+        return NextResponse.redirect(new URL(nextPath, publicAppUrl));
       }
 
       logger.warn({ error }, 'Failed to exchange OAuth code for session');
@@ -26,5 +28,5 @@ export async function GET(request: Request) {
     logger.error({ err: error }, 'OAuth callback failed');
   }
 
-  return NextResponse.redirect(new URL('/login?error=auth', origin));
+  return NextResponse.redirect(new URL('/login?error=auth', publicAppUrl));
 }

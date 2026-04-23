@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/app/lib/supabase/client';
+import { getPublicAppUrl } from '@/app/lib/public-url';
 import { getSafeNextPath } from '@/app/lib/redirect';
 
 type FormMode = 'sign-in' | 'sign-up';
@@ -22,8 +23,11 @@ export const LoginForm = ({ nextPath }: LoginFormProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isOAuthSubmitting, setIsOAuthSubmitting] = useState(false);
 
-  const getCallbackUrl = () =>
-    `${window.location.origin}/auth/callback?next=${encodeURIComponent(safeNextPath)}`;
+  const getCallbackUrl = () => {
+    const appUrl = getPublicAppUrl(window.location.origin);
+
+    return `${appUrl}/auth/callback?next=${encodeURIComponent(safeNextPath)}`;
+  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -44,7 +48,7 @@ export const LoginForm = ({ nextPath }: LoginFormProps) => {
             email: trimmedEmail,
             password,
             options: {
-              emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(safeNextPath)}`,
+              emailRedirectTo: getCallbackUrl(),
             },
           });
 
