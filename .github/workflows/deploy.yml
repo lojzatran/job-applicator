@@ -9,8 +9,24 @@ jobs:
     env:
       DOCKERHUB_USERNAME: lojzatran
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
 
     steps:
+      - name: Validate website Supabase secrets
+        shell: bash
+        run: |
+          if [ -z "${NEXT_PUBLIC_SUPABASE_URL}" ]; then
+            echo "NEXT_PUBLIC_SUPABASE_URL secret is required."
+            exit 1
+          fi
+
+          if [ -z "${NEXT_PUBLIC_SUPABASE_ANON_KEY}" ] && [ -z "${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}" ]; then
+            echo "Set NEXT_PUBLIC_SUPABASE_ANON_KEY or NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY secret."
+            exit 1
+          fi
+
       - name: Checkout code
         uses: actions/checkout@v6
 
@@ -67,6 +83,10 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
+          build-args: |
+            NEXT_PUBLIC_SUPABASE_URL=${{ env.NEXT_PUBLIC_SUPABASE_URL }}
+            NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ env.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+            NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${{ env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
 
       - name: Metadata for job-applicator-db-reset
         id: meta-job-applicator-db-reset

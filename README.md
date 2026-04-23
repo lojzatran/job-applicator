@@ -30,7 +30,9 @@ The following keys could be retrieved from your supabase project settings (https
 
 - `NEXT_PUBLIC_SUPABASE_URL` - Supabase project URL used by the website auth flow.
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Public Supabase anon key used by the browser and server clients.
-- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` - Optional alternative to the anon key if that is what your Supabase project exposes.
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` - Public Supabase publishable key used as an alternative to the anon key.
+
+For the website, `NEXT_PUBLIC_SUPABASE_URL` must be available when the Docker image is built so the browser bundle can embed it. You can provide either `NEXT_PUBLIC_SUPABASE_ANON_KEY` or `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and the app will use whichever one is set.
 
 ### AI & Models
 
@@ -266,22 +268,24 @@ The graph keeps track of how many jobs have already been processed and stops onc
 
 ### Docker
 
+The deployment compose file expects a `.env` file next to `deployment/docker-compose.yml`. That file should contain the runtime settings for the stack, including the public Supabase values used by the website image build.
+
 To start the full stack with an empty database and profile intended for a fresh state, run:
 
 ```sh
-docker compose --profile "*" up -d
+docker compose -f deployment/docker-compose.yml --env-file deployment/.env --profile "*" up -d
 ```
 
 To start the normal stack using the persisted database and configuration, run:
 
 ```sh
-docker compose --profile app --profile infrastructure up -d
+docker compose -f deployment/docker-compose.yml --env-file deployment/.env --profile app --profile infrastructure up -d
 ```
 
 To stop all the docker containers, run the following command:
 
 ```sh
-docker compose --profile "*" down
+docker compose -f deployment/docker-compose.yml --env-file deployment/.env --profile "*" down
 ```
 
 To build a docker container for API, run the following command:
@@ -293,7 +297,7 @@ docker build --no-cache --progress=plain -f apps/api/Dockerfile -t job-applicato
 To build a docker container for the website, run the following command:
 
 ```sh
-docker build --no-cache --progress=plain -f apps/website/Dockerfile -t job-applicator-website:latest .
+docker build --no-cache --progress=plain -f apps/website/Dockerfile --build-arg NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="$NEXT_PUBLIC_SUPABASE_ANON_KEY" --build-arg NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY="$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY" -t job-applicator-website:latest .
 ```
 
 To run the website in a docker container, use the command below. Note that the container requires several environment variables (such as `STORAGE_DIR`, `RABBITMQ_URL`, and `POSTGRES_*`) to boot correctly. It is recommended to use an `--env-file` or prefer running via the `docker-compose.yml` file as the standalone `docker run` will not boot as-is without these variables:
