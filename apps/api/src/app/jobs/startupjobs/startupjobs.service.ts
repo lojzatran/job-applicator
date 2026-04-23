@@ -217,13 +217,13 @@ export class StartupJobsService {
     return jobs;
   }
 
-  private async saveJobs(jobs: Job[]) {
+  async saveJobs(jobs: Job[]) {
     const jobApplications = jobs.map((job) => {
       const jobApplication = new JobApplication();
       jobApplication.job = job;
       jobApplication.url = job.url;
       jobApplication.createdAt = new Date();
-      jobApplication.source = 'startupjobs';
+      jobApplication.source = job.source;
       return jobApplication;
     });
     await this.jobApplicationRepository.insert(jobApplications);

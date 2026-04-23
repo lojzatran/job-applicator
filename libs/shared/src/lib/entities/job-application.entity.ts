@@ -17,6 +17,9 @@ export class JobApplication {
   @Column()
   source!: string;
 
+  @Column({ nullable: true })
+  jobDescription?: string;
+
   @Column()
   createdAt!: Date;
 }
