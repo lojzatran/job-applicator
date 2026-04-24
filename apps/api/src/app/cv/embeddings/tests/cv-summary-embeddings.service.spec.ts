@@ -1,9 +1,9 @@
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { Embeddings } from '@langchain/core/embeddings';
 import type { DataSource, EntityManager } from 'typeorm';
 import { CvEmbeddingsService } from '../cv-summary-embeddings.service';
 import type { CvEmbeddingsRepository } from '../cv-embeddings.repository';
+import { EmbeddingsWrapper } from '../../../ai/providers/embedding.types';
 
 describe('CvEmbeddingsService', () => {
   afterEach(() => {
@@ -13,7 +13,7 @@ describe('CvEmbeddingsService', () => {
   describe('Job description embedding hygiene', () => {
     it('returns no embeddings for empty or whitespace-only job descriptions', async () => {
       const service = createService();
-      const createEmbeddingsSpy = jest.spyOn(service, 'createEmbeddings');
+      const createEmbeddingsSpy = jest.spyOn(service, 'createEmbeddingsBulk');
 
       await expect(
         service.createEmbeddingsForJobDescription('   \n\t  '),
@@ -25,8 +25,8 @@ describe('CvEmbeddingsService', () => {
     it('skips blank split chunks before embedding job descriptions', async () => {
       const service = createService();
       const createEmbeddingsSpy = jest
-        .spyOn(service, 'createEmbeddings')
-        .mockResolvedValue([1, 2, 3]);
+        .spyOn(service, 'createEmbeddingsBulk')
+        .mockResolvedValue([[1, 2, 3]]);
       const splitterSpy = jest.spyOn(
         RecursiveCharacterTextSplitter,
         'fromLanguage',
@@ -53,9 +53,9 @@ describe('CvEmbeddingsService', () => {
         },
       ]);
       expect(createEmbeddingsSpy).toHaveBeenCalledTimes(1);
-      expect(createEmbeddingsSpy).toHaveBeenCalledWith(
+      expect(createEmbeddingsSpy).toHaveBeenCalledWith([
         'Product manager with strong ops background',
-      );
+      ]);
     });
   });
 });
@@ -68,7 +68,9 @@ function createService(
   } as unknown as BaseChatModel;
   const embeddingModel = {
     embedQuery: jest.fn(),
-  } as unknown as Embeddings;
+    embedDocuments: jest.fn(),
+    modelName: 'test',
+  } as unknown as EmbeddingsWrapper;
   const dataSource = createDataSource();
 
   return new CvEmbeddingsService(

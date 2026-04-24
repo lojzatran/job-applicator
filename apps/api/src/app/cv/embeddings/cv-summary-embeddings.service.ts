@@ -8,10 +8,9 @@ import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import { stripHtml } from 'string-strip-html';
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { CV_PARSER_LLM, EMBEDDING_MODEL } from '../../ai/ai.constants';
-import { Embeddings } from '@langchain/core/embeddings';
+import type { EmbeddingsWrapper } from '../../ai/providers/embedding.types';
 import sectionWeights from './cv-section-weights';
 import { CvEmbeddingsRepository } from './cv-embeddings.repository';
-import { env } from '../../../utils/env';
 import { EntityManager } from 'typeorm';
 import { Cv } from '@apps/shared';
 import * as crypto from 'crypto';
@@ -27,7 +26,7 @@ export class CvEmbeddingsService {
     @Inject(CV_PARSER_LLM)
     private readonly cvParserLlm: BaseChatModel,
     @Inject(EMBEDDING_MODEL)
-    private readonly embeddingModel: Embeddings,
+    private readonly embeddingModel: EmbeddingsWrapper,
     private readonly cvEmbeddingsRepository: CvEmbeddingsRepository,
     private readonly dataSource: DataSource,
   ) {}
@@ -112,7 +111,7 @@ export class CvEmbeddingsService {
         }
         const formattedValue = nonEmptyItems.join('\n');
         embeddingsWithWeight.push(
-          ...(await this.embedKeyValue(key, formattedValue)),
+          ...(await this.embedKeyValueWithWeights(key, formattedValue)),
         );
       } else {
         const trimmedValue = value?.trim();
@@ -120,14 +119,14 @@ export class CvEmbeddingsService {
           continue;
         }
         embeddingsWithWeight.push(
-          ...(await this.embedKeyValue(key, trimmedValue)),
+          ...(await this.embedKeyValueWithWeights(key, trimmedValue)),
         );
       }
     }
     return embeddingsWithWeight;
   }
 
-  private async embedKeyValue(
+  private async embedKeyValueWithWeights(
     key: string,
     value: string,
   ): Promise<WeightedEmbedding[]> {
@@ -156,22 +155,31 @@ export class CvEmbeddingsService {
     normalizeChunk: (chunk: string) => string,
     weight: number,
   ): Promise<WeightedEmbedding[]> {
-    const embeddings: WeightedEmbedding[] = [];
+    const weightedEmbeddings: WeightedEmbedding[] = [];
+
+    const normalizedChunks = [];
 
     for (const chunk of chunks) {
       const normalizedChunk = normalizeChunk(chunk).trim();
       if (!normalizedChunk) {
         continue;
       }
+      normalizedChunks.push(normalizedChunk);
+    }
 
-      const embedding = await this.createEmbeddings(normalizedChunk);
-      embeddings.push({
+    if (normalizedChunks.length === 0) {
+      return [];
+    }
+
+    const embeddings = await this.createEmbeddingsBulk(normalizedChunks);
+    for (const embedding of embeddings) {
+      weightedEmbeddings.push({
         embedding,
         weight: weight ?? 1,
       });
     }
 
-    return embeddings;
+    return weightedEmbeddings;
   }
 
   /**
@@ -213,8 +221,8 @@ export class CvEmbeddingsService {
     );
   }
 
-  private async createEmbeddings(text: string): Promise<number[]> {
-    const vectors = await this.embeddingModel.embedQuery(text);
+  async createEmbeddingsBulk(texts: string[]): Promise<number[][]> {
+    const vectors = await this.embeddingModel.embedDocuments(texts);
     return vectors;
   }
 
@@ -237,7 +245,7 @@ export class CvEmbeddingsService {
   async getJobAndCvMatchingScore(
     cvId: number,
     queryEmbeddings: WeightedEmbedding[],
-    modelName: string = env.EMBEDDING_MODEL,
+    modelName: string = this.embeddingModel.modelName,
   ): Promise<number> {
     return this.cvEmbeddingsRepository.getJobAndCvMatchingScore(
       cvId,
@@ -250,7 +258,7 @@ export class CvEmbeddingsService {
   private async ensureCvEntity(
     manager: EntityManager,
     cvText: string,
-  ): Promise<{ cvEntity: Cv; isNew: boolean }> {
+  ): Promise<Cv> {
     const cvHash = crypto.createHash('md5').update(cvText).digest('hex');
     const cvRepository = manager.getRepository(Cv);
     const cvEntity = await cvRepository.findOne({
@@ -258,7 +266,7 @@ export class CvEmbeddingsService {
     });
 
     if (!cvEntity) {
-      const insertResult = await cvRepository
+      await cvRepository
         .createQueryBuilder()
         .insert()
         .into(Cv)
@@ -271,33 +279,31 @@ export class CvEmbeddingsService {
         .orIgnore()
         .execute();
 
-      const isNew =
-        insertResult.identifiers.length > 0 ||
-        (Array.isArray(insertResult.raw) && insertResult.raw.length > 0);
-
       const persistedCvEntity = await cvRepository.findOne({
         where: { hash: cvHash },
       });
 
       if (!persistedCvEntity) {
-        throw new Error(
-          `Failed to persist or reload CV row for hash ${cvHash}`,
-        );
+        throw new Error(`Failed to reload CV row for hash ${cvHash}`);
       }
 
-      return { cvEntity: persistedCvEntity, isNew };
+      return persistedCvEntity;
     } else {
-      return { cvEntity, isNew: false };
+      return cvEntity;
     }
   }
 
   private async ensureCvEmbeddings(
     manager: EntityManager,
     cvEntity: Cv,
-    modelName: string = env.EMBEDDING_MODEL,
+    modelName: string = this.embeddingModel.modelName,
   ): Promise<void> {
     const existingEmbeddings =
-      await this.cvEmbeddingsRepository.fetchCvEmbeddings(cvEntity.id, manager);
+      await this.cvEmbeddingsRepository.fetchCvEmbeddings(
+        cvEntity.id,
+        manager,
+        modelName,
+      );
 
     if (existingEmbeddings.length > 0) {
       return;
@@ -323,13 +329,11 @@ export class CvEmbeddingsService {
 
   async ensureCvAndEmbeddings(
     cvText: string,
-    modelName: string = env.EMBEDDING_MODEL,
+    modelName: string = this.embeddingModel.modelName,
   ): Promise<number> {
     return this.dataSource.transaction(async (manager) => {
-      const { cvEntity, isNew } = await this.ensureCvEntity(manager, cvText);
-      if (isNew) {
-        await this.ensureCvEmbeddings(manager, cvEntity, modelName);
-      }
+      const cvEntity = await this.ensureCvEntity(manager, cvText);
+      await this.ensureCvEmbeddings(manager, cvEntity, modelName);
       return cvEntity.id;
     });
   }

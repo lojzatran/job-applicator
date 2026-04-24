@@ -5,10 +5,8 @@ import {
   JOB_EVALUATOR_LLM,
   CRITIQUE_LLM,
   CV_PARSER_LLM,
-  EMBEDDING_MODEL,
 } from '../ai.constants';
 import { env } from '../../../utils/env';
-import { OllamaEmbeddings } from '@langchain/ollama';
 
 function createOllamaHeaders(): Record<string, string> {
   return env.OLLAMA_API_KEY
@@ -83,16 +81,6 @@ function createCvParserLlm() {
   });
 }
 
-function embeddingModel() {
-  const embeddingModel = new OllamaEmbeddings({
-    model: env.EMBEDDING_MODEL,
-    // this always has to be local because there is no embedding model on cloud
-    baseUrl: env.OLLAMA_EMBEDDING_BASE_URL,
-  });
-
-  return embeddingModel;
-}
-
 export const jobEvaluatorLlmProvider = {
   provide: JOB_EVALUATOR_LLM,
   useFactory: createJobEvaluatorLlm,
@@ -111,9 +99,4 @@ export const critiqueLlmProvider = {
 export const cvParserLlmProvider = {
   provide: CV_PARSER_LLM,
   useFactory: createCvParserLlm,
-};
-
-export const embeddingModelProvider = {
-  provide: EMBEDDING_MODEL,
-  useFactory: embeddingModel,
 };
