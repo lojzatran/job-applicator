@@ -4,7 +4,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { env } from '../../../../utils/env';
 import { CvEmbeddingsService } from '../cv-summary-embeddings.service';
 import { CvEmbeddingsRepository } from '../cv-embeddings.repository';
-import * as crypto from 'crypto';
 import { cvParserLlmProvider } from '../../../ai/providers/llm.provider';
 import { embeddingModelProvider } from '../../../ai/providers/embedding.provider';
 import { dataSourceOptions } from '@apps/shared';

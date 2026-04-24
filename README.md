@@ -36,7 +36,8 @@ For the website, `NEXT_PUBLIC_SUPABASE_URL` must be available when the Docker im
 
 ### AI & Models
 
-- `EMBEDDING_MODEL` - Model name for generating embeddings (e.g., `nomic-embed-text-v2-moe:latest`).
+- `OLLAMA_EMBEDDING_MODEL` - (Default) Model name for generating embeddings with Ollama (e.g., `nomic-embed-text-v2-moe:latest`).
+- `OLLAMA_EMBEDDING_BASE_URL` - (Optional) Base URL for the Ollama embedding API.
 - `JOB_EVALUATOR_MODEL` - Ollama model name used to evaluate whether a job matches the CV.
 - `CV_PARSER_MODEL` - Ollama model name used to parse the CV.
 - `COVER_LETTER_GENERATOR_MODEL` - Ollama model name used to generate the cover letter.
@@ -50,6 +51,13 @@ For the website, `NEXT_PUBLIC_SUPABASE_URL` must be available when the Docker im
 - `STORAGE_DIR` - Path to the directory where CVs and uploads are stored.
 
 ## Optional but supported
+
+### Cohere Configuration
+
+If `COHERE_API_KEY` is set, the app can use Cohere models instead of Ollama for generating embeddings.
+
+- `COHERE_API_KEY` - Cohere API key.
+- `COHERE_EMBEDDING_MODEL` - (Optional) Model name for generating embeddings with Cohere (default: `embed-v4.0`).
 
 ### Gemini Configuration
 
