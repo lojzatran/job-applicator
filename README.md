@@ -313,3 +313,17 @@ To run the website in a docker container, use the command below. Note that the c
 ```sh
 docker run -d -p 3000:3000 job-applicator-website:latest
 ```
+
+Here are some useful commands for postgres in docker container:
+
+```sh
+# you can change the db password using the following command
+docker exec -it job-applicator-postgres-1 psql -U postgres -d job_applicator -c "ALTER USER postgres WITH PASSWORD 'postgres';"
+
+# retest that user is working with the new password
+
+docker run --rm -it --network job-applicator_default pgvector/pgvector:pg18 sh -lc 'PGPASSWORD=postgres psql -h postgres -U postgres -d job_applicator -c "select current_user, current_database();"'
+
+# to execute a sql query
+docker exec -it job-applicator-postgres-1 psql -U postgres -d job_applicator -c "SELECT * FROM public.job_application;"
+```
