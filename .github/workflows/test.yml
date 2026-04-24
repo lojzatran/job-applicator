@@ -18,6 +18,7 @@ jobs:
       POSTGRES_DB: job_applicator
       RABBITMQ_URL: amqp://127.0.0.1:5672
       OLLAMA_BASE_URL: http://127.0.0.1:11434
+      OLLAMA_EMBEDDING_MODEL: nomic-embed-text-v2-moe:latest
       EMBEDDING_MODEL: nomic-embed-text-v2-moe:latest
       GEMINI_CV_PARSER_MODEL: gemini-3.1-flash-lite-preview
       GEMINI_JOB_EVALUATOR_MODEL: gemini-3.1-flash-lite-preview

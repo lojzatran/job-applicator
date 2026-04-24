@@ -14,7 +14,7 @@ const appEnvSchema = z.object({
   OLLAMA_BASE_URL: z.string().optional(),
   OLLAMA_API_KEY: z.string().optional(),
   OLLAMA_EMBEDDING_BASE_URL: z.string().optional(),
-  OLLAMA_EMBEDDING_MODEL: z.string().default('nomic-embed-text:latest'),
+  OLLAMA_EMBEDDING_MODEL: z.string().default('nomic-embed-text-v2-moe:latest'),
   GEMINI_CV_PARSER_MODEL: z.string().default('gemini-3.1-flash-lite-preview'),
   CV_PARSER_MODEL: z.string().optional(),
   GEMINI_JOB_EVALUATOR_MODEL: z

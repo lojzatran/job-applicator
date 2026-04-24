@@ -34,11 +34,11 @@ export class CreateCvAndCvEmbedding1774681794559 implements MigrationInterface {
     await queryRunner.query(`
       CREATE INDEX IF NOT EXISTS "IDX_cv_embedding_embedding_cosine_hnsw_cohere"
       ON "cv_embedding" USING hnsw ((embedding::vector(1536)) vector_cosine_ops)
-      WHERE model = 'embed-v4.0';
+      WHERE model LIKE 'embed-v4%';
 
       CREATE INDEX IF NOT EXISTS "IDX_cv_embedding_embedding_cosine_hnsw_nomic"
       ON "cv_embedding" USING hnsw ((embedding::vector(768)) vector_cosine_ops)
-      WHERE model = 'nomic-embed-text-v2-moe';
+      WHERE model LIKE 'nomic-embed-text-v2-moe%';
 
     `);
   }
