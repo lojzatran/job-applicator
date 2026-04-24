@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { env } from '../../../utils/env';
 import { CvEmbeddingRecord, SqlExecutor, WeightedEmbedding } from './types';
 
 @Injectable()
@@ -36,7 +35,7 @@ export class CvEmbeddingsRepository {
   async getJobAndCvMatchingScore(
     cvId: number,
     queryEmbeddings: WeightedEmbedding[],
-    modelName: string = env.EMBEDDING_MODEL,
+    modelName: string,
     manager: SqlExecutor,
   ): Promise<number> {
     let totalScore = 0;
@@ -80,7 +79,7 @@ export class CvEmbeddingsRepository {
   async fetchCvEmbeddings(
     cvId: number,
     manager: SqlExecutor,
-    modelName: string = env.EMBEDDING_MODEL,
+    modelName: string,
   ): Promise<{ id: number }[]> {
     return await manager.query<{ id: number }[]>(
       `

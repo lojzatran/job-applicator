@@ -80,6 +80,7 @@
   "dependencies": {
     "@apps/shared": "*",
     "@langchain/classic": "^1.0.25",
+    "@langchain/cohere": "^1.0.4",
     "@langchain/community": "^1.1.25",
     "@langchain/core": "^1.1.36",
     "@langchain/google-genai": "^2.1.26",

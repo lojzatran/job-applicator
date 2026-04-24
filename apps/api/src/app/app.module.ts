@@ -8,10 +8,10 @@ import { LanggraphService } from './ai/langgraph/langgraph.service';
 import {
   coverLetterGeneratorLlmProvider,
   cvParserLlmProvider,
-  embeddingModelProvider,
   jobEvaluatorLlmProvider,
   critiqueLlmProvider,
 } from './ai/providers/llm.provider';
+import { embeddingModelProvider } from './ai/providers/embedding.provider';
 import { PdfService } from './documents/pdf/pdf.service';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';

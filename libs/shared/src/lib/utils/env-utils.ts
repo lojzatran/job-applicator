@@ -61,5 +61,15 @@ export function createEnv<TEnv>({
   // Shell env wins, then app env files in the order they were provided.
   Object.assign(process.env, loadedEnv, initialEnv);
 
-  return skipValidation ? (process.env as TEnv) : schema.parse(process.env);
+  if (skipValidation) {
+    try {
+      return schema.parse(process.env);
+    } catch {
+      // If validation fails but we want to skip it, we return process.env as TEnv
+      // This allows the app to start even with missing/invalid env vars in some environments (like CI build)
+      return process.env as unknown as TEnv;
+    }
+  }
+
+  return schema.parse(process.env);
 }

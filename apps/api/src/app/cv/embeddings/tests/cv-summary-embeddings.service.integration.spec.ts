@@ -5,10 +5,8 @@ import { env } from '../../../../utils/env';
 import { CvEmbeddingsService } from '../cv-summary-embeddings.service';
 import { CvEmbeddingsRepository } from '../cv-embeddings.repository';
 import * as crypto from 'crypto';
-import {
-  cvParserLlmProvider,
-  embeddingModelProvider,
-} from '../../../ai/providers/llm.provider';
+import { cvParserLlmProvider } from '../../../ai/providers/llm.provider';
+import { embeddingModelProvider } from '../../../ai/providers/embedding.provider';
 import { dataSourceOptions } from '@apps/shared';
 
 describe('Cv Embeddings Service integration', () => {
@@ -38,7 +36,11 @@ describe('Cv Embeddings Service integration', () => {
     });
 
     await pool.query(`
-      DROP INDEX IF EXISTS "IDX_cv_embedding_embedding_cosine"
+      DROP INDEX IF EXISTS "IDX_cv_embedding_embedding_cosine_hnsw_cohere"
+    `);
+
+    await pool.query(`
+      DROP INDEX IF EXISTS "IDX_cv_embedding_embedding_cosine_hnsw_nomic"
     `);
 
     await truncateCvTables(pool);
@@ -159,21 +161,7 @@ describe('Cv Embeddings Service integration', () => {
     it('should return IT position as the best match for the IT person', async () => {
       const service = moduleRef.get(CvEmbeddingsService);
 
-      const cvEmbeddings = await service.createWeightedEmbeddingsForCv(cvText);
-
-      const cvId = await insertCv(pool, {
-        path: '/tmp/primary-cv.pdf',
-        rawText: cvText,
-      });
-
-      const embeddings = cvEmbeddings.map((embedding) => ({
-        cvId,
-        embedding: embedding.embedding,
-        weight: embedding.weight,
-        model: env.EMBEDDING_MODEL,
-      }));
-
-      await service.insertCvEmbeddings(embeddings, pool);
+      const cvId = await service.ensureCvAndEmbeddings(cvText);
 
       const results: { name: string; score: number }[] = [];
       for (const jobDescription of jobDescriptions) {
@@ -215,26 +203,6 @@ describe('Cv Embeddings Service integration', () => {
     }, 300000);
   });
 });
-
-async function insertCv(
-  pool: Pool,
-  input: {
-    path: string;
-    rawText: string;
-  },
-): Promise<number> {
-  const cvHash = crypto.createHash('md5').update(input.rawText).digest('hex');
-  const result = await pool.query<{ id: number }>(
-    `
-      INSERT INTO "cv" ("path", "rawText", "hash", "createdAt")
-      VALUES ($1, $2, $3, $4)
-      RETURNING "id"
-    `,
-    [input.path, input.rawText, cvHash, new Date('2026-03-28T10:00:00.000Z')],
-  );
-
-  return result.rows[0].id;
-}
 
 async function truncateCvTables(pool: Pool): Promise<void> {
   try {
