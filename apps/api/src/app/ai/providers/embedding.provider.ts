@@ -10,9 +10,7 @@ const logger = createLogger('EmbeddingProvider');
 function embeddingModelCohere(): EmbeddingsWrapper {
   const apiKey = env.COHERE_API_KEY;
   if (!apiKey) {
-    logger.warn(
-      'Cohere API key is not set, falling back to Ollama embeddings',
-    );
+    logger.warn('Cohere API key is not set, falling back to Ollama embeddings');
     return embeddingModelOllama();
   }
 
