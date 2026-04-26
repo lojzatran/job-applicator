@@ -8,7 +8,7 @@ import {
 @Entity('job')
 export class Job {
   @PrimaryGeneratedColumn()
-  id!: string;
+  id!: number;
 
   @Column({ unique: true })
   url!: string;

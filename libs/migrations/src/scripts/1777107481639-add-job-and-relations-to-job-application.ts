@@ -30,7 +30,7 @@ export class AddJobAndRelationsToJobApplication1777107481639
 
     await queryRunner.query(`
       ALTER TABLE "job_application"
-      ADD COLUMN IF NOT EXISTS "status" varchar DEFAULT 'pending'
+      ADD COLUMN IF NOT EXISTS "status" varchar DEFAULT 'processing'
     `);
 
     await queryRunner.query(`
@@ -39,13 +39,21 @@ export class AddJobAndRelationsToJobApplication1777107481639
     `);
 
     await queryRunner.query(`
-      ALTER TABLE "job_application"
-      ADD CONSTRAINT "FK_job_application_job" FOREIGN KEY ("jobId") REFERENCES "job"("id") ON DELETE NO ACTION ON UPDATE NO ACTION
+      DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'FK_job_application_job') THEN
+          ALTER TABLE "job_application"
+          ADD CONSTRAINT "FK_job_application_job" FOREIGN KEY ("jobId") REFERENCES "job"("id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+        END IF;
+      END $$;
     `);
 
     await queryRunner.query(`
-      ALTER TABLE "job_application"
-      ADD CONSTRAINT "FK_job_application_cv" FOREIGN KEY ("cvId") REFERENCES "cv"("id") ON DELETE NO ACTION ON UPDATE NO ACTION
+      DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'FK_job_application_cv') THEN
+          ALTER TABLE "job_application"
+          ADD CONSTRAINT "FK_job_application_cv" FOREIGN KEY ("cvId") REFERENCES "cv"("id") ON DELETE NO ACTION ON UPDATE NO ACTION;
+        END IF;
+      END $$;
     `);
 
     await queryRunner.query(`
@@ -66,6 +74,19 @@ export class AddJobAndRelationsToJobApplication1777107481639
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`
+      ALTER TABLE "job_application"
+      ADD COLUMN IF NOT EXISTS "job" jsonb,
+      ADD COLUMN IF NOT EXISTS "url" varchar,
+      ADD COLUMN IF NOT EXISTS "source" varchar,
+      ADD COLUMN IF NOT EXISTS "jobDescription" varchar
+    `);
+    await queryRunner.query(`
+      ALTER TABLE "job_application"
+      DROP COLUMN IF EXISTS "status",
+      DROP COLUMN IF EXISTS "reason"
+    `);
+
     await queryRunner.query(`
       DROP INDEX IF EXISTS "IDX_job_application_cvId"
     `);

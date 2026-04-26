@@ -1,6 +1,6 @@
 import { JobApplication } from '../applications/types';
 
-type Status = JobApplication['status'];
+type Status = NonNullable<JobApplication['status']>;
 
 const statusConfig: Record<
   Status,
@@ -24,23 +24,41 @@ const statusConfig: Record<
     dot: 'bg-emerald-500',
     pulse: false,
   },
+  'not-applied': {
+    bg: 'bg-slate-100 dark:bg-slate-800/80',
+    text: 'text-slate-700 dark:text-slate-300',
+    dot: 'bg-slate-500',
+    pulse: false,
+  },
 };
 
 interface StatusBadgeProps {
-  status: Status;
+  status?: JobApplication['status'] | string | null;
 }
 
 export const StatusBadge = ({ status }: StatusBadgeProps) => {
-  const config = statusConfig[status];
+  const isKnownStatus = (value: string): value is Status =>
+    value in statusConfig;
+
+  const resolvedStatus =
+    typeof status === 'string' && isKnownStatus(status) ? status : null;
+  const config = resolvedStatus
+    ? statusConfig[resolvedStatus]
+    : {
+        bg: 'bg-slate-100 dark:bg-slate-800/80',
+        text: 'text-slate-700 dark:text-slate-300',
+        dot: 'bg-slate-500',
+        pulse: false,
+      };
 
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${config.bg} ${config.text}`}
     >
-      <div
-        className={`h-1.5 w-1.5 rounded-full ${config.dot} ${config.pulse ? 'animate-pulse' : ''}`}
+      <span
+        className={`inline-block h-1.5 w-1.5 rounded-full ${config.dot} ${config.pulse ? 'animate-pulse' : ''}`}
       />
-      {status}
+      {resolvedStatus ?? 'unknown'}
     </span>
   );
 };

@@ -44,7 +44,7 @@ export async function listJobs(): Promise<Job[]> {
 }
 
 export async function getJobApplication(
-  id: string,
+  id: number,
 ): Promise<JobApplication | null> {
   const appDataSource = await getAppDataSource();
 

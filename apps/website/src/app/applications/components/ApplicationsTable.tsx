@@ -24,6 +24,9 @@ export const ApplicationsTable = ({
   applications,
   jobs,
 }: ApplicationsTableProps) => {
+  const jobsById = new Map(jobs.map((job) => [job.id, job]));
+  const appliedJobIds = new Set(applications.map((app) => app.job.id));
+
   const [appliedJobs, unappliedJobs] = splitIntoTwoGroupsBy(
     applications,
     (app: JobApplication) => {
@@ -32,7 +35,7 @@ export const ApplicationsTable = ({
   );
 
   const jobsWithNoApplication = jobs.filter(
-    (job) => !applications.find((app) => app.job.id === job.id),
+    (job) => !appliedJobIds.has(job.id),
   );
 
   const finalJobApplicationArray = [...appliedJobs, ...unappliedJobs];
@@ -61,8 +64,9 @@ export const ApplicationsTable = ({
         </thead>
         <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
           {finalJobApplicationArray.map((app) => {
-            const job = jobs.find((job) => job.id === app.job.id);
-            return <ApplicationRow key={app.id} application={app} job={job!} />;
+            const job = jobsById.get(app.job.id);
+            if (!job) return null;
+            return <ApplicationRow key={app.id} application={app} job={job} />;
           })}
           {jobsWithNoApplication.map((job) => (
             <ApplicationRow key={job.id} application={undefined} job={job} />

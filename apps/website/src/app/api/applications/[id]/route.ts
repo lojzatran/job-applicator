@@ -8,7 +8,16 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const application = await getJobApplication(id);
+  const numericId = Number(id);
+
+  if (!Number.isFinite(numericId)) {
+    return NextResponse.json(
+      { message: 'Invalid id parameter' },
+      { status: 400 },
+    );
+  }
+
+  const application = await getJobApplication(numericId);
 
   if (!application) {
     return NextResponse.json(

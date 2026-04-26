@@ -11,13 +11,13 @@ import { Cv } from './cv.entity';
 @Entity('job_application')
 export class JobApplication {
   @PrimaryGeneratedColumn()
-  id!: string;
+  id!: number;
 
   @ManyToOne(() => Job)
   job!: Job;
 
-  @ManyToOne(() => Cv, (cv) => cv.jobApplications)
-  cv!: Cv;
+  @ManyToOne(() => Cv, (cv) => cv.jobApplications, { nullable: true })
+  cv?: Cv | null;
 
   @Column({ nullable: true })
   coverLetter?: string;

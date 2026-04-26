@@ -1,15 +1,13 @@
 export interface JobApplication {
-  id: string;
-  url: string;
-  source: string;
+  id: number;
   job: Job;
   coverLetter?: string;
   createdAt: string;
-  status: 'applied' | 'dismissed' | 'processing';
+  status?: 'processing' | 'applied' | 'not-applied' | 'dismissed';
 }
 
 export interface Job {
-  id: string;
+  id: number;
   title: string;
   description: string;
   company: string;

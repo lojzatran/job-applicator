@@ -18,7 +18,10 @@ export const postgresConnectionOptions = {
 export const dataSourceOptions = {
   ...postgresConnectionOptions,
   synchronize: false,
-  logging: ['error', env.NODE_ENV === 'development' && 'query'],
+  logging: [
+    'error',
+    ...(env.NODE_ENV === 'development' ? (['query'] as const) : []),
+  ],
   logger:
     env.NODE_ENV === 'development' ? 'formatted-console' : 'advanced-console',
   entities: [JobApplication, Cv, Job, JobApplicationProcessingRun],
