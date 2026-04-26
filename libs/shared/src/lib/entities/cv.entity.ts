@@ -1,4 +1,11 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  OneToMany,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
+import { JobApplication } from './job-application.entity';
 
 @Entity('cv')
 export class Cv {
@@ -14,6 +21,9 @@ export class Cv {
   @Column({ unique: true })
   hash!: string;
 
-  @Column()
+  @CreateDateColumn()
   createdAt!: Date;
+
+  @OneToMany(() => JobApplication, (jobApplication) => jobApplication.cv)
+  jobApplications!: Promise<JobApplication[]>;
 }

@@ -1,10 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { JobApplication } from '@apps/shared';
+import { Job, JobApplication } from '@apps/shared';
 import { JobsService } from './jobs.service';
 import { LinkedinService } from './linkedin/linkedin.service';
 import { StartupJobsService } from './startupjobs/startupjobs.service';
-import { Job } from './types';
 
 describe('JobsService', () => {
   let service: JobsService;

@@ -1,10 +1,9 @@
 import linkedIn, { LinkedInJob } from 'linkedin-jobs-api';
 import { Injectable } from '@nestjs/common';
-import { Job } from '../types';
 import { cleanHtml } from '../jobs.utils';
 import * as cheerio from 'cheerio';
 import { InjectRepository } from '@nestjs/typeorm';
-import { JobApplication } from '@apps/shared';
+import { Job } from '@apps/shared';
 import { Repository } from 'typeorm';
 import { Between } from 'typeorm';
 import { createLogger } from '@apps/shared';
@@ -14,11 +13,11 @@ export class LinkedinService {
   private readonly logger = createLogger('linkedin-service');
 
   constructor(
-    @InjectRepository(JobApplication)
-    private readonly jobApplicationRepository: Repository<JobApplication>,
+    @InjectRepository(Job)
+    private readonly jobRepository: Repository<Job>,
   ) {}
 
-  async fetchJobs(): Promise<Job[]> {
+  async fetchJobs(): Promise<Omit<Job, 'id'>[]> {
     this.logger.info('Fetching jobs from linkedin...');
     const start = new Date();
     start.setUTCHours(0, 0, 0, 0);
@@ -26,7 +25,7 @@ export class LinkedinService {
     const end = new Date();
     end.setUTCHours(23, 59, 59, 999);
 
-    const fetchedJobs = await this.jobApplicationRepository.find({
+    const fetchedJobs = await this.jobRepository.find({
       where: {
         createdAt: Between(start, end),
         source: 'linkedin',
@@ -34,10 +33,10 @@ export class LinkedinService {
     });
 
     if (fetchedJobs.length > 0) {
-      return fetchedJobs.map((job) => job.job as Job);
+      return fetchedJobs;
     } else {
       const { default: pMap } = await import(/* webpackIgnore: true */ 'p-map');
-      const jobs: LinkedInJob[] = await linkedIn.query({
+      const linkedinJobs: LinkedInJob[] = await linkedIn.query({
         location: 'Prague',
         dateSincePosted: '24hr',
         remoteFilter: 'remote',
@@ -47,7 +46,7 @@ export class LinkedinService {
         under_10_applicants: false,
       });
 
-      const jobUrls = jobs.map((job) => job.jobUrl);
+      const jobUrls = linkedinJobs.map((job) => job.jobUrl);
 
       const descriptions = await pMap(
         jobUrls,
@@ -57,18 +56,23 @@ export class LinkedinService {
         },
       );
 
-      const jobsWithDescription: Job[] = jobs.map((job, index) => ({
-        id: job.jobUrl,
+      const jobs: Omit<Job, 'id'>[] = linkedinJobs.map((job, index) => ({
+        url: job.jobUrl,
         title: job.position,
         company: job.company,
-        url: job.jobUrl,
         source: 'linkedin',
         description: descriptions[index] || '',
+        createdAt: new Date(),
       }));
 
-      await this.saveJobs(jobsWithDescription);
+      const insertResult = await this.jobRepository.upsert(jobs, {
+        conflictPaths: ['url'],
+      });
 
-      return jobsWithDescription;
+      this.logger.debug(
+        `Saved ${insertResult.generatedMaps.length} new jobs from linkedin`,
+      );
+      return jobs;
     }
   }
 
@@ -92,18 +96,5 @@ export class LinkedinService {
     const descriptionElement = $('.description__text').first();
     const description = cleanHtml(descriptionElement.html() || '');
     return description;
-  }
-
-  async saveJobs(jobs: Job[]) {
-    const jobApplications = jobs.map((job) => {
-      const jobApplication = new JobApplication();
-      jobApplication.job = job;
-      jobApplication.url = job.url;
-      jobApplication.source = job.source;
-      jobApplication.createdAt = new Date();
-      jobApplication.jobDescription = job.description;
-      return jobApplication;
-    });
-    await this.jobApplicationRepository.insert(jobApplications);
   }
 }

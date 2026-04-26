@@ -1,4 +1,9 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 
 @Entity('job_application_processing_run')
 export class JobApplicationProcessingRun {
@@ -23,6 +28,6 @@ export class JobApplicationProcessingRun {
   @Column({ unique: true })
   threadId!: string;
 
-  @Column()
+  @CreateDateColumn()
   createdAt!: Date;
 }

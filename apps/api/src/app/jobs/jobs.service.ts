@@ -1,9 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { LinkedinService } from './linkedin/linkedin.service';
 import { StartupJobsService } from './startupjobs/startupjobs.service';
-import { Job } from './types';
 import { InjectRepository } from '@nestjs/typeorm';
-import { JobApplication } from '@apps/shared';
+import { Job, JobApplication } from '@apps/shared';
 import { Repository } from 'typeorm';
 
 @Injectable()
@@ -18,7 +17,7 @@ export class JobsService {
   async fetchJobs(
     linkedinEnabled: boolean,
     startupJobsEnabled: boolean,
-  ): Promise<Job[]> {
+  ): Promise<Partial<Job>[]> {
     const [linkedInJobs, startupJobs] = await Promise.all([
       linkedinEnabled ? this.linkedinService.fetchJobs() : Promise.resolve([]),
       startupJobsEnabled

@@ -1,13 +1,42 @@
 'use client';
 
-import { JobApplication } from '../types';
+import { Job, JobApplication } from '../types';
 import { ApplicationRow } from './ApplicationRow';
 
 interface ApplicationsTableProps {
   applications: JobApplication[];
+  jobs: Job[];
 }
 
-export const ApplicationsTable = ({ applications }: ApplicationsTableProps) => {
+const splitIntoTwoGroupsBy = <T,>(
+  arr: T[],
+  fn: (item: T, index: number) => boolean,
+): [T[], T[]] =>
+  arr.reduce(
+    (acc, val, i) => {
+      acc[fn(val, i) ? 0 : 1].push(val);
+      return acc;
+    },
+    [[], []] as [T[], T[]],
+  );
+
+export const ApplicationsTable = ({
+  applications,
+  jobs,
+}: ApplicationsTableProps) => {
+  const [appliedJobs, unappliedJobs] = splitIntoTwoGroupsBy(
+    applications,
+    (app: JobApplication) => {
+      return app.status === 'applied';
+    },
+  );
+
+  const jobsWithNoApplication = jobs.filter(
+    (job) => !applications.find((app) => app.job.id === job.id),
+  );
+
+  const finalJobApplicationArray = [...appliedJobs, ...unappliedJobs];
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-left">
@@ -23,16 +52,20 @@ export const ApplicationsTable = ({ applications }: ApplicationsTableProps) => {
               Applied On
             </th>
             <th className="px-6 py-5 text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
-              Cover Letter Sneak Peek
+              Status
             </th>
             <th className="px-6 py-5 text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 text-right">
-              Actions
+              Job link
             </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
-          {applications.map((app) => (
-            <ApplicationRow key={app.id} application={app} />
+          {finalJobApplicationArray.map((app) => {
+            const job = jobs.find((job) => job.id === app.job.id);
+            return <ApplicationRow key={app.id} application={app} job={job!} />;
+          })}
+          {jobsWithNoApplication.map((job) => (
+            <ApplicationRow key={job.id} application={undefined} job={job} />
           ))}
         </tbody>
       </table>

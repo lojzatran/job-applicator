@@ -2,56 +2,58 @@
 
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { JobApplication } from '../types';
+import { JobApplication, Job } from '../types';
+import { StatusBadge } from '../../components/StatusBadge';
 
 interface ApplicationRowProps {
-  application: JobApplication;
+  application: JobApplication | undefined;
+  job: Job;
 }
 
-export const ApplicationRow = ({ application: app }: ApplicationRowProps) => {
+export const ApplicationRow = ({ application, job }: ApplicationRowProps) => {
   const router = useRouter();
 
   return (
     <tr
-      onClick={() => router.push(`/applications/${app.id}`)}
+      onClick={() =>
+        application && router.push(`/applications/${application?.id}`)
+      }
       className="group transition-colors hover:bg-emerald-50/30 dark:hover:bg-emerald-950/10 cursor-pointer"
     >
       <td className="px-6 py-6 font-semibold text-slate-800 dark:text-slate-200">
         <Link
-          href={`/applications/${app.id}`}
+          href={application ? `/applications/${application?.id}` : job.url}
           className="hover:text-emerald-600 dark:hover:text-emerald-400"
           onClick={(e) => e.stopPropagation()}
         >
-          {app.job.title}
+          {job.title}
         </Link>
       </td>
       <td className="px-6 py-6 font-medium text-slate-600 dark:text-slate-400">
         <div className="flex flex-col gap-2 min-w-max">
           <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-200/50 dark:border-slate-700/50 w-fit">
-            {app.job.company}
+            {job.company}
           </span>
           <span
-            className={`inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest ${app.source === 'linkedin' ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400'}`}
+            className={`inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest ${job.source === 'linkedin' ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400'}`}
           >
-            {app.source}
+            {job.source}
           </span>
         </div>
       </td>
       <td className="px-6 py-6 text-sm text-slate-500 dark:text-slate-500">
-        {new Date(app.createdAt).toLocaleDateString(undefined, {
+        {new Date(job.createdAt).toLocaleDateString(undefined, {
           month: 'short',
           day: 'numeric',
           year: 'numeric',
         })}
       </td>
       <td className="px-6 py-6 max-w-xs overflow-hidden text-ellipsis whitespace-nowrap text-sm text-slate-500 dark:text-slate-500 italic">
-        {app.coverLetter
-          ? `"${app.coverLetter.substring(0, 60)}..."`
-          : '(Processing cover letter...)'}
+        {application && <StatusBadge status={application.status} />}
       </td>
       <td className="px-6 py-6 text-right">
         <a
-          href={app.job.url}
+          href={job.url}
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}

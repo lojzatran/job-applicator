@@ -3,6 +3,7 @@ import { Cv } from '../entities/cv.entity';
 import { DataSourceOptions } from 'typeorm';
 import { env } from '../utils/env';
 import { JobApplicationProcessingRun } from '../entities/job-application-processing-run.entity';
+import { Job } from '../entities/job.entity';
 
 export const postgresConnectionOptions = {
   type: 'postgres',
@@ -17,8 +18,10 @@ export const postgresConnectionOptions = {
 export const dataSourceOptions = {
   ...postgresConnectionOptions,
   synchronize: false,
-  logging: ['error'],
-  entities: [JobApplication, Cv, JobApplicationProcessingRun],
+  logging: ['error', env.NODE_ENV === 'development' && 'query'],
+  logger:
+    env.NODE_ENV === 'development' ? 'formatted-console' : 'advanced-console',
+  entities: [JobApplication, Cv, Job, JobApplicationProcessingRun],
   subscribers: [],
   migrations: [],
 } as DataSourceOptions;
