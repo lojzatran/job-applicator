@@ -158,4 +158,4 @@ jobs:
           script: |
             cd ~/job-applicator
             docker compose --profile '*' pull
-            docker compose --profile infrastructure --profile ai --profile app up -d --pull always --remove-orphans
+            docker compose --profile infrastructure --profile ai --profile app up -d --remove-orphans
