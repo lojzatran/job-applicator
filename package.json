@@ -11,7 +11,7 @@
     "migrate": "tsx libs/migrations/src/migrate.ts",
     "db:reset": "tsx libs/migrations/src/ensure-database.ts && tsx libs/migrations/src/reset-database.ts && npm run migrate",
     "export-graph": "tsx --tsconfig tsconfig.base.json docs/scripts/export-langgraph-graph.ts",
-    "ai-eval:node-job-evaluator": "POSTGRES_DB=eval npm run db:reset && POSTGRES_DB=eval tsx --tsconfig apps/ai-evaluation/tsconfig.app.json apps/ai-evaluation/src/node-job-evaluator/job-evaluator.dataset.ts && POSTGRES_DB=eval tsx --tsconfig apps/ai-evaluation/tsconfig.app.json apps/ai-evaluation/src/node-job-evaluator/job-evaluator-gemma3:12b.eval.ts",
+    "ai-eval:node-job-evaluator": "POSTGRES_DB=eval npm run db:reset && POSTGRES_DB=eval tsx --tsconfig apps/ai-evaluation/tsconfig.app.json apps/ai-evaluation/src/node-job-evaluator/job-evaluator.dataset.ts && POSTGRES_DB=eval tsx --tsconfig apps/ai-evaluation/tsconfig.app.json apps/ai-evaluation/src/node-job-evaluator/job-evaluator-gemma4-e4b.eval.ts",
     "ai-eval:graph": "POSTGRES_DB=eval npm run db:reset && POSTGRES_DB=eval tsx --tsconfig apps/ai-evaluation/tsconfig.app.json apps/ai-evaluation/src/graph/graph-dataset.ts && POSTGRES_DB=eval tsx --tsconfig apps/ai-evaluation/tsconfig.app.json apps/ai-evaluation/src/graph/graph-gemma.eval.ts",
     "lint": "nx run-many --targets=lint --all",
     "typecheck": "nx run-many --targets=typecheck --all",

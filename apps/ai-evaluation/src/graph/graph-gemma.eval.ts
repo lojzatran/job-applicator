@@ -23,7 +23,7 @@ interface EvalOutput {
   }>;
 }
 
-const MODELS = ['gemma4:e2b', 'gemma4:e4b', 'gemma3:12b'];
+const MODELS = ['gemma4:e4b'];
 
 const EVALUATION_PROMPT = `You are an HR evaluating the cover letter of the candidate for the job position.
 
@@ -87,6 +87,7 @@ async function correctnessEvaluator({
 }
 
 async function runGraph(inputs: EvalInput, model: string): Promise<EvalOutput> {
+  logger.info(`Starting graph for model ${model}...`);
   const { graph, cleanup } = await createOllamaAgentGraph(model);
 
   try {

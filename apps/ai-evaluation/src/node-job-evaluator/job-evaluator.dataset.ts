@@ -2,6 +2,7 @@ import { Client } from 'langsmith';
 import { DATASET_NAME } from './constants';
 import { ensureDataset } from '../utils/langsmith-utils';
 import { createLogger } from '@apps/shared';
+import '../utils/env';
 
 const logger = createLogger('job-evaluator-dataset');
 

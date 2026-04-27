@@ -40,7 +40,6 @@ Thumbs.db
 
 # Environment files
 .env
-.env.*
 
 .nx/cache
 .nx/workspace-data

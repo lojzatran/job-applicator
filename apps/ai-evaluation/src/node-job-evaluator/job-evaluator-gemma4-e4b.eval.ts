@@ -7,9 +7,9 @@ import {
 } from '../utils/agent-utils';
 import { createLogger } from '@apps/shared';
 
-const logger = createLogger('job-evaluator-gemma3:12b-eval');
+const logger = createLogger('job-evaluator-gemma4-e4b-eval');
 
-const LLM_MODEL = 'gemma3:12b';
+const LLM_MODEL = 'gemma4:e4b';
 
 async function correctnessEvaluator({
   outputs,

@@ -6,6 +6,7 @@ import { CvEmbeddingsService } from '@apps/api/src/app/cv/embeddings/cv-summary-
 import { CvEmbeddingsRepository } from '@apps/api/src/app/cv/embeddings/cv-embeddings.repository';
 import { DataSource } from 'typeorm';
 import { dataSourceOptions } from '@apps/shared';
+import { EmbeddingsWrapper } from '@apps/api/src/app/ai/providers/embedding.types';
 
 interface OllamaAgentGraphContext {
   graph: ReturnType<InstanceType<typeof LanggraphService>['build']>;
@@ -28,7 +29,8 @@ export async function createOllamaAgentRuntime(
   const embeddingModel = new OllamaEmbeddings({
     model: embeddingModelName,
     baseUrl: env.OLLAMA_BASE_URL,
-  });
+  }) as unknown as EmbeddingsWrapper;
+  embeddingModel.modelName = embeddingModelName;
 
   const cvEmbeddingsRepository = new CvEmbeddingsRepository();
   const dataSource = new DataSource(dataSourceOptions);
@@ -37,7 +39,7 @@ export async function createOllamaAgentRuntime(
   try {
     const cvEmbeddingsService = new CvEmbeddingsService(
       llm as any,
-      embeddingModel as any,
+      embeddingModel,
       cvEmbeddingsRepository as any,
       dataSource,
     );
