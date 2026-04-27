@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { JobApplication } from '@apps/shared';
+import { Job } from '@apps/shared';
 import { StartupJobsService } from '../startupjobs.service';
 import * as mockResponse from './mocks/startupjobs-mock-response.json';
 
@@ -19,20 +19,25 @@ jest.mock(
 
 describe('StartupJobsService', () => {
   let service: StartupJobsService;
-  let mockJobApplicationRepository: { find: jest.Mock; insert: jest.Mock };
+  let mockJobRepository: {
+    find: jest.Mock;
+    insert: jest.Mock;
+    upsert: jest.Mock;
+  };
 
   beforeEach(async () => {
-    mockJobApplicationRepository = {
+    mockJobRepository = {
       find: jest.fn(),
       insert: jest.fn(),
+      upsert: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         StartupJobsService,
         {
-          provide: getRepositoryToken(JobApplication),
-          useValue: mockJobApplicationRepository,
+          provide: getRepositoryToken(Job),
+          useValue: mockJobRepository,
         },
       ],
     }).compile();
@@ -47,8 +52,12 @@ describe('StartupJobsService', () => {
   });
 
   it('should fetch jobs from startupjobs.cz', async () => {
-    // mock jobApplicationRepository
-    mockJobApplicationRepository.find.mockResolvedValue([]);
+    mockJobRepository.find.mockResolvedValue([]);
+    mockJobRepository.upsert.mockResolvedValue({
+      identifiers: [],
+      generatedMaps: [],
+      raw: [],
+    });
 
     (global.fetch as jest.Mock).mockResolvedValue({
       json: jest.fn().mockResolvedValue(mockResponse),
@@ -57,11 +66,12 @@ describe('StartupJobsService', () => {
     const jobs = await service.fetchJobs();
 
     // verify that it will make 6 requests in total
+    // because in startupjobs-mock-response.json we have 6 pages and we fetch 20 jobs/page
     expect(global.fetch).toHaveBeenCalledTimes(6);
 
     // verify that all jobs are saved to db
-    expect(mockJobApplicationRepository.insert).toHaveBeenCalledTimes(1);
-    const insertedJobs = mockJobApplicationRepository.insert.mock.calls[0][0];
+    expect(mockJobRepository.upsert).toHaveBeenCalledTimes(1);
+    const insertedJobs = mockJobRepository.upsert.mock.calls[0][0];
     expect(insertedJobs.length).toBe(jobs.length);
     expect(jobs.length).toBe(mockResponse.member.length * 6);
   });
@@ -72,23 +82,19 @@ describe('StartupJobsService', () => {
     // mock jobApplicationRepository
     const fakeJobs = [
       {
-        job: {
-          id: '1',
-          title: 'test',
-          source: 'startupjobs',
-          createdAt: currentDate,
-        },
+        id: '1',
+        title: 'test',
+        source: 'startupjobs',
+        createdAt: currentDate,
       },
       {
-        job: {
-          id: '2',
-          title: 'test 2',
-          source: 'startupjobs',
-          createdAt: currentDate,
-        },
+        id: '2',
+        title: 'test 2',
+        source: 'startupjobs',
+        createdAt: currentDate,
       },
     ];
-    mockJobApplicationRepository.find.mockResolvedValue(fakeJobs);
+    mockJobRepository.find.mockResolvedValue(fakeJobs);
 
     // mock the date so that it will always be current date
     jest.useFakeTimers();
@@ -109,7 +115,7 @@ describe('StartupJobsService', () => {
         createdAt: currentDate,
       },
     ]);
-    expect(mockJobApplicationRepository.find).toHaveBeenCalledTimes(1);
+    expect(mockJobRepository.find).toHaveBeenCalledTimes(1);
 
     jest.useRealTimers();
   });

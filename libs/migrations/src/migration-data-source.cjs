@@ -27,6 +27,7 @@ loadDotenv({ path: resolve(process.cwd(), '.env') });
 
 const migrationDataSource = new DataSource({
   ...dataSourceOptions,
+  logging: ['error', 'schema'],
   migrations: [
     resolve(process.cwd(), 'libs/migrations/src/scripts/*{.ts,.js}'),
   ],

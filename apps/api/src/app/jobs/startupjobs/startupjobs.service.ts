@@ -1,8 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { Job } from '../types';
 import { cleanHtml } from '../jobs.utils';
 import { InjectRepository } from '@nestjs/typeorm';
-import { JobApplication } from '@apps/shared';
+import { Job } from '@apps/shared';
 import { Repository } from 'typeorm';
 import { Between } from 'typeorm';
 import { createLogger } from '@apps/shared';
@@ -152,11 +151,11 @@ export class StartupJobsService {
   private LIMIT = 20;
 
   constructor(
-    @InjectRepository(JobApplication)
-    private readonly jobApplicationRepository: Repository<JobApplication>,
+    @InjectRepository(Job)
+    private readonly jobRepository: Repository<Job>,
   ) {}
 
-  async fetchJobs(): Promise<Job[]> {
+  async fetchJobs(): Promise<Omit<Job, 'id'>[]> {
     this.logger.info('Fetching jobs from startupjobs.cz...');
     const start = new Date();
     start.setUTCHours(0, 0, 0, 0);
@@ -164,68 +163,71 @@ export class StartupJobsService {
     const end = new Date();
     end.setUTCHours(23, 59, 59, 999);
 
-    const fetchedJobs = await this.jobApplicationRepository.find({
+    const fetchedJobs = await this.jobRepository.find({
       where: {
         createdAt: Between(start, end),
         source: 'startupjobs',
       },
     });
 
-    let jobs: Job[] = [];
     if (fetchedJobs.length > 0) {
-      jobs = fetchedJobs.map((job) => job.job as Job);
-    } else {
-      const response = await fetch(
-        `https://core.startupjobs.cz/api/search/offers?page=1&startupOnly=false&locationPreference%5B%5D=remote`,
+      this.logger.debug(
+        `Already fetched ${fetchedJobs.length} jobs from startupjobs.cz today`,
       );
-
-      const firstPage: StartupJobsSearchOffersResponse =
-        (await response.json()) as StartupJobsSearchOffersResponse;
-
-      const totalPages = Math.ceil(firstPage.totalItems / this.LIMIT) - 1; // subtract 1 because we already fetched the first page above
-      const { default: pMap } = await import(/* webpackIgnore: true */ 'p-map');
-
-      const otherPages = await pMap(
-        Array.from({ length: totalPages }, (_, i) => i + 2),
-        async (pageNumber) => {
-          const response = await fetch(
-            `https://core.startupjobs.cz/api/search/offers?page=${pageNumber}&startupOnly=false&locationPreference%5B%5D=remote`,
-          );
-          const data: StartupJobsSearchOffersResponse =
-            (await response.json()) as StartupJobsSearchOffersResponse;
-          return data.member;
-        },
-        { concurrency: 3 },
-      );
-
-      const allStartupJobs: StartupJobsOffer[] = [
-        ...firstPage.member,
-        ...otherPages.flat(),
-      ];
-
-      jobs = allStartupJobs.map((job) => ({
-        id: job.id,
-        title: job.title.en || job.title.cs || '',
-        description: cleanHtml(job.description.en || job.description.cs || ''),
-        company: job.company.name,
-        url: `https://www.startupjobs.cz/nabidka/${job.displayId}/${job.slug}`,
-        source: 'startupjobs',
-      }));
-
-      await this.saveJobs(jobs);
+      return fetchedJobs;
     }
-    return jobs;
-  }
 
-  async saveJobs(jobs: Job[]) {
-    const jobApplications = jobs.map((job) => {
-      const jobApplication = new JobApplication();
-      jobApplication.job = job;
-      jobApplication.url = job.url;
-      jobApplication.createdAt = new Date();
-      jobApplication.source = job.source;
-      return jobApplication;
+    this.logger.debug(
+      `No jobs fetched from startupjobs.cz today, fetching all jobs from startupjobs.cz`,
+    );
+
+    const response = await fetch(
+      `https://core.startupjobs.cz/api/search/offers?page=1&startupOnly=false&locationPreference%5B%5D=remote`,
+    );
+
+    const firstPage: StartupJobsSearchOffersResponse =
+      (await response.json()) as StartupJobsSearchOffersResponse;
+
+    const totalPages = Math.ceil(firstPage.totalItems / this.LIMIT) - 1; // subtract 1 because we already fetched the first page above
+    const { default: pMap } = await import(/* webpackIgnore: true */ 'p-map');
+
+    const otherPages = await pMap(
+      Array.from({ length: totalPages }, (_, i) => i + 2),
+      async (pageNumber) => {
+        const response = await fetch(
+          `https://core.startupjobs.cz/api/search/offers?page=${pageNumber}&startupOnly=false&locationPreference%5B%5D=remote`,
+        );
+        const data: StartupJobsSearchOffersResponse =
+          (await response.json()) as StartupJobsSearchOffersResponse;
+        return data.member;
+      },
+      { concurrency: 3 },
+    );
+
+    const allStartupJobs: StartupJobsOffer[] = [
+      ...firstPage.member,
+      ...otherPages.flat(),
+    ];
+
+    this.logger.debug(
+      `Fetched ${allStartupJobs.length} jobs from startupjobs.cz`,
+    );
+
+    const jobs = allStartupJobs.map((job) => ({
+      title: job.title.en || job.title.cs || '',
+      description: cleanHtml(job.description.en || job.description.cs || ''),
+      company: job.company.name,
+      url: `https://www.startupjobs.cz/nabidka/${job.displayId}/${job.slug}`,
+      source: 'startupjobs',
+      createdAt: new Date(),
+    }));
+
+    const insertResult = await this.jobRepository.upsert(jobs, {
+      conflictPaths: ['url'],
     });
-    await this.jobApplicationRepository.insert(jobApplications);
+    this.logger.debug(
+      `Saved ${insertResult.generatedMaps.length} new jobs from startupjobs.cz`,
+    );
+    return jobs;
   }
 }

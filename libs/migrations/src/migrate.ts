@@ -21,7 +21,8 @@ async function migrate() {
     password: env.POSTGRES_PASSWORD,
     database: env.POSTGRES_DB,
     synchronize: false,
-    logging: ['error'],
+    logging: ['error', 'schema', 'query'],
+    logger: 'formatted-console',
     migrations: migrationClasses,
   });
 

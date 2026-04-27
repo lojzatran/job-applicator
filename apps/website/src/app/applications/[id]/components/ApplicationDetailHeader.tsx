@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { JobApplication } from '../../types';
+import { StatusBadge } from '../../../components/StatusBadge';
 
 interface ApplicationDetailHeaderProps {
   application: JobApplication;
@@ -77,10 +78,7 @@ export const ApplicationDetailHeader = ({
             year: 'numeric',
           })}
         </span>
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400">
-          <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-          Processing
-        </span>
+        <StatusBadge status={application.status} />
       </div>
     </div>
   );

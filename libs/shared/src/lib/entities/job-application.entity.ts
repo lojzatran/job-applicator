@@ -1,25 +1,33 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
+import { Job } from './job.entity';
+import { Cv } from './cv.entity';
 
 @Entity('job_application')
 export class JobApplication {
   @PrimaryGeneratedColumn()
-  id!: string;
+  id!: number;
 
-  @Column({ type: 'jsonb' })
-  job!: object;
+  @ManyToOne(() => Job)
+  job!: Job;
 
-  @Column({ unique: true })
-  url!: string;
+  @ManyToOne(() => Cv, (cv) => cv.jobApplications, { nullable: true })
+  cv?: Cv | null;
 
   @Column({ nullable: true })
   coverLetter?: string;
 
-  @Column()
-  source!: string;
+  @Column({ nullable: true })
+  status?: 'processing' | 'applied' | 'not-applied' | 'dismissed';
 
   @Column({ nullable: true })
-  jobDescription?: string;
+  reason?: string;
 
-  @Column()
-  createdAt!: Date;
+  @CreateDateColumn()
+  createdAt?: Date;
 }

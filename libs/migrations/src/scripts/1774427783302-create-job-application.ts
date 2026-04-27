@@ -5,7 +5,6 @@ export class CreateJobApplication1774427783302 implements MigrationInterface {
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "job_application" (
         "id" SERIAL NOT NULL,
-        "job" jsonb NOT NULL,
         "url" varchar NOT NULL,
         "coverLetter" varchar,
         "source" varchar NOT NULL,

@@ -1,10 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { JobApplication } from '@apps/shared';
+import { Job, JobApplication } from '@apps/shared';
 import { JobsService } from './jobs.service';
 import { LinkedinService } from './linkedin/linkedin.service';
 import { StartupJobsService } from './startupjobs/startupjobs.service';
-import { Job } from './types';
 
 describe('JobsService', () => {
   let service: JobsService;
@@ -64,10 +63,8 @@ describe('JobsService', () => {
   });
 
   it('should fetch jobs from linkedin and startupjobs when both are enabled', async () => {
-    const mockLinkedinJobs: Partial<Job>[] = [{ id: '1', source: 'linkedin' }];
-    const mockStartupJobs: Partial<Job>[] = [
-      { id: '2', source: 'startupjobs' },
-    ];
+    const mockLinkedinJobs: Partial<Job>[] = [{ id: 1, source: 'linkedin' }];
+    const mockStartupJobs: Partial<Job>[] = [{ id: 2, source: 'startupjobs' }];
 
     linkedinService.fetchJobs.mockResolvedValue(asJobs(mockLinkedinJobs));
     startupjobsService.fetchJobs.mockResolvedValue(asJobs(mockStartupJobs));
@@ -80,7 +77,7 @@ describe('JobsService', () => {
   });
 
   it('should fetch jobs from linkedin only when linkedin is enabled and startupjobs is disabled', async () => {
-    const mockLinkedinJobs: Partial<Job>[] = [{ id: '1', source: 'linkedin' }];
+    const mockLinkedinJobs: Partial<Job>[] = [{ id: 1, source: 'linkedin' }];
 
     linkedinService.fetchJobs.mockResolvedValue(asJobs(mockLinkedinJobs));
 
@@ -92,9 +89,7 @@ describe('JobsService', () => {
   });
 
   it('should fetch jobs from startupjobs only when startupjobs is enabled and linkedin is disabled', async () => {
-    const mockStartupJobs: Partial<Job>[] = [
-      { id: '2', source: 'startupjobs' },
-    ];
+    const mockStartupJobs: Partial<Job>[] = [{ id: 2, source: 'startupjobs' }];
 
     startupjobsService.fetchJobs.mockResolvedValue(asJobs(mockStartupJobs));
 

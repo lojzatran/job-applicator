@@ -6,10 +6,14 @@ import { ProcessingSessionBadge } from './ProcessingSessionBadge';
 import { ProcessingMetrics } from './ProcessingMetrics';
 
 interface ApplicationsHeaderProps {
-  count: number;
+  appliedCount: number;
+  totalCount: number;
 }
 
-export const ApplicationsHeader = ({ count }: ApplicationsHeaderProps) => {
+export const ApplicationsHeader = ({
+  appliedCount,
+  totalCount,
+}: ApplicationsHeaderProps) => {
   const { jobProcessingRun } = useJobProcessingRun();
   return (
     <div className="mb-10 flex flex-col items-center justify-between gap-4 sm:flex-row sm:items-end">
@@ -41,10 +45,18 @@ export const ApplicationsHeader = ({ count }: ApplicationsHeaderProps) => {
         <div className="flex flex-wrap items-center justify-end gap-3">
           <div className="group rounded-2xl bg-white/50 px-4 py-2 text-sm font-bold text-slate-600 backdrop-blur-sm dark:bg-slate-900/50 dark:text-slate-400 shadow-sm border border-slate-100 dark:border-slate-800 transition-all hover:border-slate-200 dark:hover:border-slate-700">
             <span className="text-emerald-600 dark:text-emerald-400 transition-transform group-hover:scale-110 inline-block">
-              {count}
+              {appliedCount}
             </span>
             <span className="ml-1.5 opacity-80 uppercase tracking-tight text-[0.7rem]">
-              Total Apps
+              Applied
+            </span>
+          </div>
+          <div className="group rounded-2xl bg-white/50 px-4 py-2 text-sm font-bold text-slate-600 backdrop-blur-sm dark:bg-slate-900/50 dark:text-slate-400 shadow-sm border border-slate-100 dark:border-slate-800 transition-all hover:border-slate-200 dark:hover:border-slate-700">
+            <span className="text-slate-600 dark:text-slate-400 transition-transform group-hover:scale-110 inline-block">
+              {totalCount}
+            </span>
+            <span className="ml-1.5 opacity-80 uppercase tracking-tight text-[0.7rem]">
+              Jobs
             </span>
           </div>
         </div>

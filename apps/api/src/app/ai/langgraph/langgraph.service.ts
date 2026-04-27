@@ -21,7 +21,6 @@ import {
 import { createLogger } from '@apps/shared';
 
 interface CoverLetterEntry {
-  url: string;
   coverLetter: string;
 }
 
@@ -33,6 +32,7 @@ const AgentStateAnnotation = Annotation.Root({
     reducer: (curr, next) => next,
     default: () => 0,
   }),
+  url: Annotation<string | null>,
   evaluatedJobsCount: Annotation<number>({
     reducer: (curr, next) => next,
     default: () => 0,
@@ -177,12 +177,14 @@ export class LanggraphService {
             : response.isValidJob.trim().toLowerCase() === 'true';
         return {
           isValidJob,
+          url: isValidJob ? null : state.job?.url,
           evaluatedJobsCount: state.evaluatedJobsCount + 1,
           dismissedJobsCount: state.dismissedJobsCount + (isValidJob ? 0 : 1),
         };
       } else {
         return {
           isValidJob: false,
+          url: state.job?.url,
           evaluatedJobsCount: state.evaluatedJobsCount + 1,
           dismissedJobsCount: state.dismissedJobsCount + 1,
         };
@@ -191,6 +193,7 @@ export class LanggraphService {
       this.logger.error(error, 'Failed to evaluate job');
       return {
         isValidJob: false,
+        url: state.job?.url,
         evaluatedJobsCount: state.evaluatedJobsCount + 1,
         dismissedJobsCount: state.dismissedJobsCount + 1,
       };
@@ -214,9 +217,9 @@ export class LanggraphService {
     this.logger.debug(`Applied jobs count: ${state.appliedJobsCount}`);
     return {
       appliedJobsCount: state.appliedJobsCount + 1,
+      url: state.job!.url,
       coverLetters: [
         {
-          url: state.job!.url,
           coverLetter: response.coverLetter,
         },
       ],

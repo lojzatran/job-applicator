@@ -15,7 +15,7 @@ import { embeddingModelProvider } from './ai/providers/embedding.provider';
 import { PdfService } from './documents/pdf/pdf.service';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { JobApplication, dataSourceOptions } from '@apps/shared';
+import { Job, JobApplication, dataSourceOptions } from '@apps/shared';
 import { CvEmbeddingsService } from './cv/embeddings/cv-summary-embeddings.service';
 import { CvEmbeddingsRepository } from './cv/embeddings/cv-embeddings.repository';
 import { Cv, JobApplicationProcessingRun } from '@apps/shared';
@@ -24,7 +24,12 @@ import { Cv, JobApplicationProcessingRun } from '@apps/shared';
   imports: [
     ConfigModule.forRoot(),
     TypeOrmModule.forRoot(dataSourceOptions),
-    TypeOrmModule.forFeature([JobApplication, Cv, JobApplicationProcessingRun]),
+    TypeOrmModule.forFeature([
+      JobApplication,
+      Cv,
+      Job,
+      JobApplicationProcessingRun,
+    ]),
   ],
   controllers: [AppController],
   providers: [

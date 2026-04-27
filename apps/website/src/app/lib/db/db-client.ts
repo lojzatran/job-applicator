@@ -1,5 +1,5 @@
 import { AppDataSource } from './db-source';
-import { JobApplication, JobApplicationProcessingRun } from '@apps/shared';
+import { JobApplication, JobApplicationProcessingRun, Job } from '@apps/shared';
 
 let appDataSourceInitialization: Promise<typeof AppDataSource> | null = null;
 
@@ -28,16 +28,31 @@ export async function listJobApplications(): Promise<JobApplication[]> {
     .createQueryBuilder('job_application')
     .orderBy('job_application.coverLetter', 'DESC', 'NULLS LAST')
     .addOrderBy('job_application.createdAt', 'DESC')
+    .innerJoin('job_application.job', 'job')
+    .addSelect('job.id')
+    .getMany();
+}
+
+export async function listJobs(): Promise<Job[]> {
+  const appDataSource = await getAppDataSource();
+
+  const jobRepository = appDataSource.getRepository(Job);
+  return jobRepository
+    .createQueryBuilder('job')
+    .orderBy('job.id', 'DESC')
     .getMany();
 }
 
 export async function getJobApplication(
-  id: string,
+  id: number,
 ): Promise<JobApplication | null> {
   const appDataSource = await getAppDataSource();
 
   const jobApplicationsRepository = appDataSource.getRepository(JobApplication);
-  return jobApplicationsRepository.findOneBy({ id });
+  return jobApplicationsRepository.findOne({
+    where: { id },
+    relations: { job: true },
+  });
 }
 
 export async function saveJobApplicationProcessingRun({
