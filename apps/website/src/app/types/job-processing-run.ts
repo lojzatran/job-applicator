@@ -1,6 +1,6 @@
 export type JobProcessingRunStatus =
   | 'pending'
-  | 'processing'
+  | 'in progress'
   | 'completed'
   | 'failed';
 

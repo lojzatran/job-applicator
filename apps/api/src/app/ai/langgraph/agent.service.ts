@@ -17,11 +17,9 @@ export interface CoverLetterData {
 }
 
 export interface StreamChunk {
-  cv_summarizer?: {
-    cvEntityId: number;
-  };
   job_supplier?: {
     job: Job;
+    cvEntityId?: number;
   };
   job_evaluator?: {
     isValidJob?: boolean;
@@ -50,9 +48,14 @@ export class AgentService {
     private readonly jobApplicationRepository: Repository<JobApplication>,
   ) {}
 
-  private async initializeProcessingRun(threadId: string, totalJobs: number) {
+  private async initializeProcessingRun(
+    userId: string,
+    threadId: string,
+    totalJobs: number,
+  ) {
     const baseJobApplicationProcessingRun = {
-      status: 'processing',
+      userId,
+      status: 'in progress',
       totalJobs,
       evaluatedJobApplications: 0,
       dismissedJobApplications: 0,
@@ -82,6 +85,7 @@ export class AgentService {
   }
 
   async executeAgent(
+    userId: string,
     filePath: string,
     options: {
       maxJobs: number;
@@ -98,30 +102,38 @@ export class AgentService {
       ),
     ]);
 
-    await this.initializeProcessingRun(options.threadId, jobs.length);
+    const jobsToProcess = await this.jobsService.filterOutJobsWithApplications(
+      userId,
+      jobs,
+    );
+
+    await this.initializeProcessingRun(
+      userId,
+      options.threadId,
+      jobsToProcess.length,
+    );
 
     try {
-      const agent = this.langgraphService.build();
+      const agent = await this.langgraphService.build();
       const result: AsyncGenerator<StreamChunk, void, unknown> =
         await agent.stream(
           {
             cvText: cvText,
             maxAppliedJobs: options.maxJobs,
-            jobs: jobs,
+            jobs: jobsToProcess,
+            userId: userId,
           },
           {
             configurable: { thread_id: options.threadId },
             // recursion is a super-step, and in my graph there are currently 4 super-steps for each job.
             // I also add a buffer of 5 (random number) just be sure.
-            recursionLimit: 4 * jobs.length + 5,
+            recursionLimit: 4 * jobsToProcess.length + 5,
             streamMode: 'updates',
           },
         );
 
-      let cvEntityId: number | null = null;
-
       for await (const chunk of result) {
-        cvEntityId = await this.processChunk(chunk, cvEntityId, options);
+        await this.processorChunk(chunk, { ...options, userId });
       }
 
       this.logger.info('Agent Finished');
@@ -143,31 +155,33 @@ export class AgentService {
     }
   }
 
-  private async processChunk(
+  private async processorChunk(
     chunk: StreamChunk,
-    cvEntityId: number | null,
     options: {
       maxJobs: number;
       linkedinEnabled: boolean;
       startupJobsEnabled: boolean;
       threadId: string;
+      userId: string;
     },
   ) {
-    if (chunk.cv_summarizer?.cvEntityId) {
-      cvEntityId = chunk.cv_summarizer.cvEntityId;
-    } else if (chunk.job_supplier?.job) {
+    if (chunk.job_supplier?.job) {
+      this.logger.debug(
+        'Create new job application for job: ' +
+          JSON.stringify(chunk.job_supplier.job.url),
+      );
+      const cvEntityId = chunk.job_supplier.cvEntityId;
       await this.jobApplicationRepository.save({
+        userId: options.userId,
         cv: cvEntityId ? { id: cvEntityId } : undefined,
         job: chunk.job_supplier.job,
         status: 'processing',
-        createdAt: new Date(),
       });
     } else if (chunk.job_evaluator !== undefined) {
       await this.processJobEvaluatorChunk(chunk, options);
     } else if (chunk.cover_letter_generator !== undefined) {
       await this.processCoverLetterGeneratorChunk(chunk, options);
     }
-    return cvEntityId;
   }
 
   private async processCoverLetterGeneratorChunk(
@@ -177,6 +191,7 @@ export class AgentService {
       linkedinEnabled: boolean;
       startupJobsEnabled: boolean;
       threadId: string;
+      userId: string;
     },
   ) {
     this.logger.debug(
@@ -191,7 +206,10 @@ export class AgentService {
       ? rawCoverLetters
       : [rawCoverLetters];
     const applicationToApply = await this.jobApplicationRepository.findOne({
-      where: { job: { url: chunk.cover_letter_generator!.url } },
+      where: {
+        job: { url: chunk.cover_letter_generator!.url },
+        userId: options.userId,
+      },
     });
     if (applicationToApply) {
       await this.jobApplicationRepository.update(applicationToApply.id, {
@@ -214,6 +232,7 @@ export class AgentService {
       linkedinEnabled: boolean;
       startupJobsEnabled: boolean;
       threadId: string;
+      userId: string;
     },
   ) {
     if (chunk.job_evaluator?.evaluatedJobsCount !== undefined) {
@@ -232,7 +251,10 @@ export class AgentService {
         'Dismissed Jobs Count: ' + chunk.job_evaluator.dismissedJobsCount,
       );
       const applicationToDismiss = await this.jobApplicationRepository.findOne({
-        where: { job: { url: chunk.job_evaluator.url } },
+        where: {
+          job: { url: chunk.job_evaluator.url },
+          userId: options.userId,
+        },
       });
       if (applicationToDismiss) {
         await this.jobApplicationRepository.update(applicationToDismiss.id, {

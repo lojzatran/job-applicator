@@ -1,5 +1,4 @@
 import {
-  MemorySaver,
   StateGraph,
   END,
   START,
@@ -19,13 +18,21 @@ import {
   JOB_EVALUATOR_LLM,
 } from '../ai.constants';
 import { createLogger } from '@apps/shared';
+import { PostgresSaver } from '@langchain/langgraph-checkpoint-postgres';
+import { env } from '../../../utils/env';
+
+const databaseUrl = new URL(
+  `postgres://${env.POSTGRES_HOST}:${env.POSTGRES_PORT}/${env.POSTGRES_DB}`,
+);
+databaseUrl.username = env.POSTGRES_USER;
+databaseUrl.password = env.POSTGRES_PASSWORD;
 
 interface CoverLetterEntry {
   coverLetter: string;
 }
 
 const AgentStateAnnotation = Annotation.Root({
-  isValidJob: Annotation<boolean>,
+  isValidJob: Annotation<boolean | undefined>,
   job: Annotation<z.infer<typeof JobSchema> | undefined>,
   maxAppliedJobs: Annotation<number>,
   appliedJobsCount: Annotation<number>({
@@ -55,6 +62,7 @@ const AgentStateAnnotation = Annotation.Root({
     },
     default: () => [],
   }),
+  userId: Annotation<string>,
 });
 
 type AgentState = typeof AgentStateAnnotation.State;
@@ -82,6 +90,10 @@ export class LanggraphService {
   }
 
   private async summarizeCv(state: AgentState) {
+    if (state.cvEntityId) {
+      return {};
+    }
+
     this.logger.info('Summarizing CV...');
 
     const cvEntityId = await this.cvEmbeddingsService.ensureCvAndEmbeddings(
@@ -92,10 +104,12 @@ export class LanggraphService {
   }
 
   private jobSupplier(state: AgentState) {
-    this.logger.trace(`Job supplier: ${JSON.stringify(state.jobs)}`);
+    if (state.job !== undefined) {
+      return {};
+    }
     const [job, ...remainingJobs] = state.jobs;
     this.logger.trace(`Job supplier: ${JSON.stringify(job)}`);
-    return { job, jobs: remainingJobs };
+    return { job, jobs: remainingJobs, cvEntityId: state.cvEntityId };
   }
 
   private shouldContinue(state: AgentState) {
@@ -109,6 +123,9 @@ export class LanggraphService {
   }
 
   private async evaluateJob(state: AgentState) {
+    if (state.isValidJob !== undefined) {
+      return {};
+    }
     this.logger.info(`Evaluating job: ${JSON.stringify(state.job?.title)}`);
 
     try {
@@ -206,7 +223,7 @@ export class LanggraphService {
     if (isValidJob) {
       return 'cover_letter_generator';
     }
-    return 'job_supplier';
+    return 'clean_state';
   }
 
   private async generateCoverLetter(state: AgentState) {
@@ -226,7 +243,20 @@ export class LanggraphService {
     };
   }
 
-  build(): CompiledStateGraph<any, any, any, any, any, any> {
+  private async cleanState(state: AgentState) {
+    return {
+      job: undefined,
+      isValidJob: undefined,
+    };
+  }
+
+  async build(): Promise<CompiledStateGraph<any, any, any, any, any, any>> {
+    const checkpointer = PostgresSaver.fromConnString(databaseUrl.toString(), {
+      schema: 'public',
+    });
+
+    await checkpointer.setup();
+
     return new StateGraph(AgentStateAnnotation)
       .addNode('job_supplier', this.jobSupplier.bind(this))
       .addNode('cv_summarizer', this.summarizeCv.bind(this))
@@ -234,6 +264,7 @@ export class LanggraphService {
         retryPolicy: { maxAttempts: 3 },
       })
       .addNode('cover_letter_generator', this.generateCoverLetter.bind(this))
+      .addNode('clean_state', this.cleanState.bind(this))
       .addEdge(START, 'cv_summarizer')
       .addEdge('cv_summarizer', 'job_supplier')
       .addConditionalEdges('job_supplier', this.shouldContinue.bind(this), [
@@ -242,9 +273,12 @@ export class LanggraphService {
       ])
       .addConditionalEdges('job_evaluator', this.filterJobs.bind(this), [
         'cover_letter_generator',
-        'job_supplier',
+        'clean_state',
       ])
-      .addEdge('cover_letter_generator', 'job_supplier')
-      .compile({ checkpointer: new MemorySaver() });
+      .addEdge('cover_letter_generator', 'clean_state')
+      .addEdge('clean_state', 'job_supplier')
+      .compile({
+        checkpointer,
+      });
   }
 }

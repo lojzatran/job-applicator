@@ -3,7 +3,7 @@ import { LinkedinService } from './linkedin/linkedin.service';
 import { StartupJobsService } from './startupjobs/startupjobs.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Job, JobApplication } from '@apps/shared';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 
 @Injectable()
 export class JobsService {
@@ -26,6 +26,28 @@ export class JobsService {
     ]);
 
     return [...linkedInJobs, ...startupJobs];
+  }
+
+  async filterOutJobsWithApplications(
+    userId: string,
+    jobs: Partial<Job>[],
+  ): Promise<Partial<Job>[]> {
+    const jobUrls = jobs.map((job) => job.url);
+    const jobApplications = await this.jobApplicationRepository.find({
+      where: {
+        userId: userId,
+        job: {
+          url: In(jobUrls),
+        },
+      },
+      relations: ['job'],
+    });
+    return jobs.filter(
+      (job) =>
+        !jobApplications.some(
+          (jobApplication) => jobApplication.job.url === job.url,
+        ),
+    );
   }
 
   async updateJobApplications(

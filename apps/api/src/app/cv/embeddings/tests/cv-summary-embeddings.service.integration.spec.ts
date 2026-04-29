@@ -9,7 +9,11 @@ import { embeddingModelProvider } from '../../../ai/providers/embedding.provider
 import { dataSourceOptions } from '@apps/shared';
 
 describe('Cv Embeddings Service integration', () => {
-  const databaseUrl = `postgres://${env.POSTGRES_USER}:${env.POSTGRES_PASSWORD}@${env.POSTGRES_HOST}:${env.POSTGRES_PORT}/${env.POSTGRES_DB}`;
+  const databaseUrl = new URL(
+    `postgres://${env.POSTGRES_HOST}:${env.POSTGRES_PORT}/${env.POSTGRES_DB}`,
+  );
+  databaseUrl.username = env.POSTGRES_USER;
+  databaseUrl.password = env.POSTGRES_PASSWORD;
   let moduleRef: TestingModule;
   let pool: Pool;
 
@@ -31,7 +35,7 @@ describe('Cv Embeddings Service integration', () => {
     jest.setTimeout(300000);
 
     pool = new Pool({
-      connectionString: databaseUrl,
+      connectionString: databaseUrl.toString(),
     });
 
     await pool.query(`

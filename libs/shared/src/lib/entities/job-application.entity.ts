@@ -13,6 +13,9 @@ export class JobApplication {
   @PrimaryGeneratedColumn()
   id!: number;
 
+  @Column()
+  userId!: string;
+
   @ManyToOne(() => Job)
   job!: Job;
 

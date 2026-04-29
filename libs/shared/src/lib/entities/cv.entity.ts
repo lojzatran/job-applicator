@@ -13,6 +13,9 @@ export class Cv {
   id!: number;
 
   @Column()
+  userId!: string;
+
+  @Column()
   path!: string;
 
   @Column()

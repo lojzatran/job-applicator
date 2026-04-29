@@ -6,3 +6,5 @@
 /.agents
 /.github
 /.vscode
+/.next
+*.d.ts

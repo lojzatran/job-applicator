@@ -9,7 +9,7 @@ import { dataSourceOptions } from '@apps/shared';
 import { EmbeddingsWrapper } from '@apps/api/src/app/ai/providers/embedding.types';
 
 interface OllamaAgentGraphContext {
-  graph: ReturnType<InstanceType<typeof LanggraphService>['build']>;
+  graph: Awaited<ReturnType<InstanceType<typeof LanggraphService>['build']>>;
   cleanup: () => Promise<void>;
 }
 
@@ -44,13 +44,15 @@ export async function createOllamaAgentRuntime(
       dataSource,
     );
 
+    const langgraphService = new LanggraphService(
+      llm as any,
+      llm as any,
+      llm as any,
+      cvEmbeddingsService,
+    );
+
     return {
-      graph: new LanggraphService(
-        llm as any,
-        llm as any,
-        llm as any,
-        cvEmbeddingsService,
-      ).build(),
+      graph: await langgraphService.build(),
       cvEmbeddingsService,
       cleanup: async () => {
         await dataSource.destroy();

@@ -77,6 +77,7 @@ Use `nx` to run tasks. In case `nx` is not found, use `npx nx`.
 7. **Keep methods short**: Keep methods short and focused on a single responsibility. If a method is too long, split it into smaller methods and give it a descriptive name.
 8. **Use the current year**: Always use the current year by default if not explicitly written otherwise.
 9. **Logging**: Use `createLogger()` from `@apps/shared` instead of `console` to log outputs for all server codes. This ensures consistent formatting (Pino) and proper log levels (info/debug) across the monorepo.
+10. **Middleware in next.js**: with version 16 middleware is now called `proxy.ts` by convention. Never use the name `middleware.ts` for middleware. See [Next.js Proxy](https://nextjs.org/docs/app/api-reference/file-conventions/proxy)
 
 ## Typescript usage
 

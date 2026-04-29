@@ -49,6 +49,12 @@ export default function ApplicationsPage() {
     Promise.all([fetchApplications(), fetchJobs()]).finally(() => {
       setIsLoading(false);
     });
+
+    const interval = setInterval(() => {
+      fetchApplications();
+    }, 3000);
+
+    return () => clearInterval(interval);
   }, []);
 
   return (

@@ -11,7 +11,10 @@ export class JobApplicationProcessingRun {
   id!: number;
 
   @Column()
-  status!: 'pending' | 'processing' | 'completed' | 'failed';
+  userId!: string;
+
+  @Column()
+  status!: 'pending' | 'in progress' | 'completed' | 'failed';
 
   @Column()
   totalJobs!: number;

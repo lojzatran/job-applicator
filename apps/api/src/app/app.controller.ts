@@ -19,18 +19,20 @@ export class AppController {
       startupJobsEnabled,
       maxJobs,
       threadId,
+      userId,
     }: {
       filePath: string;
       linkedinEnabled: boolean;
       startupJobsEnabled: boolean;
       maxJobs: number;
       threadId: string;
+      userId: string;
     },
   ) {
     this.logger.info('Processing job applications...');
     const channelRef = context.getChannelRef();
     try {
-      await this.agentService.executeAgent(filePath, {
+      await this.agentService.executeAgent(userId, filePath, {
         maxJobs,
         linkedinEnabled,
         startupJobsEnabled,

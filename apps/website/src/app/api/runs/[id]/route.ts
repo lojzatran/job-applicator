@@ -1,12 +1,14 @@
-import { getJobApplicationProcessingRun } from '@/app/lib/db/db-client';
+import { getJobApplicationProcessingRunByThreadIdAndUserId } from '@/app/lib/db/db-client';
+import { withAuth } from '@/app/lib/auth/with-auth';
 import { NextResponse } from 'next/server';
 
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const { id } = await params;
-  const jobApplicationProcessingRun = await getJobApplicationProcessingRun(id);
+export const GET = withAuth(async (_request, ctx) => {
+  const params = ctx.params ? await ctx.params : {};
+  const jobApplicationProcessingRun =
+    await getJobApplicationProcessingRunByThreadIdAndUserId(
+      params.id as string,
+      ctx.user.id,
+    );
 
   if (!jobApplicationProcessingRun) {
     return NextResponse.json(
@@ -16,4 +18,4 @@ export async function GET(
   }
 
   return NextResponse.json(jobApplicationProcessingRun);
-}
+}, 'runs/[id]');
