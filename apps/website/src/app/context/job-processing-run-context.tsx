@@ -5,7 +5,6 @@ import {
   useContext,
   useEffect,
   useState,
-  useCallback,
   type ReactNode,
 } from 'react';
 import { JobApplicationProcessingRun } from '../types/job-processing-run';
