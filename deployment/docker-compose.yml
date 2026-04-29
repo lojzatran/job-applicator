@@ -36,8 +36,6 @@ services:
     profiles:
       - ai
     image: lojzatran/job-applicator-ollama:latest
-    # build:
-    #   dockerfile: Dockerfile.ollama
     ports:
       - '11434:11434'
     volumes:
@@ -51,9 +49,6 @@ services:
   api:
     profiles:
       - app
-    # build:
-    #   context: .
-    #   dockerfile: apps/api/Dockerfile
     image: lojzatran/job-applicator-api:latest
     ports:
       - '3000:3000'
@@ -92,14 +87,6 @@ services:
   website:
     profiles:
       - app
-    # build:
-    #   context: ..
-    #   dockerfile: apps/website/Dockerfile
-    #   args:
-    #     NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
-    #     NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
-    #     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
-    #     NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
     image: lojzatran/job-applicator-website:latest
     ports:
       - '3001:3000'
@@ -124,9 +111,6 @@ services:
       - uploads:/app/uploads
 
   db-reset:
-    # build:
-    #   context: ..
-    #   dockerfile: deployment/Dockerfile.db-reset
     image: lojzatran/job-applicator-db-reset:latest
     environment:
       - POSTGRES_HOST=postgres
@@ -141,9 +125,6 @@ services:
       - tools-reset
 
   db-migrate:
-    # build:
-    #   context: ..
-    #   dockerfile: deployment/Dockerfile.db-migrate
     image: lojzatran/job-applicator-db-migrate:latest
     environment:
       - POSTGRES_HOST=postgres
