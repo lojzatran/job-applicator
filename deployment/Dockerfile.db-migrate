@@ -25,13 +25,13 @@ RUN npx esbuild \
   --outdir=libs/shared/dist \
   --outbase=libs/shared/src
 
-# Compile the reset flow and all migration scripts to plain JS.
+# Compile the migration entrypoints and scripts to plain JS.
 RUN npx esbuild \
-  libs/migrations/src/ensure-database.ts \
-  libs/migrations/src/reset-database.ts \
   libs/migrations/src/migrate.ts \
   libs/migrations/src/sync-migration-history.lib.ts \
   libs/migrations/src/sync-migration-history.ts \
+  libs/migrations/src/ensure-database.ts \
+  libs/migrations/src/reset-database.ts \
   libs/migrations/src/scripts/*.ts \
   --platform=node \
   --format=cjs \
@@ -59,5 +59,4 @@ COPY --from=deps /app/libs/migrations/dist ./libs/migrations/src
 RUN chown -R node:node /app
 USER node
 
-# Run the reset flow first, then apply migrations.
-CMD ["sh", "-c", "node libs/migrations/src/ensure-database.js && node libs/migrations/src/reset-database.js && node libs/migrations/src/migrate.js"]
+CMD ["node", "libs/migrations/src/migrate.js"]

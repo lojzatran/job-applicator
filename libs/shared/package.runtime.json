@@ -1,0 +1,27 @@
+{
+  "name": "@apps/shared",
+  "version": "0.0.1",
+  "private": true,
+  "main": "./src/index.js",
+  "module": "./src/index.js",
+  "types": "./src/index.js",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "import": "./src/index.js",
+      "default": "./src/index.js"
+    },
+    "./env-utils": {
+      "import": "./src/lib/utils/env-utils.js",
+      "default": "./src/lib/utils/env-utils.js"
+    },
+    "./env": {
+      "import": "./src/lib/utils/env.js",
+      "default": "./src/lib/utils/env.js"
+    },
+    "./pinoLogger": {
+      "import": "./src/lib/logger/pinoLogger.js",
+      "default": "./src/lib/logger/pinoLogger.js"
+    }
+  }
+}

@@ -111,6 +111,27 @@ jobs:
           cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
 
+      - name: Metadata for job-applicator-db-migrate
+        id: meta-job-applicator-db-migrate
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.DOCKERHUB_USERNAME }}/job-applicator-db-migrate
+          tags: |
+            type=semver,pattern={{version}}
+            type=raw,value=latest
+
+      - name: Build and push job-applicator-db-migrate image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./deployment/Dockerfile.db-migrate
+          push: true
+          tags: ${{ steps.meta-job-applicator-db-migrate.outputs.tags }}
+          labels: ${{ steps.meta-job-applicator-db-migrate.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
       - name: Metadata for job-applicator-ollama
         id: meta-job-applicator-ollama
         uses: docker/metadata-action@v6

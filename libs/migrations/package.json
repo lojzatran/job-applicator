@@ -8,9 +8,13 @@
   "dependencies": {
     "@apps/shared": "file:libs/shared",
     "dotenv": "^17.3.1",
+    "pg": "^8.20.0",
+    "reflect-metadata": "^0.1.13",
     "pino": "^10.3.1",
-    "tsx": "^4.21.0",
     "typeorm": "^0.3.28",
     "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "esbuild": "^0.19.2"
   }
 }
