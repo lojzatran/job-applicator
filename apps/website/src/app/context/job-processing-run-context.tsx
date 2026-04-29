@@ -25,53 +25,25 @@ export const JobProcessingRunProvider = ({
 }: {
   children: ReactNode;
 }) => {
-  const [jobProcessingRun, setJobProcessingRunState] =
+  const [jobProcessingRun, setJobProcessingRun] =
     useState<JobApplicationProcessingRun | null>(null);
 
   useEffect(() => {
-    const fetchAndStoreJobProcessingRunStateForCurrentUser = async () => {
+    const fetchCurrentJobProcessingRunStateForCurrentUser = async () => {
       try {
         const res = await fetch(`/api/runs/current`);
 
         if (!res.ok) throw new Error('Request failed');
 
         const json = await res.json();
-        setJobProcessingRunState(json);
+        setJobProcessingRun(json);
       } catch (error) {
         console.error('Failed to fetch jobProcessingRun', error);
       }
     };
 
-    try {
-      const stored = localStorage.getItem('jobProcessingRun');
-      if (stored) {
-        setJobProcessingRunState(JSON.parse(stored));
-      } else {
-        fetchAndStoreJobProcessingRunStateForCurrentUser();
-      }
-    } catch (error) {
-      console.error(
-        'Failed to parse jobProcessingRun from localStorage',
-        error,
-      );
-    }
+    fetchCurrentJobProcessingRunStateForCurrentUser();
   }, []);
-
-  const setJobProcessingRun = useCallback(
-    (run: JobApplicationProcessingRun | null) => {
-      setJobProcessingRunState(run);
-      try {
-        if (run) {
-          localStorage.setItem('jobProcessingRun', JSON.stringify(run));
-        } else {
-          localStorage.removeItem('jobProcessingRun');
-        }
-      } catch (error) {
-        console.error('Failed to save jobProcessingRun to localStorage', error);
-      }
-    },
-    [],
-  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -107,7 +79,7 @@ export const JobProcessingRunProvider = ({
         controller.abort();
       }
     };
-  }, [jobProcessingRun, setJobProcessingRun]);
+  }, [jobProcessingRun]);
 
   return (
     <JobProcessingRunContext.Provider

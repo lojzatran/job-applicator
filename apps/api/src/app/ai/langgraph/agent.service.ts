@@ -22,6 +22,7 @@ export interface StreamChunk {
   };
   job_supplier?: {
     job: Job;
+    cvEntityId: number;
   };
   job_evaluator?: {
     isValidJob?: boolean;
@@ -50,8 +51,13 @@ export class AgentService {
     private readonly jobApplicationRepository: Repository<JobApplication>,
   ) {}
 
-  private async initializeProcessingRun(threadId: string, totalJobs: number) {
+  private async initializeProcessingRun(
+    userId: string,
+    threadId: string,
+    totalJobs: number,
+  ) {
     const baseJobApplicationProcessingRun = {
+      userId,
       status: 'in progress',
       totalJobs,
       evaluatedJobApplications: 0,
@@ -104,7 +110,11 @@ export class AgentService {
       jobs,
     );
 
-    await this.initializeProcessingRun(options.threadId, jobsToProcess.length);
+    await this.initializeProcessingRun(
+      userId,
+      options.threadId,
+      jobsToProcess.length,
+    );
 
     try {
       const agent = await this.langgraphService.build();
@@ -126,7 +136,7 @@ export class AgentService {
         );
 
       for await (const chunk of result) {
-        await this.processChunk(chunk, { ...options, userId });
+        await this.processorChunk(chunk, { ...options, userId });
       }
 
       this.logger.info('Agent Finished');
@@ -148,7 +158,7 @@ export class AgentService {
     }
   }
 
-  private async processChunk(
+  private async processorChunk(
     chunk: StreamChunk,
     options: {
       maxJobs: number;
@@ -158,14 +168,17 @@ export class AgentService {
       userId: string;
     },
   ) {
-    let cvEntityId: number | null = null;
     if (chunk.cv_summarizer?.cvEntityId) {
-      cvEntityId = chunk.cv_summarizer.cvEntityId;
+      this.logger.debug(
+        'Created new cv application with ID: ' +
+          JSON.stringify(chunk.cv_summarizer.cvEntityId),
+      );
     } else if (chunk.job_supplier?.job) {
       this.logger.debug(
         'Create new job application for job: ' +
           JSON.stringify(chunk.job_supplier.job.url),
       );
+      const cvEntityId = chunk.job_supplier.cvEntityId;
       await this.jobApplicationRepository.save({
         userId: options.userId,
         cv: cvEntityId ? { id: cvEntityId } : undefined,
@@ -177,7 +190,6 @@ export class AgentService {
     } else if (chunk.cover_letter_generator !== undefined) {
       await this.processCoverLetterGeneratorChunk(chunk, options);
     }
-    return cvEntityId;
   }
 
   private async processCoverLetterGeneratorChunk(
@@ -187,6 +199,7 @@ export class AgentService {
       linkedinEnabled: boolean;
       startupJobsEnabled: boolean;
       threadId: string;
+      userId: string;
     },
   ) {
     this.logger.debug(
@@ -201,7 +214,10 @@ export class AgentService {
       ? rawCoverLetters
       : [rawCoverLetters];
     const applicationToApply = await this.jobApplicationRepository.findOne({
-      where: { job: { url: chunk.cover_letter_generator!.url } },
+      where: {
+        job: { url: chunk.cover_letter_generator!.url },
+        userId: options.userId,
+      },
     });
     if (applicationToApply) {
       await this.jobApplicationRepository.update(applicationToApply.id, {
@@ -224,6 +240,7 @@ export class AgentService {
       linkedinEnabled: boolean;
       startupJobsEnabled: boolean;
       threadId: string;
+      userId: string;
     },
   ) {
     if (chunk.job_evaluator?.evaluatedJobsCount !== undefined) {
@@ -242,7 +259,10 @@ export class AgentService {
         'Dismissed Jobs Count: ' + chunk.job_evaluator.dismissedJobsCount,
       );
       const applicationToDismiss = await this.jobApplicationRepository.findOne({
-        where: { job: { url: chunk.job_evaluator.url } },
+        where: {
+          job: { url: chunk.job_evaluator.url },
+          userId: options.userId,
+        },
       });
       if (applicationToDismiss) {
         await this.jobApplicationRepository.update(applicationToDismiss.id, {

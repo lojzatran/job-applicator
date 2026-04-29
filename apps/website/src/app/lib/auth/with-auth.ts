@@ -7,7 +7,11 @@ const logger = createLogger('auth-wrapper');
 
 export type AuthenticatedHandler = (
   request: NextRequest,
-  context: { user: User; supabase: SupabaseClient },
+  context: {
+    params: Promise<Record<string, string>>;
+    user: User;
+    supabase: SupabaseClient;
+  },
 ) => Promise<NextResponse> | NextResponse;
 
 /**
@@ -18,7 +22,10 @@ export type AuthenticatedHandler = (
  * @returns A wrapped handler that checks for a valid user session
  */
 export function withAuth(handler: AuthenticatedHandler, routeName: string) {
-  return async (request: NextRequest) => {
+  return async (
+    request: NextRequest,
+    { params }: { params: Promise<Record<string, string>> },
+  ) => {
     const supabase = await createSupabaseClient();
     const {
       data: { user },
@@ -31,6 +38,6 @@ export function withAuth(handler: AuthenticatedHandler, routeName: string) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    return handler(request, { user, supabase });
+    return handler(request, { params, user, supabase });
   };
 }

@@ -83,8 +83,9 @@ export async function saveJobApplicationProcessingRun({
   });
 }
 
-export async function getJobApplicationProcessingRunByThreadId(
+export async function getJobApplicationProcessingRunByThreadIdAndUserId(
   threadId: string,
+  userId: string,
 ): Promise<JobApplicationProcessingRun | null> {
   const appDataSource = await getAppDataSource();
 
@@ -92,7 +93,7 @@ export async function getJobApplicationProcessingRunByThreadId(
     JobApplicationProcessingRun,
   );
 
-  return jobApplicationProcessingRunRepository.findOneBy({ threadId });
+  return jobApplicationProcessingRunRepository.findOneBy({ threadId, userId });
 }
 
 export async function getInProgressJobApplicationProcessingRunForUser(

@@ -21,7 +21,11 @@ import { createLogger } from '@apps/shared';
 import { PostgresSaver } from '@langchain/langgraph-checkpoint-postgres';
 import { env } from '../../../utils/env';
 
-const databaseUrl = `postgres://${env.POSTGRES_USER}:${env.POSTGRES_PASSWORD}@${env.POSTGRES_HOST}:${env.POSTGRES_PORT}/${env.POSTGRES_DB}`;
+const databaseUrl = new URL(
+  `postgres://${env.POSTGRES_HOST}:${env.POSTGRES_PORT}/${env.POSTGRES_DB}`,
+);
+databaseUrl.username = env.POSTGRES_USER;
+databaseUrl.password = env.POSTGRES_PASSWORD;
 
 interface CoverLetterEntry {
   coverLetter: string;
@@ -105,7 +109,7 @@ export class LanggraphService {
     }
     const [job, ...remainingJobs] = state.jobs;
     this.logger.trace(`Job supplier: ${JSON.stringify(job)}`);
-    return { job, jobs: remainingJobs };
+    return { job, jobs: remainingJobs, cvEntityId: state.cvEntityId };
   }
 
   private shouldContinue(state: AgentState) {
@@ -247,7 +251,7 @@ export class LanggraphService {
   }
 
   async build(): Promise<CompiledStateGraph<any, any, any, any, any, any>> {
-    const checkpointer = PostgresSaver.fromConnString(databaseUrl, {
+    const checkpointer = PostgresSaver.fromConnString(databaseUrl.toString(), {
       schema: 'public',
     });
 
