@@ -2,10 +2,13 @@ import { getJobApplicationProcessingRunByThreadIdAndUserId } from '@/app/lib/db/
 import { withAuth } from '@/app/lib/auth/with-auth';
 import { NextResponse } from 'next/server';
 
-export const GET = withAuth(async (_request, { params, user }) => {
-  const { id } = await params;
+export const GET = withAuth(async (_request, ctx) => {
+  const params = ctx.params ? await ctx.params : {};
   const jobApplicationProcessingRun =
-    await getJobApplicationProcessingRunByThreadIdAndUserId(id, user.id);
+    await getJobApplicationProcessingRunByThreadIdAndUserId(
+      params.id as string,
+      ctx.user.id,
+    );
 
   if (!jobApplicationProcessingRun) {
     return NextResponse.json(

@@ -17,12 +17,9 @@ export interface CoverLetterData {
 }
 
 export interface StreamChunk {
-  cv_summarizer?: {
-    cvEntityId: number;
-  };
   job_supplier?: {
     job: Job;
-    cvEntityId: number;
+    cvEntityId?: number;
   };
   job_evaluator?: {
     isValidJob?: boolean;
@@ -168,12 +165,7 @@ export class AgentService {
       userId: string;
     },
   ) {
-    if (chunk.cv_summarizer?.cvEntityId) {
-      this.logger.debug(
-        'Created new cv application with ID: ' +
-          JSON.stringify(chunk.cv_summarizer.cvEntityId),
-      );
-    } else if (chunk.job_supplier?.job) {
+    if (chunk.job_supplier?.job) {
       this.logger.debug(
         'Create new job application for job: ' +
           JSON.stringify(chunk.job_supplier.job.url),

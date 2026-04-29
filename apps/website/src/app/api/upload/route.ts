@@ -81,8 +81,8 @@ const sendToQueue = async ({
   }
 };
 
-export const POST = withAuth(async (request, { user }) => {
-  const userId = user.id;
+export const POST = withAuth(async (request, ctx) => {
+  const userId = ctx.user.id;
 
   const formData = await request.formData();
   const fileEntry = formData.get('file');
