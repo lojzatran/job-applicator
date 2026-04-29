@@ -52,7 +52,7 @@ export class AgentService {
 
   private async initializeProcessingRun(threadId: string, totalJobs: number) {
     const baseJobApplicationProcessingRun = {
-      status: 'processing',
+      status: 'in progress',
       totalJobs,
       evaluatedJobApplications: 0,
       dismissedJobApplications: 0,
@@ -82,6 +82,7 @@ export class AgentService {
   }
 
   async executeAgent(
+    userId: string,
     filePath: string,
     options: {
       maxJobs: number;
@@ -98,30 +99,34 @@ export class AgentService {
       ),
     ]);
 
-    await this.initializeProcessingRun(options.threadId, jobs.length);
+    const jobsToProcess = await this.jobsService.filterOutJobsWithApplications(
+      userId,
+      jobs,
+    );
+
+    await this.initializeProcessingRun(options.threadId, jobsToProcess.length);
 
     try {
-      const agent = this.langgraphService.build();
+      const agent = await this.langgraphService.build();
       const result: AsyncGenerator<StreamChunk, void, unknown> =
         await agent.stream(
           {
             cvText: cvText,
             maxAppliedJobs: options.maxJobs,
-            jobs: jobs,
+            jobs: jobsToProcess,
+            userId: userId,
           },
           {
             configurable: { thread_id: options.threadId },
             // recursion is a super-step, and in my graph there are currently 4 super-steps for each job.
             // I also add a buffer of 5 (random number) just be sure.
-            recursionLimit: 4 * jobs.length + 5,
+            recursionLimit: 4 * jobsToProcess.length + 5,
             streamMode: 'updates',
           },
         );
 
-      let cvEntityId: number | null = null;
-
       for await (const chunk of result) {
-        cvEntityId = await this.processChunk(chunk, cvEntityId, options);
+        await this.processChunk(chunk, { ...options, userId });
       }
 
       this.logger.info('Agent Finished');
@@ -145,22 +150,27 @@ export class AgentService {
 
   private async processChunk(
     chunk: StreamChunk,
-    cvEntityId: number | null,
     options: {
       maxJobs: number;
       linkedinEnabled: boolean;
       startupJobsEnabled: boolean;
       threadId: string;
+      userId: string;
     },
   ) {
+    let cvEntityId: number | null = null;
     if (chunk.cv_summarizer?.cvEntityId) {
       cvEntityId = chunk.cv_summarizer.cvEntityId;
     } else if (chunk.job_supplier?.job) {
+      this.logger.debug(
+        'Create new job application for job: ' +
+          JSON.stringify(chunk.job_supplier.job.url),
+      );
       await this.jobApplicationRepository.save({
+        userId: options.userId,
         cv: cvEntityId ? { id: cvEntityId } : undefined,
         job: chunk.job_supplier.job,
         status: 'processing',
-        createdAt: new Date(),
       });
     } else if (chunk.job_evaluator !== undefined) {
       await this.processJobEvaluatorChunk(chunk, options);

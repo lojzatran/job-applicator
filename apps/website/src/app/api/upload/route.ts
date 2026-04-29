@@ -1,12 +1,14 @@
+import amqplib from 'amqplib';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { extname, join } from 'node:path';
-import { NextResponse } from 'next/server';
-import amqplib from 'amqplib';
-import { env } from '../../utils/env';
 import { v4 as uuidv4 } from 'uuid';
 import { saveJobApplicationProcessingRun } from '../../lib/db/db-client';
+import { env } from '../../utils/env';
+import { withAuth } from '../../lib/auth/with-auth';
+import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
+// Removed unused logger
 
 const toBoolean = (value: FormDataEntryValue | null): boolean => {
   if (typeof value !== 'string') {
@@ -44,12 +46,14 @@ const sendToQueue = async ({
   startupJobsEnabled,
   maxJobs,
   threadId,
+  userId,
 }: {
   filePath: string;
   linkedinEnabled: boolean;
   startupJobsEnabled: boolean;
   maxJobs: number;
   threadId: string;
+  userId: string;
 }) => {
   const connection = await amqplib.connect(env.RABBITMQ_URL);
   try {
@@ -65,6 +69,7 @@ const sendToQueue = async ({
           startupJobsEnabled,
           maxJobs,
           threadId,
+          userId,
         }),
       ),
       { persistent: false },
@@ -76,7 +81,9 @@ const sendToQueue = async ({
   }
 };
 
-export async function POST(request: Request) {
+export const POST = withAuth(async (request, { user }) => {
+  const userId = user.id;
+
   const formData = await request.formData();
   const fileEntry = formData.get('file');
   const linkedinEnabled = toBoolean(formData.get('linkedinEnabled'));
@@ -100,6 +107,7 @@ export async function POST(request: Request) {
 
     const jobProcessingRun = await saveJobApplicationProcessingRun({
       threadId,
+      userId,
     });
 
     await sendToQueue({
@@ -108,6 +116,7 @@ export async function POST(request: Request) {
       startupJobsEnabled,
       maxJobs,
       threadId,
+      userId,
     });
 
     return NextResponse.json({
@@ -128,4 +137,4 @@ export async function POST(request: Request) {
     await rm(filePath, { force: true });
     throw error;
   }
-}
+}, 'upload');

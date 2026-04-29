@@ -29,10 +29,25 @@ export const JobProcessingRunProvider = ({
     useState<JobApplicationProcessingRun | null>(null);
 
   useEffect(() => {
+    const fetchAndStoreJobProcessingRunStateForCurrentUser = async () => {
+      try {
+        const res = await fetch(`/api/runs/current`);
+
+        if (!res.ok) throw new Error('Request failed');
+
+        const json = await res.json();
+        setJobProcessingRunState(json);
+      } catch (error) {
+        console.error('Failed to fetch jobProcessingRun', error);
+      }
+    };
+
     try {
       const stored = localStorage.getItem('jobProcessingRun');
       if (stored) {
         setJobProcessingRunState(JSON.parse(stored));
+      } else {
+        fetchAndStoreJobProcessingRunStateForCurrentUser();
       }
     } catch (error) {
       console.error(

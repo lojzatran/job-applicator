@@ -1,4 +1,4 @@
-import { getJobApplicationProcessingRun } from '@/app/lib/db/db-client';
+import { getJobApplicationProcessingRunByThreadId } from '@/app/lib/db/db-client';
 import { NextResponse } from 'next/server';
 
 export async function GET(
@@ -6,7 +6,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const jobApplicationProcessingRun = await getJobApplicationProcessingRun(id);
+  const jobApplicationProcessingRun =
+    await getJobApplicationProcessingRunByThreadId(id);
 
   if (!jobApplicationProcessingRun) {
     return NextResponse.json(

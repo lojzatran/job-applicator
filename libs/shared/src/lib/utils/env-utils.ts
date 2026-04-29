@@ -21,6 +21,7 @@ const sharedEnvShape = {
   NODE_ENV: z
     .enum(['development', 'production', 'test'])
     .default('development'),
+  ENABLE_QUERY_LOG: z.coerce.boolean().default(false),
 };
 
 function loadEnvFile(path: string) {

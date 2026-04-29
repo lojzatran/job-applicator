@@ -15,7 +15,7 @@ export const JobProcessingRunBadge = () => {
   const { jobProcessingRun } = useJobProcessingRun();
   const isActive =
     jobProcessingRun?.status === 'pending' ||
-    jobProcessingRun?.status === 'processing';
+    jobProcessingRun?.status === 'in progress';
   const formattedThreadId = jobProcessingRun?.threadId
     ? formatJobProcessingRunId(jobProcessingRun.threadId)
     : 'No active run';

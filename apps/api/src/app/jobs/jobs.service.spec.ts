@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Job, JobApplication } from '@apps/shared';
+import { Repository } from 'typeorm';
 import { JobsService } from './jobs.service';
 import { LinkedinService } from './linkedin/linkedin.service';
 import { StartupJobsService } from './startupjobs/startupjobs.service';
@@ -9,6 +10,7 @@ describe('JobsService', () => {
   let service: JobsService;
   let linkedinService: jest.Mocked<LinkedinService>;
   let startupjobsService: jest.Mocked<StartupJobsService>;
+  let jobApplicationRepository: jest.Mocked<Repository<JobApplication>>;
 
   const asJobs = (jobs: Partial<Job>[]) => jobs as Job[];
 
@@ -23,6 +25,7 @@ describe('JobsService', () => {
 
     const mockJobApplicationRepository = {
       save: jest.fn(),
+      find: jest.fn(),
       manager: {
         query: jest.fn(),
       },
@@ -56,6 +59,9 @@ describe('JobsService', () => {
     startupjobsService = module.get(
       StartupJobsService,
     ) as jest.Mocked<StartupJobsService>;
+    jobApplicationRepository = module.get(
+      getRepositoryToken(JobApplication),
+    ) as jest.Mocked<Repository<JobApplication>>;
   });
 
   afterEach(() => {
@@ -106,5 +112,87 @@ describe('JobsService', () => {
     expect(linkedinService.fetchJobs).not.toHaveBeenCalled();
     expect(startupjobsService.fetchJobs).not.toHaveBeenCalled();
     expect(result).toEqual([]);
+  });
+
+  describe('removeProcessedJobs', () => {
+    it('should return all jobs when no processed applications exist', async () => {
+      const jobs: Partial<Job>[] = [
+        { url: 'https://example.com/job1' },
+        { url: 'https://example.com/job2' },
+      ];
+
+      jobApplicationRepository.find.mockResolvedValue([]);
+
+      const result = await service.filterOutJobsWithApplications(
+        'user-1',
+        jobs,
+      );
+
+      expect(jobApplicationRepository.find).toHaveBeenCalledWith({
+        where: {
+          userId: 'user-1',
+          job: {
+            url: expect.any(Object),
+          },
+        },
+        relations: ['job'],
+      });
+      expect(result).toEqual(jobs);
+    });
+
+    it('should remove jobs that have been applied or dismissed', async () => {
+      const jobs: Partial<Job>[] = [
+        { url: 'https://example.com/job1' },
+        { url: 'https://example.com/job2' },
+        { url: 'https://example.com/job3' },
+      ];
+
+      const processedApplications = [
+        {
+          userId: 'user-1',
+          status: 'applied',
+          job: { url: 'https://example.com/job1' },
+        },
+        {
+          userId: 'user-1',
+          status: 'dismissed',
+          job: { url: 'https://example.com/job3' },
+        },
+      ];
+
+      jobApplicationRepository.find.mockResolvedValue(
+        processedApplications as JobApplication[],
+      );
+
+      const result = await service.filterOutJobsWithApplications(
+        'user-1',
+        jobs,
+      );
+
+      expect(result).toEqual([{ url: 'https://example.com/job2' }]);
+    });
+
+    it('should return empty array when all jobs are processed', async () => {
+      const jobs: Partial<Job>[] = [{ url: 'https://example.com/job1' }];
+
+      const processedApplications = [
+        {
+          userId: 'user-1',
+          status: 'applied',
+          job: { url: 'https://example.com/job1' },
+        },
+      ];
+
+      jobApplicationRepository.find.mockResolvedValue(
+        processedApplications as JobApplication[],
+      );
+
+      const result = await service.filterOutJobsWithApplications(
+        'user-1',
+        jobs,
+      );
+
+      expect(result).toEqual([]);
+    });
   });
 });

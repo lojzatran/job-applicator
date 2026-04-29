@@ -43,7 +43,7 @@ export default function Index() {
   const { jobProcessingRun } = useJobProcessingRun();
   const isActive =
     jobProcessingRun?.status === 'pending' ||
-    jobProcessingRun?.status === 'processing';
+    jobProcessingRun?.status === 'in progress';
 
   return (
     <div className={isDarkMode ? 'dark' : ''}>
