@@ -1,0 +1,28 @@
+services:
+  ollama:
+    build:
+      context: .
+      dockerfile: Dockerfile.ollama
+  api:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+  website:
+    build:
+      context: ..
+      dockerfile: apps/website/Dockerfile
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+
+  db-reset:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.db-reset
+
+  db-migrate:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.db-migrate

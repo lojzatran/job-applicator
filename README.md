@@ -276,7 +276,43 @@ The graph keeps track of how many jobs have already been processed and stops onc
 
 ### Docker
 
-The deployment compose file expects a `.env` file next to `deployment/docker-compose.yml`. That file should contain the runtime settings for the stack, including the public Supabase values used by the website image build.
+The Docker setup is split into two compose files:
+
+- [`deployment/docker-compose.yml`](deployment/docker-compose.yml) for production and GitHub Actions deploys. It uses published images only.
+- [`deployment/docker-compose.local.yml`](deployment/docker-compose.local.yml) for local development. It adds build contexts for the locally built images, including `ollama`, `api`, `website`, `db-reset`, and `db-migrate`.
+
+The production compose file expects a `.env` file next to `deployment/docker-compose.yml`. That file should contain the runtime settings for the stack, including the public Supabase values used by the website image build.
+
+#### Run locally
+
+Start the infrastructure plus the local tool images with:
+
+```sh
+docker compose \
+  -f deployment/docker-compose.yml \
+  -f deployment/docker-compose.local.yml \
+  --env-file deployment/.env \
+  --profile infrastructure \
+  --profile tools-reset \
+  --profile tools-migrate \
+  up -d --build postgres db-reset db-migrate
+```
+
+If you only want the reset flow, run:
+
+```sh
+docker compose \
+  -f deployment/docker-compose.yml \
+  -f deployment/docker-compose.local.yml \
+  --env-file deployment/.env \
+  --profile infrastructure \
+  --profile tools-reset \
+  up -d --build postgres db-reset
+```
+
+#### Run in production
+
+After GitHub Actions builds and pushes the images, the deploy host should use the production compose file only:
 
 To start the full stack with an empty database and profile intended for a fresh state, run:
 
@@ -288,6 +324,13 @@ To start the normal stack using the persisted database and configuration, run:
 
 ```sh
 docker compose -f deployment/docker-compose.yml --env-file deployment/.env --profile app --profile infrastructure up -d
+```
+
+To run the database tool containers in production, use the image-based services:
+
+```sh
+docker compose -f deployment/docker-compose.yml --env-file deployment/.env --profile infrastructure --profile tools-reset up -d postgres db-reset
+docker compose -f deployment/docker-compose.yml --env-file deployment/.env --profile infrastructure --profile tools-migrate up -d postgres db-migrate
 ```
 
 To stop all the docker containers, run the following command:
