@@ -35,9 +35,7 @@ services:
   ollama:
     profiles:
       - ai
-    build:
-      context: .
-      dockerfile: Dockerfile.ollama
+    image: lojzatran/job-applicator-ollama:latest
     ports:
       - '11434:11434'
     volumes:
@@ -51,23 +49,29 @@ services:
   api:
     profiles:
       - app
-    build:
-      context: ..
-      dockerfile: apps/api/Dockerfile
+    image: lojzatran/job-applicator-api:latest
     ports:
       - '3000:3000'
     environment:
-      - NODE_ENV=development
-      - RABBITMQ_URL=amqp://rabbitmq:5672
-      - OLLAMA_EMBEDDING_BASE_URL=http://ollama:11434
-      - STORAGE_DIR=/app/uploads
-      - POSTGRES_HOST=postgres
-      - LOGS_DIR=/app/logs
-    env_file:
-      - path: ../.env
-        required: true
-      - path: ../apps/api/.env
-        required: false
+      NODE_ENV: production
+      OLLAMA_JOB_EVALUATOR_MODEL: gemma3:4b-cloud
+      OLLAMA_BASE_URL: https://ollama.com
+      COVER_LETTER_GENERATOR_MODEL: gemma3:4b-cloud
+      CV_PARSER_MODEL: gemma3:4b-cloud
+      CRITIQUE_MODEL: gemma3:4b-cloud
+      COHERE_API_KEY: ${COHERE_API_KEY}
+      COHERE_EMBEDDING_MODEL: ${COHERE_EMBEDDING_MODEL}
+      OLLAMA_API_KEY: ${OLLAMA_API_KEY}
+      LANGSMITH_PROJECT: ${LANGSMITH_PROJECT}
+      LANGSMITH_API_KEY: ${LANGSMITH_API_KEY}
+      LANGSMITH_TRACING: ${LANGSMITH_TRACING}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: job_applicator
+      STORAGE_DIR: /app/uploads
+      RABBITMQ_URL: amqp://rabbitmq:5672
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -82,20 +86,13 @@ services:
   website:
     profiles:
       - app
-    build:
-      context: ..
-      dockerfile: apps/website/Dockerfile
-      args:
-        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
-        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
-        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
-        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+    image: lojzatran/job-applicator-website:latest
     ports:
       - '3001:3000'
     env_file:
       - .env
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       RABBITMQ_URL: amqp://rabbitmq:5672
       POSTGRES_HOST: postgres
       POSTGRES_PORT: '5432'
@@ -104,6 +101,7 @@ services:
       POSTGRES_DB: job_applicator
       STORAGE_DIR: /app/uploads
       LOGS_DIR: /app/logs
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -114,9 +112,7 @@ services:
       - ../logs:/app/logs
 
   db-reset:
-    build:
-      context: ..
-      dockerfile: deployment/Dockerfile.db-reset
+    image: lojzatran/job-applicator-db-reset:latest
     environment:
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
@@ -130,9 +126,7 @@ services:
       - tools-reset
 
   db-migrate:
-    build:
-      context: ..
-      dockerfile: deployment/Dockerfile.db-migrate
+    image: lojzatran/job-applicator-db-migrate:latest
     environment:
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
@@ -150,14 +144,13 @@ services:
       - observability
     image: otel/opentelemetry-collector-contrib
     environment:
-      - LOGS_DIR=/app/logs
-    env_file:
-      - path: ../.env
-        required: true
+      - LOGS_DIR=/var/lib/docker/containers
+      - NEWRELIC_LICENSE_KEY=${NEWRELIC_LICENSE_KEY}
+      - NEWRELIC_OTLP_ENDPOINT=${NEWRELIC_OTLP_ENDPOINT}
     volumes:
-      - ../observability/otel-collector-config.base.yaml:/etc/otelcol-contrib/config.yaml
-      - ../observability/otel-collector-config.local.yaml:/etc/otelcol-contrib/config.local.yaml
-      - ../logs:/app/logs
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - ./otel-collector-config.base.yaml:/etc/otelcol-contrib/config.yaml
+      - ./otel-collector-config.local.yaml:/etc/otelcol-contrib/config.local.yaml
     command:
       - --config=/etc/otelcol-contrib/config.yaml
       - --config=/etc/otelcol-contrib/config.local.yaml

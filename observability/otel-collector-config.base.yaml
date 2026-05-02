@@ -11,7 +11,7 @@ processors:
 
 exporters:
   otlphttp/newrelic:
-    endpoint: 'https://otlp.eu01.nr-data.net'
+    endpoint: ${NEWRELIC_OTLP_ENDPOINT}
     headers:
       api-key: ${NEWRELIC_LICENSE_KEY}
 

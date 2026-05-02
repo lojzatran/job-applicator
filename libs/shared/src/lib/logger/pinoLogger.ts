@@ -72,7 +72,7 @@ function getTransport() {
 export function createLogger(name: string): Logger {
   return pino(
     {
-      level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+      level: env.NODE_ENV === 'production' ? 'info' : 'debug',
       name,
       timestamp: pino.stdTimeFunctions.isoTime,
       serializers: {

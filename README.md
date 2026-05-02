@@ -38,12 +38,11 @@ For the website, `NEXT_PUBLIC_SUPABASE_URL` must be available when the Docker im
 
 - `OLLAMA_EMBEDDING_MODEL` - (Default) Model name for generating embeddings with Ollama (e.g., `nomic-embed-text-v2-moe:latest`).
 - `OLLAMA_EMBEDDING_BASE_URL` - (Optional) Base URL for the Ollama embedding API.
-- `JOB_EVALUATOR_MODEL` - Ollama model name used to evaluate whether a job matches the CV.
+- `OLLAMA_JOB_EVALUATOR_MODEL` - Ollama model name used to evaluate whether a job matches the CV.
 - `CV_PARSER_MODEL` - Ollama model name used to parse the CV.
 - `COVER_LETTER_GENERATOR_MODEL` - Ollama model name used to generate the cover letter.
 - `CRITIQUE_MODEL` - Ollama model name used to critique and rewrite the cover letter.
 - `OLLAMA_BASE_URL` - Base URL for the Ollama API (e.g., `http://localhost:11434`).
-- `OLLAMA_EMBEDDING_BASE_URL` - Base URL for the Ollama embedding API.
 - `OLLAMA_API_KEY` - (Optional) API key for Ollama if running behind an authenticated proxy.
 
 ### Storage
@@ -295,6 +294,7 @@ Start the infrastructure plus resetting the db with:
 ```sh
 docker compose \
   -f deployment/docker-compose.yml \
+  -f deployment/docker-compose.local.yml \
   --env-file deployment/.env \
   --profile infrastructure \
   --profile tools-reset \
@@ -306,6 +306,7 @@ If you only want the reset flow, run:
 ```sh
 docker compose \
   -f deployment/docker-compose.yml \
+  -f deployment/docker-compose.local.yml \
   --env-file deployment/.env \
   --profile infrastructure \
   --profile tools-reset \
@@ -317,6 +318,7 @@ To run the app stack together with the OpenTelemetry Collector in local developm
 ```sh
 docker compose \
   -f deployment/docker-compose.yml \
+  -f deployment/docker-compose.local.yml \
   --profile infrastructure \
   --profile app \
   --profile ai \
@@ -328,24 +330,24 @@ The local collector tails the shared `logs/` volume, so Pino writes structured l
 
 #### Run in production
 
-After GitHub Actions builds and pushes the images, the deploy host should use the production compose file only:
+After GitHub Actions builds and pushes the images, the deploy host should use the compose file directly:
 
 To start the full stack with an empty database and profile intended for a fresh state, run:
 
 ```sh
-docker compose -f deployment/docker-compose.yml -f deployment/docker-compose.prod.yml --env-file deployment/.env --profile "*" up -d
+docker compose -f deployment/docker-compose.yml --env-file deployment/.env --profile "*" up -d
 ```
 
 To start the normal stack using the persisted database and configuration, run:
 
 ```sh
-docker compose -f deployment/docker-compose.yml -f deployment/docker-compose.prod.yml --env-file deployment/.env --profile app --profile infrastructure up -d
+docker compose -f deployment/docker-compose.yml --env-file deployment/.env --profile app --profile infrastructure up -d
 ```
 
 To include the OpenTelemetry Collector in production, add the `observability` profile as well:
 
 ```sh
-docker compose -f deployment/docker-compose.yml -f deployment/docker-compose.prod.yml --env-file deployment/.env --profile app --profile infrastructure --profile observability up -d
+docker compose -f deployment/docker-compose.yml --env-file deployment/.env --profile app --profile infrastructure --profile observability up -d
 ```
 
 In production, the app services log to stdout and Docker writes those logs under `/var/lib/docker/containers`, which the collector tails and forwards.
@@ -353,14 +355,14 @@ In production, the app services log to stdout and Docker writes those logs under
 To run the database tool containers in production, use the image-based services:
 
 ```sh
-docker compose -f deployment/docker-compose.yml -f deployment/docker-compose.prod.yml --env-file deployment/.env --profile infrastructure --profile tools-reset up -d postgres db-reset
-docker compose -f deployment/docker-compose.yml -f deployment/docker-compose.prod.yml --env-file deployment/.env --profile infrastructure --profile tools-migrate up -d postgres db-migrate
+docker compose -f deployment/docker-compose.yml --env-file deployment/.env --profile infrastructure --profile tools-reset up -d postgres db-reset
+docker compose -f deployment/docker-compose.yml --env-file deployment/.env --profile infrastructure --profile tools-migrate up -d postgres db-migrate
 ```
 
 To stop all the docker containers, run the following command:
 
 ```sh
-docker compose -f deployment/docker-compose.yml -f deployment/docker-compose.prod.yml --env-file deployment/.env --profile "*" down
+docker compose -f deployment/docker-compose.yml --env-file deployment/.env --profile "*" down
 ```
 
 To build a docker container for API, run the following command:
@@ -423,7 +425,7 @@ Applications use `createLogger()` from `@apps/shared`, which wraps [Pino](https:
 
 ### Production
 
-In production (`docker-compose.prod.yml`), the collector is reconfigured to read Docker container logs directly from `/var/lib/docker/containers` (read-only mount). It sends all telemetry to New Relic using the OTLP HTTP endpoint (`https://otlp.eu01.nr-data.net` by default) with the `NEWRELIC_LICENSE_KEY` environment variable.
+In production, the collector is reconfigured to read Docker container logs directly from `/var/lib/docker/containers` (read-only mount). It sends all telemetry to New Relic using the OTLP HTTP endpoint (`https://otlp.eu01.nr-data.net` by default) with the `NEWRELIC_LICENSE_KEY` environment variable.
 
 ### Running Locally
 
