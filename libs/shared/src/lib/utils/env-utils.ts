@@ -22,6 +22,7 @@ const sharedEnvShape = {
     .enum(['development', 'production', 'test'])
     .default('development'),
   ENABLE_QUERY_LOG: z.coerce.boolean().default(false),
+  LOGS_DIR: z.string().default(`${process.cwd()}/logs`),
 };
 
 function loadEnvFile(path: string) {

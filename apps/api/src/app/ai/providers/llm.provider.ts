@@ -21,13 +21,13 @@ function createJobEvaluatorLlm() {
       model: env.GEMINI_JOB_EVALUATOR_MODEL,
     });
   } else {
-    if (!env.JOB_EVALUATOR_MODEL) {
+    if (!env.OLLAMA_JOB_EVALUATOR_MODEL) {
       throw new Error(
-        'Missing JOB_EVALUATOR_MODEL configuration. Set JOB_EVALUATOR_MODEL before starting the API.',
+        'Missing OLLAMA_JOB_EVALUATOR_MODEL configuration. Set OLLAMA_JOB_EVALUATOR_MODEL before starting the API.',
       );
     }
     return new ChatOllama({
-      model: env.JOB_EVALUATOR_MODEL,
+      model: env.OLLAMA_JOB_EVALUATOR_MODEL,
       baseUrl: env.OLLAMA_BASE_URL,
       headers: createOllamaHeaders(),
       temperature: 0,

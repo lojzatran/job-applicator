@@ -75,6 +75,11 @@ If `GEMINI_API_KEY` is set, the app can use Gemini models instead of Ollama for 
 - `LANGSMITH_TRACING` - Set to `true` to enable LangSmith tracing.
 - `LANGSMITH_API_KEY` - LangSmith API key.
 
+### NewRelic log ingestion
+
+- `NEWRELIC_LICENSE_KEY` - New Relic license key for APM.
+- `NEWRELIC_OTLP_ENDPOINT` - New Relic OTLP endpoint. Default to EU.
+
 ### Other
 
 - `NODE_ENV` - Environment mode (`development`, `production`, `test`). Defaults to `development`.
@@ -285,16 +290,14 @@ The production compose file expects a `.env` file next to `deployment/docker-com
 
 #### Run locally
 
-Start the infrastructure plus the local tool images with:
+Start the infrastructure plus resetting the db with:
 
 ```sh
 docker compose \
   -f deployment/docker-compose.yml \
-  -f deployment/docker-compose.local.yml \
   --env-file deployment/.env \
   --profile infrastructure \
   --profile tools-reset \
-  --profile tools-migrate \
   up -d --build postgres db-reset db-migrate
 ```
 
@@ -303,12 +306,25 @@ If you only want the reset flow, run:
 ```sh
 docker compose \
   -f deployment/docker-compose.yml \
-  -f deployment/docker-compose.local.yml \
   --env-file deployment/.env \
   --profile infrastructure \
   --profile tools-reset \
   up -d --build postgres db-reset
 ```
+
+To run the app stack together with the OpenTelemetry Collector in local development, include the `app` and `observability` profiles:
+
+```sh
+docker compose \
+  -f deployment/docker-compose.yml \
+  --profile infrastructure \
+  --profile app \
+  --profile ai \
+  --profile observability \
+  up -d --build
+```
+
+The local collector tails the shared `logs/` volume, so Pino writes structured logs to `/app/logs/app-json.log` and OTel forwards them to the configured exporter.
 
 #### Run in production
 
@@ -317,26 +333,34 @@ After GitHub Actions builds and pushes the images, the deploy host should use th
 To start the full stack with an empty database and profile intended for a fresh state, run:
 
 ```sh
-docker compose -f deployment/docker-compose.yml --env-file deployment/.env --profile "*" up -d
+docker compose -f deployment/docker-compose.yml -f deployment/docker-compose.prod.yml --env-file deployment/.env --profile "*" up -d
 ```
 
 To start the normal stack using the persisted database and configuration, run:
 
 ```sh
-docker compose -f deployment/docker-compose.yml --env-file deployment/.env --profile app --profile infrastructure up -d
+docker compose -f deployment/docker-compose.yml -f deployment/docker-compose.prod.yml --env-file deployment/.env --profile app --profile infrastructure up -d
 ```
+
+To include the OpenTelemetry Collector in production, add the `observability` profile as well:
+
+```sh
+docker compose -f deployment/docker-compose.yml -f deployment/docker-compose.prod.yml --env-file deployment/.env --profile app --profile infrastructure --profile observability up -d
+```
+
+In production, the app services log to stdout and Docker writes those logs under `/var/lib/docker/containers`, which the collector tails and forwards.
 
 To run the database tool containers in production, use the image-based services:
 
 ```sh
-docker compose -f deployment/docker-compose.yml --env-file deployment/.env --profile infrastructure --profile tools-reset up -d postgres db-reset
-docker compose -f deployment/docker-compose.yml --env-file deployment/.env --profile infrastructure --profile tools-migrate up -d postgres db-migrate
+docker compose -f deployment/docker-compose.yml -f deployment/docker-compose.prod.yml --env-file deployment/.env --profile infrastructure --profile tools-reset up -d postgres db-reset
+docker compose -f deployment/docker-compose.yml -f deployment/docker-compose.prod.yml --env-file deployment/.env --profile infrastructure --profile tools-migrate up -d postgres db-migrate
 ```
 
 To stop all the docker containers, run the following command:
 
 ```sh
-docker compose -f deployment/docker-compose.yml --env-file deployment/.env --profile "*" down
+docker compose -f deployment/docker-compose.yml -f deployment/docker-compose.prod.yml --env-file deployment/.env --profile "*" down
 ```
 
 To build a docker container for API, run the following command:
@@ -370,3 +394,41 @@ docker run --rm -it --network job-applicator_default pgvector/pgvector:pg18 sh -
 # to execute a sql query
 docker exec -it job-applicator-postgres-1 psql -U postgres -d job_applicator -c "SELECT * FROM public.job_application;"
 ```
+
+## Observability
+
+The project uses an OpenTelemetry-based observability pipeline that runs alongside the application services via Docker Compose.
+
+### Architecture
+
+- **OpenTelemetry Collector** (`otel-collector`): Runs as a Docker service (profile `observability`) using the `otel/opentelemetry-collector-contrib` image.
+- **Configuration**: The collector is configured via two mounted YAML files:
+  - `observability/otel-collector-config.base.yaml` — base pipelines and New Relic exporter.
+  - `observability/otel-collector-config.local.yaml` — local overrides that add a `debug` exporter for verbose console output.
+
+### Pipelines
+
+| Signal  | Receivers           | Processors | Exporters                                 |
+| ------- | ------------------- | ---------- | ----------------------------------------- |
+| Traces  | `otlp` (HTTP 4318)  | `batch`    | `otlphttp/newrelic` (and `debug` locally) |
+| Metrics | `otlp` (HTTP 4318)  | `batch`    | `otlphttp/newrelic` (and `debug` locally) |
+| Logs    | `otlp` + `file_log` | `batch`    | `otlphttp/newrelic` (and `debug` locally) |
+
+- **OTLP HTTP receiver** is exposed on port `4318` for applications to push traces, metrics, and logs directly.
+- **File log receiver** tails JSON log files from the shared `logs` volume (`${LOGS_DIR}/*.log` locally, or `*-json.log` in production).
+
+### Application Logging
+
+Applications use `createLogger()` from `@apps/shared`, which wraps [Pino](https://getpino.io/). In development mode, logs are written as structured JSON to `logs/app-json.log` and pretty-printed to stdout when running in a TTY. The log volume is mounted into both the application containers and the collector so logs can be scraped automatically.
+
+### Production
+
+In production (`docker-compose.prod.yml`), the collector is reconfigured to read Docker container logs directly from `/var/lib/docker/containers` (read-only mount). It sends all telemetry to New Relic using the OTLP HTTP endpoint (`https://otlp.eu01.nr-data.net` by default) with the `NEWRELIC_LICENSE_KEY` environment variable.
+
+### Running Locally
+
+```bash
+docker compose --profile infrastructure --profile app --profile observability up
+```
+
+This starts the full stack including PostgreSQL, RabbitMQ, Ollama, the API, the website, and the OpenTelemetry Collector.

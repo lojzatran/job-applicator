@@ -20,7 +20,7 @@ const appEnvSchema = z.object({
   GEMINI_JOB_EVALUATOR_MODEL: z
     .string()
     .default('gemini-3.1-flash-lite-preview'),
-  JOB_EVALUATOR_MODEL: z.string().optional(),
+  OLLAMA_JOB_EVALUATOR_MODEL: z.string().optional(),
   GEMINI_COVER_LETTER_GENERATOR_MODEL: z
     .string()
     .default('gemini-3.1-flash-lite-preview'),

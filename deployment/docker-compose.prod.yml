@@ -1,0 +1,51 @@
+services:
+  ollama:
+    image: lojzatran/job-applicator-ollama:latest
+    build: !reset null
+
+  api:
+    image: lojzatran/job-applicator-api:latest
+    build: !reset null
+    env_file: !reset null
+    environment:
+      - NODE_ENV=production
+      - OLLAMA_JOB_EVALUATOR_MODEL=gemma3:4b-cloud
+      - OLLAMA_BASE_URL=https://ollama.com
+      - COVER_LETTER_GENERATOR_MODEL=gemma3:4b-cloud
+      - CV_PARSER_MODEL=gemma3:4b-cloud
+      - CRITIQUE_MODEL=gemma3:4b-cloud
+      - COHERE_API_KEY=${COHERE_API_KEY}
+      - COHERE_EMBEDDING_MODEL=${COHERE_EMBEDDING_MODEL}
+      - OLLAMA_API_KEY=${OLLAMA_API_KEY}
+      - LANGSMITH_PROJECT=${LANGSMITH_PROJECT}
+      - LANGSMITH_API_KEY=${LANGSMITH_API_KEY}
+      - LANGSMITH_TRACING=${LANGSMITH_TRACING}
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=job_applicator
+      - STORAGE_DIR=/app/uploads
+  website:
+    image: lojzatran/job-applicator-website:latest
+    build: !reset null
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+
+  db-reset:
+    image: lojzatran/job-applicator-db-reset:latest
+    build: !reset null
+
+  db-migrate:
+    image: lojzatran/job-applicator-db-migrate:latest
+    build: !reset null
+
+  otel-collector:
+    environment:
+      - LOGS_DIR=/var/lib/docker/containers
+      - NEWRELIC_LICENSE_KEY=${NEWRELIC_LICENSE_KEY}
+      - NEWRELIC_OTLP_ENDPOINT=${NEWRELIC_OTLP_ENDPOINT}
+    env_file: !reset null
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro

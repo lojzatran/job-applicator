@@ -35,7 +35,9 @@ services:
   ollama:
     profiles:
       - ai
-    image: lojzatran/job-applicator-ollama:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.ollama
     ports:
       - '11434:11434'
     volumes:
@@ -49,31 +51,23 @@ services:
   api:
     profiles:
       - app
-    image: lojzatran/job-applicator-api:latest
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
     ports:
       - '3000:3000'
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=development
       - RABBITMQ_URL=amqp://rabbitmq:5672
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=job_applicator
-      - JOB_EVALUATOR_MODEL=gemma3:4b-cloud
-      - OLLAMA_BASE_URL=https://ollama.com
-      - COVER_LETTER_GENERATOR_MODEL=gemma3:4b-cloud
-      - CV_PARSER_MODEL=gemma3:4b-cloud
-      - CRITIQUE_MODEL=gemma3:4b-cloud
-      - STORAGE_DIR=/app/uploads
       - OLLAMA_EMBEDDING_BASE_URL=http://ollama:11434
-      - OLLAMA_EMBEDDING_MODEL=nomic-embed-text-v2-moe:latest
-      - COHERE_API_KEY=${COHERE_API_KEY}
-      - COHERE_EMBEDDING_MODEL=${COHERE_EMBEDDING_MODEL}
-      - OLLAMA_API_KEY=${OLLAMA_API_KEY}
-      - LANGSMITH_PROJECT=${LANGSMITH_PROJECT}
-      - LANGSMITH_API_KEY=${LANGSMITH_API_KEY}
-      - LANGSMITH_TRACING=${LANGSMITH_TRACING}
+      - STORAGE_DIR=/app/uploads
+      - POSTGRES_HOST=postgres
+      - LOGS_DIR=/app/logs
+    env_file:
+      - path: ../.env
+        required: true
+      - path: ../apps/api/.env
+        required: false
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -83,18 +77,25 @@ services:
         condition: service_healthy
     volumes:
       - uploads:/app/uploads
+      - ../logs:/app/logs
 
   website:
     profiles:
       - app
-    image: lojzatran/job-applicator-website:latest
+    build:
+      context: ..
+      dockerfile: apps/website/Dockerfile
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
     ports:
       - '3001:3000'
     env_file:
       - .env
     environment:
-      NODE_ENV: production
-      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+      NODE_ENV: development
       RABBITMQ_URL: amqp://rabbitmq:5672
       POSTGRES_HOST: postgres
       POSTGRES_PORT: '5432'
@@ -102,6 +103,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: job_applicator
       STORAGE_DIR: /app/uploads
+      LOGS_DIR: /app/logs
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -109,9 +111,12 @@ services:
         condition: service_healthy
     volumes:
       - uploads:/app/uploads
+      - ../logs:/app/logs
 
   db-reset:
-    image: lojzatran/job-applicator-db-reset:latest
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.db-reset
     environment:
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
@@ -125,7 +130,9 @@ services:
       - tools-reset
 
   db-migrate:
-    image: lojzatran/job-applicator-db-migrate:latest
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.db-migrate
     environment:
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
@@ -137,6 +144,26 @@ services:
         condition: service_healthy
     profiles:
       - tools-migrate
+
+  otel-collector:
+    profiles:
+      - observability
+    image: otel/opentelemetry-collector-contrib
+    environment:
+      - LOGS_DIR=/app/logs
+    env_file:
+      - path: ../.env
+        required: true
+    volumes:
+      - ../observability/otel-collector-config.base.yaml:/etc/otelcol-contrib/config.yaml
+      - ../observability/otel-collector-config.local.yaml:/etc/otelcol-contrib/config.local.yaml
+      - ../logs:/app/logs
+    command:
+      - --config=/etc/otelcol-contrib/config.yaml
+      - --config=/etc/otelcol-contrib/config.local.yaml
+    ports:
+      - 13133:13133 # health_check extension
+      - 4318:4318 # OTLP http receiver
 
 volumes:
   ollama_data:
