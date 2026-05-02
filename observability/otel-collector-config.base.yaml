@@ -4,16 +4,16 @@ receivers:
       http:
         endpoint: 0.0.0.0:4318
   file_log:
-    include: ['${LOGS_DIR}/*/*-json.log']
+    include: ['${env:LOGS_DIR}/*/*-json.log']
 
 processors:
   batch:
 
 exporters:
   otlphttp/newrelic:
-    endpoint: ${NEWRELIC_OTLP_ENDPOINT}
+    endpoint: ${env:NEWRELIC_OTLP_ENDPOINT}
     headers:
-      api-key: ${NEWRELIC_LICENSE_KEY}
+      api-key: ${env:NEWRELIC_LICENSE_KEY}
 
 service:
   pipelines:

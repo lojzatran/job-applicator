@@ -1,0 +1,4 @@
+# CI-specific overrides — ephemeral runners don't need persistent volumes
+services:
+  postgres:
+    volumes: !reset []

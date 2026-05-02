@@ -20,6 +20,8 @@ services:
       - 5432:5432
     restart: always
     shm_size: 128mb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -143,6 +145,7 @@ services:
     profiles:
       - observability
     image: otel/opentelemetry-collector-contrib
+    user: '0:0'
     environment:
       - LOGS_DIR=/var/lib/docker/containers
       - NEWRELIC_LICENSE_KEY=${NEWRELIC_LICENSE_KEY}
@@ -150,14 +153,13 @@ services:
     volumes:
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - ./otel-collector-config.base.yaml:/etc/otelcol-contrib/config.yaml
-      - ./otel-collector-config.local.yaml:/etc/otelcol-contrib/config.local.yaml
     command:
       - --config=/etc/otelcol-contrib/config.yaml
-      - --config=/etc/otelcol-contrib/config.local.yaml
     ports:
       - 13133:13133 # health_check extension
       - 4318:4318 # OTLP http receiver
 
 volumes:
+  postgres_data:
   ollama_data:
   uploads:

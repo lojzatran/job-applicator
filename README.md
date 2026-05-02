@@ -351,6 +351,7 @@ docker compose -f deployment/docker-compose.yml --env-file deployment/.env --pro
 ```
 
 In production, the app services log to stdout and Docker writes those logs under `/var/lib/docker/containers`, which the collector tails and forwards.
+PostgreSQL data is stored in the named Docker volume `postgres_data`, so `docker compose down` keeps the database unless you explicitly remove volumes.
 
 To run the database tool containers in production, use the image-based services:
 

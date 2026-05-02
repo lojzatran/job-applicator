@@ -1,6 +1,6 @@
 receivers:
   file_log:
-    include: ['${LOGS_DIR}/*.log']
+    include: ['${env:LOGS_DIR}/*.log']
 
 exporters:
   debug:

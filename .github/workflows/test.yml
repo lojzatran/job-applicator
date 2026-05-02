@@ -45,7 +45,7 @@ jobs:
       - name: Start infrastructure
         run: |
           cd deployment
-          docker compose --profile "infrastructure" up -d
+          docker compose -f docker-compose.yml -f docker-compose.ci.yml --profile "infrastructure" up -d
 
       - name: Install Ollama
         run: curl -fsSL https://ollama.com/install.sh | sh
@@ -111,4 +111,4 @@ jobs:
           fi
 
           cd deployment
-          docker compose down -v --remove-orphans
+          docker compose -f docker-compose.yml -f docker-compose.ci.yml down -v --remove-orphans
