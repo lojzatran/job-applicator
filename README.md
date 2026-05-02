@@ -278,8 +278,8 @@ The graph keeps track of how many jobs have already been processed and stops onc
 
 The Docker setup is split into two compose files:
 
-- [`deployment/docker-compose.yml`](/Users/lamtran/Projects/job-applicator/deployment/docker-compose.yml) for production and GitHub Actions deploys. It uses published images only.
-- [`deployment/docker-compose.local.yml`](/Users/lamtran/Projects/job-applicator/deployment/docker-compose.local.yml) for local development. It adds build contexts for the locally built images, including `ollama`, `api`, `website`, `db-reset`, and `db-migrate`.
+- [`deployment/docker-compose.yml`](deployment/docker-compose.yml) for production and GitHub Actions deploys. It uses published images only.
+- [`deployment/docker-compose.local.yml`](deployment/docker-compose.local.yml) for local development. It adds build contexts for the locally built images, including `ollama`, `api`, `website`, `db-reset`, and `db-migrate`.
 
 The production compose file expects a `.env` file next to `deployment/docker-compose.yml`. That file should contain the runtime settings for the stack, including the public Supabase values used by the website image build.
 
