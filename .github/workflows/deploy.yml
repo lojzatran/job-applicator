@@ -165,7 +165,7 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USERNAME }}
           key: ${{ secrets.DEPLOY_KEY }}
-          source: "deployment/docker-compose.yml"
+          source: "deployment/docker-compose.yml,observability/"
           target: "~/job-applicator"
           overwrite: true
           strip_components: 1
@@ -178,5 +178,5 @@ jobs:
           key: ${{ secrets.DEPLOY_KEY }}
           script: |
             cd ~/job-applicator
-            docker compose --profile '*' pull
-            docker compose --profile infrastructure --profile ai --profile app up -d --remove-orphans
+            docker compose -f docker-compose.yml --profile '*' pull
+            docker compose -f docker-compose.yml --profile infrastructure --profile ai --profile observability --profile app up -d --remove-orphans

@@ -1,0 +1,22 @@
+receivers:
+  file_log:
+    include: ['${LOGS_DIR}/*.log']
+
+exporters:
+  debug:
+    verbosity: detailed
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [debug, otlphttp/newrelic]
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [debug, otlphttp/newrelic]
+    logs:
+      receivers: [otlp, file_log]
+      processors: [batch]
+      exporters: [debug, otlphttp/newrelic]

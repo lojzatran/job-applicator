@@ -1,0 +1,54 @@
+services:
+  ollama:
+    build:
+      context: .
+      dockerfile: Dockerfile.ollama
+
+  api:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    env_file:
+      - path: ../.env
+        required: true
+      - path: ../apps/api/.env
+        required: false
+    environment:
+      NODE_ENV: development
+      OLLAMA_BASE_URL: http://ollama:11434
+      RABBITMQ_URL: amqp://rabbitmq:5672
+      OLLAMA_EMBEDDING_BASE_URL: http://ollama:11434
+      LOGS_DIR: /app/logs
+
+  website:
+    build:
+      context: ..
+      dockerfile: apps/website/Dockerfile
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+    environment:
+      NODE_ENV: development
+
+  db-reset:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.db-reset
+
+  db-migrate:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.db-migrate
+
+  otel-collector:
+    environment:
+      - LOGS_DIR=/app/logs
+    env_file:
+      - path: ../.env
+        required: true
+    volumes:
+      - ../observability/otel-collector-config.base.yaml:/etc/otelcol-contrib/config.yaml
+      - ../observability/otel-collector-config.local.yaml:/etc/otelcol-contrib/config.local.yaml
+      - ../logs:/app/logs

@@ -1,0 +1,31 @@
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+  file_log:
+    include: ['${LOGS_DIR}/*/*-json.log']
+
+processors:
+  batch:
+
+exporters:
+  otlphttp/newrelic:
+    endpoint: ${NEWRELIC_OTLP_ENDPOINT}
+    headers:
+      api-key: ${NEWRELIC_LICENSE_KEY}
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp/newrelic]
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlphttp/newrelic]
+    logs:
+      receivers: [otlp, file_log]
+      processors: [batch]
+      exporters: [otlphttp/newrelic]

@@ -53,27 +53,25 @@ services:
     ports:
       - '3000:3000'
     environment:
-      - NODE_ENV=production
-      - RABBITMQ_URL=amqp://rabbitmq:5672
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=job_applicator
-      - JOB_EVALUATOR_MODEL=gemma3:4b-cloud
-      - OLLAMA_BASE_URL=https://ollama.com
-      - COVER_LETTER_GENERATOR_MODEL=gemma3:4b-cloud
-      - CV_PARSER_MODEL=gemma3:4b-cloud
-      - CRITIQUE_MODEL=gemma3:4b-cloud
-      - STORAGE_DIR=/app/uploads
-      - OLLAMA_EMBEDDING_BASE_URL=http://ollama:11434
-      - OLLAMA_EMBEDDING_MODEL=nomic-embed-text-v2-moe:latest
-      - COHERE_API_KEY=${COHERE_API_KEY}
-      - COHERE_EMBEDDING_MODEL=${COHERE_EMBEDDING_MODEL}
-      - OLLAMA_API_KEY=${OLLAMA_API_KEY}
-      - LANGSMITH_PROJECT=${LANGSMITH_PROJECT}
-      - LANGSMITH_API_KEY=${LANGSMITH_API_KEY}
-      - LANGSMITH_TRACING=${LANGSMITH_TRACING}
+      NODE_ENV: production
+      OLLAMA_JOB_EVALUATOR_MODEL: gemma3:4b-cloud
+      OLLAMA_BASE_URL: https://ollama.com
+      COVER_LETTER_GENERATOR_MODEL: gemma3:4b-cloud
+      CV_PARSER_MODEL: gemma3:4b-cloud
+      CRITIQUE_MODEL: gemma3:4b-cloud
+      COHERE_API_KEY: ${COHERE_API_KEY}
+      COHERE_EMBEDDING_MODEL: ${COHERE_EMBEDDING_MODEL}
+      OLLAMA_API_KEY: ${OLLAMA_API_KEY}
+      LANGSMITH_PROJECT: ${LANGSMITH_PROJECT}
+      LANGSMITH_API_KEY: ${LANGSMITH_API_KEY}
+      LANGSMITH_TRACING: ${LANGSMITH_TRACING}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: job_applicator
+      STORAGE_DIR: /app/uploads
+      RABBITMQ_URL: amqp://rabbitmq:5672
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -83,6 +81,7 @@ services:
         condition: service_healthy
     volumes:
       - uploads:/app/uploads
+      - ../logs:/app/logs
 
   website:
     profiles:
@@ -94,7 +93,6 @@ services:
       - .env
     environment:
       NODE_ENV: production
-      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
       RABBITMQ_URL: amqp://rabbitmq:5672
       POSTGRES_HOST: postgres
       POSTGRES_PORT: '5432'
@@ -102,6 +100,8 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: job_applicator
       STORAGE_DIR: /app/uploads
+      LOGS_DIR: /app/logs
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -109,6 +109,7 @@ services:
         condition: service_healthy
     volumes:
       - uploads:/app/uploads
+      - ../logs:/app/logs
 
   db-reset:
     image: lojzatran/job-applicator-db-reset:latest
@@ -137,6 +138,25 @@ services:
         condition: service_healthy
     profiles:
       - tools-migrate
+
+  otel-collector:
+    profiles:
+      - observability
+    image: otel/opentelemetry-collector-contrib
+    environment:
+      - LOGS_DIR=/var/lib/docker/containers
+      - NEWRELIC_LICENSE_KEY=${NEWRELIC_LICENSE_KEY}
+      - NEWRELIC_OTLP_ENDPOINT=${NEWRELIC_OTLP_ENDPOINT}
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - ./otel-collector-config.base.yaml:/etc/otelcol-contrib/config.yaml
+      - ./otel-collector-config.local.yaml:/etc/otelcol-contrib/config.local.yaml
+    command:
+      - --config=/etc/otelcol-contrib/config.yaml
+      - --config=/etc/otelcol-contrib/config.local.yaml
+    ports:
+      - 13133:13133 # health_check extension
+      - 4318:4318 # OTLP http receiver
 
 volumes:
   ollama_data:

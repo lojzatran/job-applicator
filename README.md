@@ -38,12 +38,11 @@ For the website, `NEXT_PUBLIC_SUPABASE_URL` must be available when the Docker im
 
 - `OLLAMA_EMBEDDING_MODEL` - (Default) Model name for generating embeddings with Ollama (e.g., `nomic-embed-text-v2-moe:latest`).
 - `OLLAMA_EMBEDDING_BASE_URL` - (Optional) Base URL for the Ollama embedding API.
-- `JOB_EVALUATOR_MODEL` - Ollama model name used to evaluate whether a job matches the CV.
+- `OLLAMA_JOB_EVALUATOR_MODEL` - Ollama model name used to evaluate whether a job matches the CV.
 - `CV_PARSER_MODEL` - Ollama model name used to parse the CV.
 - `COVER_LETTER_GENERATOR_MODEL` - Ollama model name used to generate the cover letter.
 - `CRITIQUE_MODEL` - Ollama model name used to critique and rewrite the cover letter.
 - `OLLAMA_BASE_URL` - Base URL for the Ollama API (e.g., `http://localhost:11434`).
-- `OLLAMA_EMBEDDING_BASE_URL` - Base URL for the Ollama embedding API.
 - `OLLAMA_API_KEY` - (Optional) API key for Ollama if running behind an authenticated proxy.
 
 ### Storage
@@ -74,6 +73,11 @@ If `GEMINI_API_KEY` is set, the app can use Gemini models instead of Ollama for 
 - `LANGSMITH_PROJECT` - LangSmith project name for tracing.
 - `LANGSMITH_TRACING` - Set to `true` to enable LangSmith tracing.
 - `LANGSMITH_API_KEY` - LangSmith API key.
+
+### NewRelic log ingestion
+
+- `NEWRELIC_LICENSE_KEY` - New Relic license key for APM.
+- `NEWRELIC_OTLP_ENDPOINT` - New Relic OTLP endpoint. Default to EU.
 
 ### Other
 
@@ -285,7 +289,7 @@ The production compose file expects a `.env` file next to `deployment/docker-com
 
 #### Run locally
 
-Start the infrastructure plus the local tool images with:
+Start the infrastructure plus resetting the db with:
 
 ```sh
 docker compose \
@@ -294,7 +298,6 @@ docker compose \
   --env-file deployment/.env \
   --profile infrastructure \
   --profile tools-reset \
-  --profile tools-migrate \
   up -d --build postgres db-reset db-migrate
 ```
 
@@ -310,9 +313,24 @@ docker compose \
   up -d --build postgres db-reset
 ```
 
+To run the app stack together with the OpenTelemetry Collector in local development, include the `app` and `observability` profiles:
+
+```sh
+docker compose \
+  -f deployment/docker-compose.yml \
+  -f deployment/docker-compose.local.yml \
+  --profile infrastructure \
+  --profile app \
+  --profile ai \
+  --profile observability \
+  up -d --build
+```
+
+The local collector tails the shared `logs/` volume, so Pino writes structured logs to `/app/logs/app-json.log` and OTel forwards them to the configured exporter.
+
 #### Run in production
 
-After GitHub Actions builds and pushes the images, the deploy host should use the production compose file only:
+After GitHub Actions builds and pushes the images, the deploy host should use the compose file directly:
 
 To start the full stack with an empty database and profile intended for a fresh state, run:
 
@@ -325,6 +343,14 @@ To start the normal stack using the persisted database and configuration, run:
 ```sh
 docker compose -f deployment/docker-compose.yml --env-file deployment/.env --profile app --profile infrastructure up -d
 ```
+
+To include the OpenTelemetry Collector in production, add the `observability` profile as well:
+
+```sh
+docker compose -f deployment/docker-compose.yml --env-file deployment/.env --profile app --profile infrastructure --profile observability up -d
+```
+
+In production, the app services log to stdout and Docker writes those logs under `/var/lib/docker/containers`, which the collector tails and forwards.
 
 To run the database tool containers in production, use the image-based services:
 
@@ -370,3 +396,41 @@ docker run --rm -it --network job-applicator_default pgvector/pgvector:pg18 sh -
 # to execute a sql query
 docker exec -it job-applicator-postgres-1 psql -U postgres -d job_applicator -c "SELECT * FROM public.job_application;"
 ```
+
+## Observability
+
+The project uses an OpenTelemetry-based observability pipeline that runs alongside the application services via Docker Compose.
+
+### Architecture
+
+- **OpenTelemetry Collector** (`otel-collector`): Runs as a Docker service (profile `observability`) using the `otel/opentelemetry-collector-contrib` image.
+- **Configuration**: The collector is configured via two mounted YAML files:
+  - `observability/otel-collector-config.base.yaml` — base pipelines and New Relic exporter.
+  - `observability/otel-collector-config.local.yaml` — local overrides that add a `debug` exporter for verbose console output.
+
+### Pipelines
+
+| Signal  | Receivers           | Processors | Exporters                                 |
+| ------- | ------------------- | ---------- | ----------------------------------------- |
+| Traces  | `otlp` (HTTP 4318)  | `batch`    | `otlphttp/newrelic` (and `debug` locally) |
+| Metrics | `otlp` (HTTP 4318)  | `batch`    | `otlphttp/newrelic` (and `debug` locally) |
+| Logs    | `otlp` + `file_log` | `batch`    | `otlphttp/newrelic` (and `debug` locally) |
+
+- **OTLP HTTP receiver** is exposed on port `4318` for applications to push traces, metrics, and logs directly.
+- **File log receiver** tails JSON log files from the shared `logs` volume (`${LOGS_DIR}/*.log` locally, or `*-json.log` in production).
+
+### Application Logging
+
+Applications use `createLogger()` from `@apps/shared`, which wraps [Pino](https://getpino.io/). In development mode, logs are written as structured JSON to `logs/app-json.log` and pretty-printed to stdout when running in a TTY. The log volume is mounted into both the application containers and the collector so logs can be scraped automatically.
+
+### Production
+
+In production, the collector is reconfigured to read Docker container logs directly from `/var/lib/docker/containers` (read-only mount). It sends all telemetry to New Relic using the OTLP HTTP endpoint (`https://otlp.eu01.nr-data.net` by default) with the `NEWRELIC_LICENSE_KEY` environment variable.
+
+### Running Locally
+
+```bash
+docker compose --profile infrastructure --profile app --profile observability up
+```
+
+This starts the full stack including PostgreSQL, RabbitMQ, Ollama, the API, the website, and the OpenTelemetry Collector.
