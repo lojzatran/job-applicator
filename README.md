@@ -31,6 +31,7 @@ The following keys could be retrieved from your supabase project settings (https
 - `NEXT_PUBLIC_SUPABASE_URL` - Supabase project URL used by the website auth flow.
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Public Supabase anon key used by the browser and server clients.
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` - Public Supabase publishable key used as an alternative to the anon key.
+- `NEXT_PUBLIC_APP_URL` - Public URL of the website (e.g., `http://localhost:3000` for local development).
 
 For the website, `NEXT_PUBLIC_SUPABASE_URL` must be available when the Docker image is built so the browser bundle can embed it. You can provide either `NEXT_PUBLIC_SUPABASE_ANON_KEY` or `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and the app will use whichever one is set.
 
@@ -48,6 +49,10 @@ For the website, `NEXT_PUBLIC_SUPABASE_URL` must be available when the Docker im
 ### Storage
 
 - `STORAGE_DIR` - Path to the directory where CVs and uploads are stored.
+
+### Other
+
+- `ENABLE_QUERY_LOG` - Set to `true` to enable TypeORM query logging (default: `false`).
 
 ## Optional but supported
 
@@ -140,11 +145,11 @@ npm run test-integration:api
 
 This runs the Nx Jest target for `apps/api` and picks up the `*.integration.spec.ts` files under `apps/api/src/`.
 
-The current API test coverage is the CV embedding integration spec, so make sure local Ollama is running and these models are available:
+The current API test coverage is the CV embedding integration spec, so make sure local Ollama is running and these models/configurations are available:
 
 - `OLLAMA_BASE_URL` - should point to your local Ollama server, usually `http://localhost:11434`.
-- `gemma4:e2b` - model used by `CvEmbeddingsService`.
-- `nomic-embed-text-v2-moe:latest` - embedding model used by `CvEmbeddingsService`.
+- `OLLAMA_EMBEDDING_MODEL` - embedding model (default `nomic-embed-text-v2-moe:latest`).
+- Either `GEMINI_API_KEY` or a local Ollama model configured in `CV_PARSER_MODEL` (e.g., `gemma3:4b-cloud`) for CV parsing.
 
 ## AI Evaluation
 
@@ -179,7 +184,7 @@ Run the TypeORM migration from the workspace root with:
 npm run migrate
 ```
 
-This uses the migration datasource at `libs/migrations/migration-data-source.cjs` and applies migrations from `libs/migrations/`.
+This uses the migration datasource at `libs/migrations/src/migration-data-source.cjs` and applies migrations from `libs/migrations/src/scripts/`.
 
 If you need to wipe the local schema and rebuild it from migrations, run:
 
@@ -227,6 +232,58 @@ flowchart LR
   LangGraph --> LLMs[LLM providers]
   Api --> DB[(PostgreSQL)]
   Website <-->|status and results| Api
+```
+
+### Entity Relationship Diagram
+
+Note: Entities also contains userId, which is an ID of the user saved in Supabase Auth.
+
+```mermaid
+erDiagram
+    CV {
+        int id PK
+        string userId
+        string path
+        string rawText
+        string hash UK
+        datetime createdAt
+    }
+
+    JOB {
+        int id PK
+        string url UK
+        string title
+        string company
+        string description
+        string source
+        datetime createdAt
+    }
+
+    JOB_APPLICATION {
+        int id PK
+        string userId
+        int jobId FK
+        int cvId FK
+        string coverLetter
+        string status
+        string reason
+        datetime createdAt
+    }
+
+    JOB_APPLICATION_PROCESSING_RUN {
+        int id PK
+        string userId
+        string status
+        int totalJobs
+        int evaluatedJobApplications
+        int dismissedJobApplications
+        int appliedJobApplications
+        string threadId UK
+        datetime createdAt
+    }
+
+    CV ||--o{ JOB_APPLICATION : "has many"
+    JOB ||--o{ JOB_APPLICATION : "referenced by"
 ```
 
 ### Sequence Diagram
@@ -283,7 +340,7 @@ The graph keeps track of how many jobs have already been processed and stops onc
 The Docker setup is split into two compose files:
 
 - [`deployment/docker-compose.yml`](deployment/docker-compose.yml) for production and GitHub Actions deploys. It uses published images only.
-- [`deployment/docker-compose.local.yml`](deployment/docker-compose.local.yml) for local development. It adds build contexts for the locally built images, including `ollama`, `api`, `website`, `db-reset`, and `db-migrate`.
+- [`deployment/docker-compose.dev.yml`](deployment/docker-compose.dev.yml) for local development. It adds build contexts for the locally built images, including `ollama`, `api`, `website`, `db-reset`, and `db-migrate`.
 
 The production compose file expects a `.env` file next to `deployment/docker-compose.yml`. That file should contain the runtime settings for the stack, including the public Supabase values used by the website image build.
 
@@ -294,7 +351,7 @@ Start the infrastructure plus resetting the db with:
 ```sh
 docker compose \
   -f deployment/docker-compose.yml \
-  -f deployment/docker-compose.local.yml \
+  -f deployment/docker-compose.dev.yml \
   --env-file deployment/.env \
   --profile infrastructure \
   --profile tools-reset \
@@ -306,7 +363,7 @@ If you only want the reset flow, run:
 ```sh
 docker compose \
   -f deployment/docker-compose.yml \
-  -f deployment/docker-compose.local.yml \
+  -f deployment/docker-compose.dev.yml \
   --env-file deployment/.env \
   --profile infrastructure \
   --profile tools-reset \
@@ -318,7 +375,7 @@ To run the app stack together with the OpenTelemetry Collector in local developm
 ```sh
 docker compose \
   -f deployment/docker-compose.yml \
-  -f deployment/docker-compose.local.yml \
+  -f deployment/docker-compose.dev.yml \
   --profile infrastructure \
   --profile app \
   --profile ai \
