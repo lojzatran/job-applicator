@@ -7,6 +7,7 @@ import { CvEmbeddingsRepository } from '@apps/api/src/app/cv/embeddings/cv-embed
 import { DataSource } from 'typeorm';
 import { dataSourceOptions } from '@apps/shared';
 import { EmbeddingsWrapper } from '@apps/api/src/app/ai/providers/embedding.types';
+import { MemorySaver } from '@langchain/langgraph';
 
 interface OllamaAgentGraphContext {
   graph: Awaited<ReturnType<InstanceType<typeof LanggraphService>['build']>>;
@@ -36,6 +37,8 @@ export async function createOllamaAgentRuntime(
   const dataSource = new DataSource(dataSourceOptions);
   await dataSource.initialize();
 
+  const checkpointer = new MemorySaver();
+
   try {
     const cvEmbeddingsService = new CvEmbeddingsService(
       llm as any,
@@ -49,6 +52,7 @@ export async function createOllamaAgentRuntime(
       llm as any,
       llm as any,
       cvEmbeddingsService,
+      checkpointer as any,
     );
 
     return {

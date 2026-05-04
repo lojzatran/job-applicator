@@ -7,7 +7,14 @@ Job Applicator helps you discover jobs from multiple sources, evaluate how well 
 - Node.js and npm installed locally.
 - Docker running for the supporting services used by the backend and local development workflow.
 - A populated `.env` file at the workspace root with the API, database, queue, and model settings required by your environment.
-- Use `.env.example` as the starting point for the workspace `.env` file.
+
+## Set up for local development
+
+1. Fill in `.env` file. Use `.env.example` as the starting point for the workspace `.env` file.
+1. Run `npm i` on root folder of the project.
+1. Run `docker compose -f deployment/docker-compose.yml -f deployment/docker-compose.dev.yml --env-file .env --profile infrastructure --profile tools-reset up -d`. This will start all the necessary infrastructure and also recreates the database.
+1. (Optional) Run `docker compose -f deployment/docker-compose.yml -f deployment/docker-compose.dev.yml --env-file .env --profile ai up -d` if you want to use nomic-embed-text-v2-moe Ollama model for embeddings.
+1. Run `npm run dev-all` to start the website and API.
 
 ## Required env vars
 
@@ -283,7 +290,7 @@ The graph keeps track of how many jobs have already been processed and stops onc
 The Docker setup is split into two compose files:
 
 - [`deployment/docker-compose.yml`](deployment/docker-compose.yml) for production and GitHub Actions deploys. It uses published images only.
-- [`deployment/docker-compose.local.yml`](deployment/docker-compose.local.yml) for local development. It adds build contexts for the locally built images, including `ollama`, `api`, `website`, `db-reset`, and `db-migrate`.
+- [`deployment/docker-compose.dev.yml`](deployment/docker-compose.dev.yml) for local development. It adds build contexts for the locally built images, including `ollama`, `api`, `website`, `db-reset`, and `db-migrate`.
 
 The production compose file expects a `.env` file next to `deployment/docker-compose.yml`. That file should contain the runtime settings for the stack, including the public Supabase values used by the website image build.
 
@@ -294,7 +301,7 @@ Start the infrastructure plus resetting the db with:
 ```sh
 docker compose \
   -f deployment/docker-compose.yml \
-  -f deployment/docker-compose.local.yml \
+  -f deployment/docker-compose.dev.yml \
   --env-file deployment/.env \
   --profile infrastructure \
   --profile tools-reset \
@@ -306,7 +313,7 @@ If you only want the reset flow, run:
 ```sh
 docker compose \
   -f deployment/docker-compose.yml \
-  -f deployment/docker-compose.local.yml \
+  -f deployment/docker-compose.dev.yml \
   --env-file deployment/.env \
   --profile infrastructure \
   --profile tools-reset \
@@ -318,7 +325,7 @@ To run the app stack together with the OpenTelemetry Collector in local developm
 ```sh
 docker compose \
   -f deployment/docker-compose.yml \
-  -f deployment/docker-compose.local.yml \
+  -f deployment/docker-compose.dev.yml \
   --profile infrastructure \
   --profile app \
   --profile ai \
@@ -427,11 +434,3 @@ Applications use `createLogger()` from `@apps/shared`, which wraps [Pino](https:
 ### Production
 
 In production, the collector is reconfigured to read Docker container logs directly from `/var/lib/docker/containers` (read-only mount). It sends all telemetry to New Relic using the OTLP HTTP endpoint (`https://otlp.eu01.nr-data.net` by default) with the `NEWRELIC_LICENSE_KEY` environment variable.
-
-### Running Locally
-
-```bash
-docker compose --profile infrastructure --profile app --profile observability up
-```
-
-This starts the full stack including PostgreSQL, RabbitMQ, Ollama, the API, the website, and the OpenTelemetry Collector.
