@@ -12,14 +12,20 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  setup:
+    uses: ./.github/workflows/setup.yml
+
   lint:
+    needs: [setup]
     uses: ./.github/workflows/lint.yml
 
   test:
+    needs: [setup]
     uses: ./.github/workflows/test.yml
     secrets: inherit
 
   e2e:
+    needs: [setup]
     uses: ./.github/workflows/e2e.yml
     secrets: inherit
 
