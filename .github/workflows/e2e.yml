@@ -32,16 +32,35 @@ jobs:
           node-version: 22
           cache: npm
 
+      - name: Restore node_modules
+        id: restore-node-modules
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            node_modules
+            apps/*/node_modules
+            libs/*/node_modules
+          key: ${{ runner.os }}-node_modules-${{ hashFiles('package-lock.json') }}
+
       - name: Install dependencies
+        if: steps.restore-node-modules.outputs.cache-hit != 'true'
         run: npm ci
 
       - name: Build all projects
         run: npm run build
 
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps
+      - name: Cache Playwright browsers
+        id: cache-playwright
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
 
-      - name: Create .env file
+      - name: Install Google Chrome for Playwright
+        if: steps.cache-playwright.outputs.cache-hit != 'true'
+        run: npx playwright install chrome --with-deps
+
+      - name: Create .env files
         run: |
           cat > .env <<EOF
           RABBITMQ_URL=${RABBITMQ_URL}
@@ -53,6 +72,10 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
           NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+          EOF
+
+          mkdir -p apps/website-e2e
+          cat > apps/website-e2e/.env <<EOF
           SUPABASE_SECRET_KEY=${SUPABASE_SECRET_KEY}
           EOF
 
@@ -65,6 +88,12 @@ jobs:
 
           if [ -z "$SUPABASE_SECRET_KEY" ]; then
             echo "SUPABASE_SECRET_KEY secret is required for e2e tests."
+            exit 1
+          fi
+
+          # Quick health check: ensure the key looks like a valid Supabase secret key
+          if ! echo "$SUPABASE_SECRET_KEY" | grep -qE '^(eyJ|sb_secret_)'; then
+            echo "SUPABASE_SECRET_KEY does not look like a valid secret key. Expected a JWT (eyJ...) or Supabase secret key (sb_secret_...)."
             exit 1
           fi
 
