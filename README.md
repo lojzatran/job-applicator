@@ -153,6 +153,28 @@ The current API test coverage is the CV embedding integration spec, so make sure
 - `gemma4:e2b` - model used by `CvEmbeddingsService`.
 - `nomic-embed-text-v2-moe:latest` - embedding model used by `CvEmbeddingsService`.
 
+### End-to-end tests
+
+End-to-end tests live in `apps/website-e2e/` and run with Playwright.
+
+Run the e2e test suite from the workspace root with:
+
+```sh
+npm run test:e2e
+```
+
+This runs the full Playwright suite against the Next.js website in headless Chrome.
+
+The e2e setup uses a dedicated `SUPABASE_SECRET_KEY` to create and tear down a test user with `email_confirm: true`, so tests can log in without email verification.
+
+Required for e2e tests:
+
+- `NEXT_PUBLIC_SUPABASE_URL` - Supabase project URL.
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` or `NEXT_PUBLIC_SUPABASE_ANON_KEY` - public Supabase key.
+- `SUPABASE_SECRET_KEY` - **service-role / secret key** used by the test setup to create the test user.
+
+The e2e job also runs in GitHub Actions (see `.github/workflows/e2e.yml`) in parallel with unit and integration tests.
+
 ## AI Evaluation
 
 The `apps/ai-evaluation/` app contains LangSmith-based evaluation scripts for the job evaluator and graph flows.
