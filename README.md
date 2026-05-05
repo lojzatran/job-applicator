@@ -7,7 +7,14 @@ Job Applicator helps you discover jobs from multiple sources, evaluate how well 
 - Node.js and npm installed locally.
 - Docker running for the supporting services used by the backend and local development workflow.
 - A populated `.env` file at the workspace root with the API, database, queue, and model settings required by your environment.
-- Use `.env.example` as the starting point for the workspace `.env` file.
+
+## Set up for local development
+
+1. Fill in `.env` file. Use `.env.example` as the starting point for the workspace `.env` file.
+1. Run `npm i` on root folder of the project.
+1. Run `docker compose -f deployment/docker-compose.yml -f deployment/docker-compose.dev.yml --env-file .env --profile infrastructure --profile tools-reset up -d`. This will start all the necessary infrastructure and also recreates the database.
+1. (Optional) Run `docker compose -f deployment/docker-compose.yml -f deployment/docker-compose.dev.yml --env-file .env --profile ai up -d` if you want to use nomic-embed-text-v2-moe Ollama model for embeddings.
+1. Run `npm run dev-all` to start the website and API.
 
 ## Required env vars
 
@@ -150,6 +157,28 @@ The current API test coverage is the CV embedding integration spec, so make sure
 - `OLLAMA_BASE_URL` - should point to your local Ollama server, usually `http://localhost:11434`.
 - `OLLAMA_EMBEDDING_MODEL` - embedding model (default `nomic-embed-text-v2-moe:latest`).
 - Either `GEMINI_API_KEY` or a local Ollama model configured in `CV_PARSER_MODEL` (e.g., `gemma3:4b-cloud`) for CV parsing.
+
+### End-to-end tests
+
+End-to-end tests live in `apps/website-e2e/` and run with Playwright.
+
+Run the e2e test suite from the workspace root with:
+
+```sh
+npm run test:e2e
+```
+
+This runs the full Playwright suite against the Next.js website in headless Chrome.
+
+The e2e setup uses a dedicated `SUPABASE_SECRET_KEY` to create and tear down a test user with `email_confirm: true`, so tests can log in without email verification.
+
+Required for e2e tests:
+
+- `NEXT_PUBLIC_SUPABASE_URL` - Supabase project URL.
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` or `NEXT_PUBLIC_SUPABASE_ANON_KEY` - public Supabase key.
+- `SUPABASE_SECRET_KEY` - **service-role / secret key** used by the test setup to create the test user.
+
+The e2e job also runs in GitHub Actions (see `.github/workflows/e2e.yml`) in parallel with unit and integration tests.
 
 ## AI Evaluation
 
@@ -484,11 +513,3 @@ Applications use `createLogger()` from `@apps/shared`, which wraps [Pino](https:
 ### Production
 
 In production, the collector is reconfigured to read Docker container logs directly from `/var/lib/docker/containers` (read-only mount). It sends all telemetry to New Relic using the OTLP HTTP endpoint (`https://otlp.eu01.nr-data.net` by default) with the `NEWRELIC_LICENSE_KEY` environment variable.
-
-### Running Locally
-
-```bash
-docker compose --profile infrastructure --profile app --profile observability up
-```
-
-This starts the full stack including PostgreSQL, RabbitMQ, Ollama, the API, the website, and the OpenTelemetry Collector.
