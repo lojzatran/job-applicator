@@ -158,10 +158,16 @@ export class CoverLetterGraph {
     const workflow = new StateGraph(CoverLetterAnnotation);
 
     workflow
-      .addNode('generate_cover_letter', this.generateCoverLetter.bind(this))
+      .addNode('generate_cover_letter', this.generateCoverLetter.bind(this), {
+        retryPolicy: { maxAttempts: 3 },
+      })
       .addNode('increase_counter', this.increaseCounter.bind(this))
-      .addNode('critique_cover_letter', this.critiqueCoverLetter.bind(this))
-      .addNode('rewrite_cover_letter', this.rewriteCoverLetter.bind(this))
+      .addNode('critique_cover_letter', this.critiqueCoverLetter.bind(this), {
+        retryPolicy: { maxAttempts: 3 },
+      })
+      .addNode('rewrite_cover_letter', this.rewriteCoverLetter.bind(this), {
+        retryPolicy: { maxAttempts: 3 },
+      })
       .addEdge(START, 'generate_cover_letter')
       .addEdge('generate_cover_letter', 'increase_counter')
       .addConditionalEdges('increase_counter', this.shouldContinue.bind(this), [

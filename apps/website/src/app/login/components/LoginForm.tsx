@@ -146,10 +146,14 @@ export const LoginForm = ({ nextPath }: LoginFormProps) => {
       </div>
 
       <div className="space-y-2">
-        <label className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+        <label
+          htmlFor="email"
+          className="text-sm font-semibold text-slate-700 dark:text-slate-200"
+        >
           Email
         </label>
         <input
+          id="email"
           type="email"
           autoComplete="email"
           value={email}
@@ -161,10 +165,14 @@ export const LoginForm = ({ nextPath }: LoginFormProps) => {
       </div>
 
       <div className="space-y-2">
-        <label className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+        <label
+          htmlFor="password"
+          className="text-sm font-semibold text-slate-700 dark:text-slate-200"
+        >
           Password
         </label>
         <input
+          id="password"
           type="password"
           autoComplete={
             mode === 'sign-in' ? 'current-password' : 'new-password'

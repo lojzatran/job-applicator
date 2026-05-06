@@ -58,3 +58,4 @@ typecheck_output.txt
 
 # Log files
 logs/
+apps/website-e2e/playwright/.auth/

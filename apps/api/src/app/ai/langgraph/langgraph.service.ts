@@ -4,6 +4,7 @@ import {
   START,
   CompiledStateGraph,
   Annotation,
+  BaseCheckpointSaver,
 } from '@langchain/langgraph';
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { JobSchema } from '../../jobs/types';
@@ -13,19 +14,12 @@ import { CoverLetterGraph } from './graphs/CoverLetterGraph';
 import { CvEmbeddingsService } from '../../cv/embeddings/cv-summary-embeddings.service';
 import { Inject, Injectable } from '@nestjs/common';
 import {
+  CHECKPOINTER,
   COVER_LETTER_GENERATOR_LLM,
   CRITIQUE_LLM,
   JOB_EVALUATOR_LLM,
 } from '../ai.constants';
 import { createLogger } from '@apps/shared';
-import { PostgresSaver } from '@langchain/langgraph-checkpoint-postgres';
-import { env } from '../../../utils/env';
-
-const databaseUrl = new URL(
-  `postgres://${env.POSTGRES_HOST}:${env.POSTGRES_PORT}/${env.POSTGRES_DB}`,
-);
-databaseUrl.username = env.POSTGRES_USER;
-databaseUrl.password = env.POSTGRES_PASSWORD;
 
 interface CoverLetterEntry {
   coverLetter: string;
@@ -82,6 +76,8 @@ export class LanggraphService {
     @Inject(CRITIQUE_LLM)
     critiqueLlm: BaseChatModel,
     private readonly cvEmbeddingsService: CvEmbeddingsService,
+    @Inject(CHECKPOINTER)
+    private readonly checkpointer: BaseCheckpointSaver,
   ) {
     this.coverLetterSubgraph = new CoverLetterGraph(
       coverLetterGeneratorLlm,
@@ -251,12 +247,6 @@ export class LanggraphService {
   }
 
   async build(): Promise<CompiledStateGraph<any, any, any, any, any, any>> {
-    const checkpointer = PostgresSaver.fromConnString(databaseUrl.toString(), {
-      schema: 'public',
-    });
-
-    await checkpointer.setup();
-
     return new StateGraph(AgentStateAnnotation)
       .addNode('job_supplier', this.jobSupplier.bind(this))
       .addNode('cv_summarizer', this.summarizeCv.bind(this))
@@ -278,7 +268,7 @@ export class LanggraphService {
       .addEdge('cover_letter_generator', 'clean_state')
       .addEdge('clean_state', 'job_supplier')
       .compile({
-        checkpointer,
+        checkpointer: this.checkpointer,
       });
   }
 }

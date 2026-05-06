@@ -19,6 +19,7 @@ import { Job, JobApplication, dataSourceOptions } from '@apps/shared';
 import { CvEmbeddingsService } from './cv/embeddings/cv-summary-embeddings.service';
 import { CvEmbeddingsRepository } from './cv/embeddings/cv-embeddings.repository';
 import { Cv, JobApplicationProcessingRun } from '@apps/shared';
+import { checkpointerProvider } from './ai/providers/checkpointer.provider';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { Cv, JobApplicationProcessingRun } from '@apps/shared';
     PdfService,
     CvEmbeddingsRepository,
     CvEmbeddingsService,
+    checkpointerProvider,
   ],
 })
 export class AppModule {}

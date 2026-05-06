@@ -7,6 +7,7 @@
     "api:prod": "nx build api --configuration=production && cd apps/api && node dist/main.js",
     "test": "nx run-many --targets=test --all",
     "test:unit": "nx test website && nx test api -- --testPathIgnorePatterns=integration\\.spec\\.ts$ && npx jest --runInBand --config libs/migrations/tests/jest.config.cjs",
+    "test:e2e": "nx e2e website-e2e",
     "test-integration:api": "POSTGRES_DB=test npm run db:reset && POSTGRES_DB=test nx test api -- --runInBand --testPathPatterns=integration\\.spec\\.ts$",
     "migrate": "tsx libs/migrations/src/migrate.ts",
     "db:reset": "tsx libs/migrations/src/ensure-database.ts && tsx libs/migrations/src/reset-database.ts && npm run migrate",
