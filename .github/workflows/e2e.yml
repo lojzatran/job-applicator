@@ -91,6 +91,12 @@ jobs:
             exit 1
           fi
 
+          # Quick health check: ensure the key looks like a valid Supabase secret key
+          if ! echo "$SUPABASE_SECRET_KEY" | grep -qE '^(eyJ|sb_secret_)'; then
+            echo "SUPABASE_SECRET_KEY does not look like a valid secret key. Expected a JWT (eyJ...) or Supabase secret key (sb_secret_...)."
+            exit 1
+          fi
+
       - name: Run e2e tests
         run: npx nx e2e website-e2e
 
