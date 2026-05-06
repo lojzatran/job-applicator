@@ -85,6 +85,9 @@ export default async function globalSetup() {
     );
   }
 
+  console.log('[debug] SUPABASE_URL: ', supabaseUrl.slice(0, 10));
+  console.log('[debug] SUPABASE_SECRET_KEY: ', supabaseSecretKey.slice(0, 10));
+
   const supabase = createClient(supabaseUrl, supabaseSecretKey, {
     auth: {
       autoRefreshToken: false,
