@@ -38,6 +38,10 @@ export default defineConfig({
     {
       name: 'setup',
       testMatch: /auth\.setup\.ts/,
+      use: {
+        channel: 'chrome',
+        headless: true,
+      },
     },
     {
       name: 'Google Chrome',
@@ -54,6 +58,8 @@ export default defineConfig({
       name: 'teardown',
       testMatch: /auth\.teardown\.ts/,
       use: {
+        channel: 'chrome',
+        headless: true,
         storageState: 'playwright/.auth/user.json',
       },
     },
