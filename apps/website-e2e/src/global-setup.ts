@@ -58,20 +58,74 @@ function waitForPort(
   });
 }
 
-export default async function globalSetup() {
-  console.log('Setting up e2e test infrastructure...');
+function waitForDbReset(cwd: string, timeoutMs: number): Promise<void> {
+  const startTime = Date.now();
 
-  execSync(
-    'docker compose -f deployment/docker-compose.yml -f deployment/docker-compose.dev.yml --env-file .env --profile infrastructure --profile tools-reset up -d',
-    {
-      cwd: workspaceRoot,
-      stdio: 'inherit',
-    },
-  );
+  return new Promise((resolve, reject) => {
+    const check = () => {
+      if (Date.now() - startTime > timeoutMs) {
+        reject(new Error('Timed out waiting for db-reset to complete'));
+        return;
+      }
 
-  await waitForPort('localhost', 5432, 120_000);
-  await waitForPort('localhost', 5672, 120_000);
+      try {
+        const psOutput = execSync(
+          'docker compose -f deployment/docker-compose.yml -f deployment/docker-compose.dev.yml --env-file .env ps --all --format "{{.Service}}\t{{.ID}}"',
+          {
+            cwd,
+            encoding: 'utf-8',
+            stdio: ['pipe', 'pipe', 'ignore'],
+          },
+        ).trim();
 
+        const lines = psOutput.split('\n').filter((line) => line.length > 0);
+        const dbResetLine = lines.find((line) => line.startsWith('db-reset\t'));
+
+        if (!dbResetLine) {
+          setTimeout(check, 1000);
+          return;
+        }
+
+        const containerId = dbResetLine.split('\t')[1];
+
+        const status = execSync(
+          `docker inspect -f '{{.State.Status}}' ${containerId}`,
+          {
+            cwd,
+            encoding: 'utf-8',
+            stdio: ['pipe', 'pipe', 'ignore'],
+          },
+        ).trim();
+
+        if (status === 'exited') {
+          const exitCode = execSync(
+            `docker inspect -f '{{.State.ExitCode}}' ${containerId}`,
+            {
+              cwd,
+              encoding: 'utf-8',
+              stdio: ['pipe', 'pipe', 'ignore'],
+            },
+          ).trim();
+
+          if (exitCode === '0') {
+            resolve();
+          } else {
+            reject(new Error(`db-reset failed with exit code ${exitCode}`));
+          }
+          return;
+        }
+
+        setTimeout(check, 1000);
+      } catch {
+        setTimeout(check, 1000);
+      }
+    };
+
+    check();
+  });
+}
+
+async function setupSupabaseTestUser(): Promise<void> {
   const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseSecretKey = env.SUPABASE_SECRET_KEY;
 
@@ -95,35 +149,50 @@ export default async function globalSetup() {
   const testUserEmail = 'e2e-test@example.com';
   const testUserPassword = 'e2e-test-password-123';
 
-  const { data: listData, error: listError } =
-    await supabase.auth.admin.listUsers();
+  const { error: createError } = await supabase.auth.admin.createUser({
+    email: testUserEmail,
+    password: testUserPassword,
+    email_confirm: true,
+  });
 
-  if (listError) {
-    throw new Error(`Failed to list Supabase users: ${listError.message}`);
-  }
+  if (createError) {
+    const isDuplicateEmail =
+      createError.status === 422 ||
+      createError.code === 'email_exists' ||
+      createError.code === 'user_already_exists';
 
-  const existingUser = listData.users.find(
-    (user) => user.email === testUserEmail,
-  );
-
-  if (!existingUser) {
-    const { error: createError } = await supabase.auth.admin.createUser({
-      email: testUserEmail,
-      password: testUserPassword,
-      email_confirm: true,
-    });
-
-    if (createError) {
+    if (!isDuplicateEmail) {
       throw new Error(`Failed to create test user: ${createError.message}`);
     }
 
-    console.log(`Created test user: ${testUserEmail}`);
-  } else {
     console.log(`Test user already exists: ${testUserEmail}`);
+  } else {
+    console.log(`Created test user: ${testUserEmail}`);
   }
 
   process.env.E2E_TEST_USER_EMAIL = testUserEmail;
   process.env.E2E_TEST_USER_PASSWORD = testUserPassword;
+}
+
+export default async function globalSetup() {
+  console.log('Setting up e2e test infrastructure...');
+
+  execSync(
+    'docker compose -f deployment/docker-compose.yml -f deployment/docker-compose.dev.yml --env-file .env --profile infrastructure --profile tools-reset up -d',
+    {
+      cwd: workspaceRoot,
+      stdio: 'inherit',
+    },
+  );
+
+  await Promise.all([
+    (async () => {
+      await waitForDbReset(workspaceRoot, 120_000);
+      await waitForPort('localhost', 5432, 120_000);
+      await waitForPort('localhost', 5672, 120_000);
+    })(),
+    setupSupabaseTestUser(),
+  ]);
 
   console.log('E2e infrastructure is ready.');
 }

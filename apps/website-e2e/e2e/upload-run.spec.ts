@@ -27,7 +27,11 @@ test('upload resume, enable StartupJobs, set 5 max jobs, and trigger run', async
   await expect(maxJobsInput).toHaveValue('5');
 
   // Submit the form and wait for the upload API response.
-  const uploadResponsePromise = page.waitForResponse('/api/upload');
+  const uploadResponsePromise = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === '/api/upload' &&
+      response.status() === 200,
+  );
   await page.getByRole('button', { name: /prepare application pack/i }).click();
   const uploadResponse = await uploadResponsePromise;
   expect(uploadResponse.status()).toBe(200);

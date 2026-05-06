@@ -11,7 +11,7 @@ const appEnvPath = resolve(process.cwd(), 'apps/website-e2e/.env');
 
 const appEnvSchema = z.object({
   SUPABASE_SECRET_KEY: z.string(),
-  NEXT_PUBLIC_SUPABASE_URL: z.string(),
+  NEXT_PUBLIC_SUPABASE_URL: z.url(),
 });
 
 export const env = createEnv({

@@ -60,26 +60,6 @@ jobs:
         if: steps.cache-playwright.outputs.cache-hit != 'true'
         run: npx playwright install chrome --with-deps
 
-      - name: Create .env files
-        run: |
-          cat > .env <<EOF
-          RABBITMQ_URL=${RABBITMQ_URL}
-          POSTGRES_HOST=${POSTGRES_HOST}
-          POSTGRES_PORT=${POSTGRES_PORT}
-          POSTGRES_USER=${POSTGRES_USER}
-          POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-          POSTGRES_DB=${POSTGRES_DB}
-          NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
-          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
-          STORAGE_DIR=/tmp/uploads
-          EOF
-
-          mkdir -p apps/website-e2e
-          cat > apps/website-e2e/.env <<EOF
-          SUPABASE_SECRET_KEY=${SUPABASE_SECRET_KEY}
-          EOF
-
       - name: Verify Supabase configuration
         run: |
           if [ -z "$NEXT_PUBLIC_SUPABASE_URL" ]; then
@@ -97,6 +77,25 @@ jobs:
             echo "SUPABASE_SECRET_KEY does not look like a valid secret key. Expected a JWT (eyJ...) or Supabase secret key (sb_secret_...)."
             exit 1
           fi
+
+      - name: Create .env files
+        run: |
+          cat > .env <<EOF
+          RABBITMQ_URL=${RABBITMQ_URL}
+          POSTGRES_HOST=${POSTGRES_HOST}
+          POSTGRES_PORT=${POSTGRES_PORT}
+          POSTGRES_USER=${POSTGRES_USER}
+          POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+          POSTGRES_DB=${POSTGRES_DB}
+          NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
+          STORAGE_DIR=/tmp/uploads
+          EOF
+
+          mkdir -p apps/website-e2e
+          cat > apps/website-e2e/.env <<EOF
+          SUPABASE_SECRET_KEY=${SUPABASE_SECRET_KEY}
+          EOF
 
       - name: Run e2e tests
         run: npx nx e2e website-e2e
