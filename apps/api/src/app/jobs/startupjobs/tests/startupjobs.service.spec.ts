@@ -76,6 +76,15 @@ describe('StartupJobsService', () => {
 
     const jobs = await service.fetchJobs();
 
+    for (let page = 1; page <= 6; page++) {
+      expect(global.fetch).toHaveBeenCalledWith(
+        `https://back.startupjobs.cz/api/search-offers?page=${page}`,
+        expect.objectContaining({
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+    }
+
     // Six search pages and one detail request per offer.
     expect(global.fetch).toHaveBeenCalledTimes(
       6 + mockResponse.member.length * 6,

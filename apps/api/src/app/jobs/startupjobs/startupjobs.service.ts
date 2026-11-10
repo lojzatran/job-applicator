@@ -185,6 +185,7 @@ export class StartupJobsService {
       {
         body: '{"locationPreferences":["remote"]}',
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
       },
     );
 
@@ -202,6 +203,7 @@ export class StartupJobsService {
           {
             body: '{"locationPreferences":["remote"]}',
             method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
           },
         );
         const data: StartupJobsSearchOffersResponse =
