@@ -3,4 +3,5 @@ export const COVER_LETTER_GENERATOR_LLM = Symbol('COVER_LETTER_GENERATOR_LLM');
 export const CRITIQUE_LLM = Symbol('CRITIQUE_LLM');
 export const CV_PARSER_LLM = Symbol('CV_PARSER_LLM');
 export const EMBEDDING_MODEL = Symbol('EMBEDDING_MODEL');
+export const DECISION_MODEL = Symbol('DECISION_MODEL');
 export const CHECKPOINTER = Symbol('CHECKPOINTER');

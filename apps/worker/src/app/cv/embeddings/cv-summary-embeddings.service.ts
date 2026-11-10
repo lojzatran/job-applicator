@@ -17,6 +17,12 @@ import * as crypto from 'crypto';
 import { DataSource } from 'typeorm';
 import { WeightedEmbedding, SqlExecutor } from './types';
 import { createLogger } from '@apps/shared';
+import type { z } from 'zod';
+
+interface CvEmbeddingResult {
+  parsedCv: z.infer<typeof CvSchema>;
+  embeddings: WeightedEmbedding[];
+}
 
 @Injectable()
 export class CvEmbeddingsService {
@@ -42,7 +48,7 @@ export class CvEmbeddingsService {
 
   async createWeightedEmbeddingsForCv(
     cvText: string,
-  ): Promise<WeightedEmbedding[]> {
+  ): Promise<CvEmbeddingResult> {
     const template = ChatPromptTemplate.fromMessages([
       [
         'system',
@@ -84,7 +90,10 @@ export class CvEmbeddingsService {
       llm,
       async (input) => {
         this.logger.debug(`Parsed CV: ${JSON.stringify(input)}`);
-        return this.createWeightedEmbeddings(input, cvText);
+        return {
+          parsedCv: input,
+          embeddings: await this.createWeightedEmbeddings(input, cvText),
+        };
       },
     ]);
 
@@ -309,10 +318,10 @@ export class CvEmbeddingsService {
       return;
     }
 
-    const cvEmbedding: {
-      embedding: number[];
-      weight: number;
-    }[] = await this.createWeightedEmbeddingsForCv(cvEntity.rawText);
+    const { embeddings: cvEmbedding, parsedCv } =
+      await this.createWeightedEmbeddingsForCv(cvEntity.rawText);
+
+    await manager.update(Cv, cvEntity.id, parsedCv);
 
     const embeddings = cvEmbedding.map((embedding) => {
       return {

@@ -119,7 +119,8 @@ describe('Cv Embeddings Service integration', () => {
       async ({ text }) => {
         const service = moduleRef.get(CvEmbeddingsService);
 
-        const result = await service.createWeightedEmbeddingsForCv(text);
+        const { embeddings: result } =
+          await service.createWeightedEmbeddingsForCv(text);
 
         expect(Array.isArray(result)).toBe(true);
         expect(result.length).toBeGreaterThan(0);

@@ -1,6 +1,8 @@
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
+import { RunnableLambda } from '@langchain/core/runnables';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { DataSource, EntityManager } from 'typeorm';
+import { Cv } from '@apps/shared';
 import { CvEmbeddingsService } from '../cv-summary-embeddings.service';
 import type { CvEmbeddingsRepository } from '../cv-embeddings.repository';
 import { EmbeddingsWrapper } from '../../../ai/providers/embedding.types';
@@ -8,6 +10,60 @@ import { EmbeddingsWrapper } from '../../../ai/providers/embedding.types';
 describe('CvEmbeddingsService', () => {
   afterEach(() => {
     jest.restoreAllMocks();
+  });
+
+  it('persists parsed CV fields and embeddings in the same transaction', async () => {
+    const cvText = 'TypeScript developer';
+    const parsedCv = {
+      summary: cvText,
+      skills: ['TypeScript'],
+      experience: ['Acme - Developer: Built APIs.'],
+      projects: [],
+      education: [],
+      other: [],
+    };
+    const parseCv = jest.fn().mockResolvedValue(parsedCv);
+    const cvParserLlm = {
+      withStructuredOutput: jest
+        .fn()
+        .mockReturnValue(RunnableLambda.from(parseCv)),
+    } as unknown as BaseChatModel;
+    const embeddingModel = {
+      embedDocuments: jest.fn().mockResolvedValue([[1, 2, 3]]),
+      modelName: 'test',
+    } as unknown as EmbeddingsWrapper;
+    const manager = {
+      getRepository: jest.fn().mockReturnValue({
+        findOne: jest.fn().mockResolvedValue({ id: 1, rawText: cvText }),
+      }),
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
+    };
+    const repository = {
+      fetchCvEmbeddings: jest.fn().mockResolvedValue([]),
+      insertCvEmbeddings: jest.fn().mockResolvedValue(undefined),
+    };
+    const dataSource = createDataSource(manager as unknown as EntityManager);
+    const service = new CvEmbeddingsService(
+      cvParserLlm,
+      embeddingModel,
+      repository as unknown as CvEmbeddingsRepository,
+      dataSource,
+    );
+
+    await expect(service.ensureCvAndEmbeddings(cvText)).resolves.toBe(1);
+
+    expect(parseCv).toHaveBeenCalledTimes(1);
+    expect(manager.update).toHaveBeenCalledWith(Cv, 1, parsedCv);
+    expect(repository.insertCvEmbeddings).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          cvId: 1,
+          embedding: [1, 2, 3],
+          model: 'test',
+        }),
+      ]),
+      manager,
+    );
   });
 
   describe('Job description embedding hygiene', () => {
@@ -81,11 +137,11 @@ function createService(
   );
 }
 
-function createDataSource(): DataSource {
+function createDataSource(manager = {} as EntityManager): DataSource {
   return {
     transaction: jest.fn(
       async (callback: (manager: EntityManager) => Promise<unknown>) => {
-        return callback({} as EntityManager);
+        return callback(manager);
       },
     ),
   } as unknown as DataSource;
