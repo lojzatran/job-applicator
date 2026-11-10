@@ -59,15 +59,32 @@ describe('StartupJobsService', () => {
       raw: [],
     });
 
-    (global.fetch as jest.Mock).mockResolvedValue({
-      json: jest.fn().mockResolvedValue(mockResponse),
+    (global.fetch as jest.Mock).mockImplementation((url: string) => {
+      const data = url.includes('/api/offers/')
+        ? { description: { cs: '<p class="description">Popis nabídky</p>' } }
+        : {
+            ...mockResponse,
+            member: mockResponse.member.map((offer) => ({
+              id: offer.displayId,
+              name: offer.title,
+              slug: { cs: offer.slug },
+              company: offer.company,
+            })),
+          };
+      return Promise.resolve({ json: jest.fn().mockResolvedValue(data) });
     });
 
     const jobs = await service.fetchJobs();
 
-    // verify that it will make 6 requests in total
-    // because in startupjobs-mock-response.json we have 6 pages and we fetch 20 jobs/page
-    expect(global.fetch).toHaveBeenCalledTimes(6);
+    // Six search pages and one detail request per offer.
+    expect(global.fetch).toHaveBeenCalledTimes(
+      6 + mockResponse.member.length * 6,
+    );
+    expect(jobs[0]).toMatchObject({
+      title: mockResponse.member[0].title.cs,
+      description: '<p>Popis nabídky</p>',
+      url: `https://www.startupjobs.cz/nabidka/${mockResponse.member[0].displayId}/${mockResponse.member[0].slug}`,
+    });
 
     // verify that all jobs are saved to db
     expect(mockJobRepository.upsert).toHaveBeenCalledTimes(1);

@@ -10,7 +10,7 @@ Job Applicator helps you discover jobs from multiple sources, evaluate how well 
 
 ## Set up for local development
 
-1. Fill in `.env` file. Use `.env.example` as the starting point for the workspace `.env` file.
+1. Fill in `.env` file. Use `.env.example` as the starting point for the workspace `.env` file. This single file configures the whole application (website, API, migrations, docker compose). Only the test modules (`apps/ai-evaluation`, `apps/website-e2e`) have their own `.env` files, see below.
 1. Run `npm i` on root folder of the project.
 1. Run `docker compose -f deployment/docker-compose.yml -f deployment/docker-compose.dev.yml --env-file .env --profile infrastructure --profile tools-reset up -d`. This will start all the necessary infrastructure and also recreates the database.
 1. (Optional) Run `docker compose -f deployment/docker-compose.yml -f deployment/docker-compose.dev.yml --env-file .env --profile ai up -d` if you want to use nomic-embed-text-v2-moe Ollama model for embeddings.
@@ -170,6 +170,8 @@ npm run test:e2e
 
 This runs the full Playwright suite against the Next.js website in headless Chrome.
 
+E2E tests are a standalone test module with credentials separate from the application. Copy `apps/website-e2e/.env.example` to `apps/website-e2e/.env` and fill it in; values from the workspace root `.env` are loaded first and this file overrides them.
+
 The e2e setup uses a dedicated `SUPABASE_SECRET_KEY` to create and tear down a test user with `email_confirm: true`, so tests can log in without email verification.
 
 Required for e2e tests:
@@ -193,7 +195,7 @@ npm run ai-eval:graph
 
 Each command seeds its dataset if needed and then runs the matching `eval.ts` file.
 
-The eval app reads its own config from `apps/ai-evaluation/.env` and still depends on the workspace root `.env` through the shared env loader.
+The eval app is a standalone test module with credentials separate from the application. It reads its own config from `apps/ai-evaluation/.env` (see `apps/ai-evaluation/.env.example`), which overrides values from the workspace root `.env` loaded through the shared env loader.
 
 Required for the eval app:
 

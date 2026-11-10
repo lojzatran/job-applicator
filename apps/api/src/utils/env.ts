@@ -7,7 +7,6 @@ import {
 import { z } from 'zod';
 
 const workspaceEnvPath = resolve(process.cwd(), '.env');
-const appEnvPath = resolve(process.cwd(), 'apps/api/.env');
 
 const appEnvSchema = z.object({
   GEMINI_API_KEY: z.string().optional(),
@@ -35,6 +34,6 @@ const appEnvSchema = z.object({
 });
 
 export const env = createEnv({
-  envPaths: [workspaceEnvPath, appEnvPath],
+  envPaths: [workspaceEnvPath],
   schema: combineEnvSchemas(sharedEnvSchema, appEnvSchema),
 });

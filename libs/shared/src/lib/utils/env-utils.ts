@@ -23,6 +23,7 @@ const sharedEnvShape = {
     .default('development'),
   ENABLE_QUERY_LOG: z.coerce.boolean().default(false),
   LOGS_DIR: z.string().default(`${process.cwd()}/logs`),
+  LANGSMITH_API_KEY: z.string().optional(),
 };
 
 function loadEnvFile(path: string) {

@@ -60,7 +60,8 @@ Use `nx` to run tasks. In case `nx` is not found, use `npx nx`.
 
 ## ⚙️ Environment
 
-- Keep the root `.env` file aligned with `.env.example`.
+- The application (website, API, migrations, docker compose) uses a single root `.env` file. Keep it aligned with `.env.example`. Do not add per-app `.env` files for application code.
+- Test modules `apps/ai-evaluation` and `apps/website-e2e` intentionally keep their own `.env` (with `.env.example`) so their credentials stay separate from the application. Their files override values from the root `.env`.
 - Required infrastructure variables include PostgreSQL and RabbitMQ connection settings.
 - AI model configuration is split between the job evaluator and the cover letter/critique Ollama models.
 - `GEMINI_API_KEY` can be used for the job evaluator; `GEMINI_LLM_KEY` is supported as a legacy alias.

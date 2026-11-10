@@ -88,13 +88,12 @@ type StartupJobsField = StartupJobsResource & {
 export type StartupJobsOffer = {
   '@id': string;
   '@type': 'SearchOffer';
-  id: string;
-  displayId: number;
+  id: number;
   kind: string;
   company: StartupJobsCompany;
   contract: string[];
   seniority: string[];
-  title: StartupJobsLocalizedValue;
+  name: StartupJobsLocalizedValue;
   description: StartupJobsLocalizedValue;
   boostedAt: string | null;
   isHot: boolean;
@@ -107,7 +106,7 @@ export type StartupJobsOffer = {
   skills: StartupJobsSkill[];
   languages: StartupJobsLanguage[];
   fields: StartupJobsField[];
-  slug: string;
+  slug: StartupJobsLocalizedValue;
 };
 
 type StartupJobsCollectionView = {
@@ -182,7 +181,11 @@ export class StartupJobsService {
     );
 
     const response = await fetch(
-      `https://core.startupjobs.cz/api/search/offers?page=1&startupOnly=false&locationPreference%5B%5D=remote`,
+      'https://back.startupjobs.cz/api/search-offers?page=1',
+      {
+        body: '{"locationPreferences":["remote"]}',
+        method: 'POST',
+      },
     );
 
     const firstPage: StartupJobsSearchOffersResponse =
@@ -195,7 +198,11 @@ export class StartupJobsService {
       Array.from({ length: totalPages }, (_, i) => i + 2),
       async (pageNumber) => {
         const response = await fetch(
-          `https://core.startupjobs.cz/api/search/offers?page=${pageNumber}&startupOnly=false&locationPreference%5B%5D=remote`,
+          `https://back.startupjobs.cz/api/search-offers?page=${pageNumber}`,
+          {
+            body: '{"locationPreferences":["remote"]}',
+            method: 'POST',
+          },
         );
         const data: StartupJobsSearchOffersResponse =
           (await response.json()) as StartupJobsSearchOffersResponse;
@@ -213,11 +220,17 @@ export class StartupJobsService {
       `Fetched ${allStartupJobs.length} jobs from startupjobs.cz`,
     );
 
-    const jobs = allStartupJobs.map((job) => ({
-      title: job.title.en || job.title.cs || '',
-      description: cleanHtml(job.description.en || job.description.cs || ''),
+    const descriptions = await pMap(
+      allStartupJobs,
+      (job) => this.fetchJobDescription(job.id),
+      { concurrency: 3 },
+    );
+
+    const jobs = allStartupJobs.map((job, index) => ({
+      title: job.name.en || job.name.cs || '',
+      description: descriptions[index],
       company: job.company.name,
-      url: `https://www.startupjobs.cz/nabidka/${job.displayId}/${job.slug}`,
+      url: `https://www.startupjobs.cz/nabidka/${job.id}/${job.slug.cs || job.slug.en || ''}`,
       source: 'startupjobs',
       createdAt: new Date(),
     }));
@@ -229,5 +242,16 @@ export class StartupJobsService {
       `Saved ${insertResult.generatedMaps.length} new jobs from startupjobs.cz`,
     );
     return jobs;
+  }
+
+  private async fetchJobDescription(id: number): Promise<string> {
+    const response = await fetch(
+      `https://back.startupjobs.cz/api/offers/${id}`,
+    );
+    const { description } = (await response.json()) as Pick<
+      StartupJobsOffer,
+      'description'
+    >;
+    return cleanHtml(description.en || description.cs || '');
   }
 }

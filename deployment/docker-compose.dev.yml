@@ -11,8 +11,6 @@ services:
     env_file:
       - path: ../.env
         required: true
-      - path: ../apps/api/.env
-        required: false
     environment:
       NODE_ENV: development
       OLLAMA_BASE_URL: http://ollama:11434

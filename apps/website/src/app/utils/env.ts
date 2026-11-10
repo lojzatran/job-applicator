@@ -7,7 +7,6 @@ import {
 import { z } from 'zod';
 
 const workspaceEnvPath = resolve(process.cwd(), '.env');
-const websiteEnvPath = resolve(process.cwd(), 'apps/website/.env');
 
 const websiteEnvSchema = z.object({
   RABBITMQ_URL: z.string(),
@@ -19,6 +18,6 @@ const websiteEnvSchema = z.object({
 });
 
 export const env = createEnv({
-  envPaths: [workspaceEnvPath, websiteEnvPath],
+  envPaths: [workspaceEnvPath],
   schema: combineEnvSchemas(sharedEnvSchema, websiteEnvSchema),
 });
