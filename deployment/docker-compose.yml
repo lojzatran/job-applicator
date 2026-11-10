@@ -48,10 +48,10 @@ services:
       timeout: 5s
       retries: 20
       start_period: 60s
-  api:
+  worker:
     profiles:
       - app
-    image: lojzatran/job-applicator-api:latest
+    image: lojzatran/job-applicator-worker:latest
     ports:
       - '3000:3000'
     environment:

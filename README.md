@@ -6,15 +6,15 @@ Job Applicator helps you discover jobs from multiple sources, evaluate how well 
 
 - Node.js and npm installed locally.
 - Docker running for the supporting services used by the backend and local development workflow.
-- A populated `.env` file at the workspace root with the API, database, queue, and model settings required by your environment.
+- A populated `.env` file at the workspace root with the website, worker, database, queue, and model settings required by your environment.
 
 ## Set up for local development
 
-1. Fill in `.env` file. Use `.env.example` as the starting point for the workspace `.env` file. This single file configures the whole application (website, API, migrations, docker compose). Only the test modules (`apps/ai-evaluation`, `apps/website-e2e`) have their own `.env` files, see below.
+1. Fill in `.env` file. Use `.env.example` as the starting point for the workspace `.env` file. This single file configures the whole application (website, worker, migrations, docker compose). Only the test modules (`apps/ai-evaluation`, `apps/website-e2e`) have their own `.env` files, see below.
 1. Run `npm i` on root folder of the project.
 1. Run `docker compose -f deployment/docker-compose.yml -f deployment/docker-compose.dev.yml --env-file .env --profile infrastructure --profile tools-reset up -d`. This will start all the necessary infrastructure and also recreates the database.
 1. (Optional) Run `docker compose -f deployment/docker-compose.yml -f deployment/docker-compose.dev.yml --env-file .env --profile ai up -d` if you want to use nomic-embed-text-v2-moe Ollama model for embeddings.
-1. Run `npm run dev-all` to start the website and API.
+1. Run `npm run dev-all` to start the website and worker.
 
 ## Required env vars
 
@@ -116,15 +116,15 @@ Start only the Next.js app with:
 nx dev website
 ```
 
-### Run backend
+### Run worker
 
-Start only the NestJS API with:
+Start only the NestJS worker with:
 
 ```sh
-nx serve api
+nx serve worker
 ```
 
-The API consumes job-processing messages, executes the LangGraph workflow, and persists the generated cover letters.
+The worker consumes job-processing messages from RabbitMQ, executes the LangGraph workflow, and persists the generated cover letters and processing status in PostgreSQL.
 
 ### Run Tests
 
@@ -134,7 +134,7 @@ Run the full workspace test suite from the workspace root with:
 npm test
 ```
 
-This runs every Nx `test` target in the repository, including the API integration tests.
+This runs every Nx `test` target in the repository, including the worker integration tests.
 
 Run only unit tests from the workspace root with:
 
@@ -144,15 +144,15 @@ npm run test:unit
 
 This runs every Nx `test` target while ignoring `integration.spec.ts` files.
 
-Run the API test suite from the workspace root with:
+Run the worker integration test suite from the workspace root with:
 
 ```sh
-npm run test-integration:api
+npm run test-integration:worker
 ```
 
-This runs the Nx Jest target for `apps/api` and picks up the `*.integration.spec.ts` files under `apps/api/src/`.
+This runs the Nx Jest target for `apps/worker` and picks up the `*.integration.spec.ts` files under `apps/worker/src/`.
 
-The current API test coverage is the CV embedding integration spec, so make sure local Ollama is running and these models/configurations are available:
+The current worker integration test coverage is the CV embedding integration spec, so make sure local Ollama is running and these models/configurations are available:
 
 - `OLLAMA_BASE_URL` - should point to your local Ollama server, usually `http://localhost:11434`.
 - `OLLAMA_EMBEDDING_MODEL` - embedding model (default `nomic-embed-text-v2-moe:latest`).
@@ -228,8 +228,8 @@ This drops every table in the `public` schema and then reruns migrations.
 ## Used Technologies
 
 - **Nx** for monorepo orchestration and task execution.
-- **Next.js** for the website frontend.
-- **NestJS** for the API and message-driven backend workflow.
+- **Next.js** for the website frontend and backend for frontend (BFF).
+- **NestJS** for the worker and message-driven job processing.
 - **React** and **TypeScript** for the UI layer.
 - **Tailwind CSS** for styling.
 - **PostgreSQL** with **TypeORM** for persistence.
@@ -241,28 +241,29 @@ This drops every table in the `public` schema and then reruns migrations.
 
 The repository is organized as an Nx monorepo:
 
-- `apps/website/` contains the Next.js application.
-- `apps/api/` contains the NestJS service that processes job data and runs the agent workflow.
+- `apps/website/` contains the Next.js UI and BFF. Its route handlers access PostgreSQL directly and publish processing requests to RabbitMQ.
+- `apps/worker/` contains the NestJS worker that consumes RabbitMQ messages, processes job data, runs the agent workflow, and persists results in PostgreSQL.
 - `apps/website-e2e/` contains Playwright end-to-end tests.
 - `libs/shared/` is available for reusable workspace utilities.
 - `libs/migrations/` contains TypeORM migrations and the migration datasource.
 
 ### Component Diagram
 
-The website collects user input and triggers backend job-processing flows. The API fetches job listings, reads the candidate CV, runs the AI workflow, and stores the resulting applications back in the database.
+The Next.js website acts as a BFF: it stores uploaded CVs, creates processing runs in PostgreSQL, and publishes tasks directly to RabbitMQ. The worker consumes those tasks, fetches job listings, reads the uploaded CV, runs the AI workflow, and saves progress and applications to PostgreSQL. The website reads status and results directly from the database.
 
 ```mermaid
 flowchart LR
-  User[User] --> Website[Website / Next.js]
-  Website --> Api[NestJS API]
-  Api --> Queue[RabbitMQ]
-  Queue --> Api
-  Api --> Pdf[CV PDF extraction]
-  Api --> Jobs[Job sources]
-  Api --> LangGraph[LangGraph agent]
+  User[User] --> Website[Website / Next.js BFF]
+  Website -->|publish tasks| Queue[RabbitMQ]
+  Queue -->|deliver tasks| Worker[NestJS Worker]
+  Website -->|save CV| Storage[(Shared upload storage)]
+  Worker -->|read CV| Storage
+  Website <-->|create runs / read status and results| DB[(PostgreSQL)]
+  Worker --> Pdf[CV PDF extraction]
+  Worker --> Jobs[Job sources]
+  Worker --> LangGraph[LangGraph agent]
   LangGraph --> LLMs[LLM providers]
-  Api --> DB[(PostgreSQL)]
-  Website <-->|status and results| Api
+  Worker <-->|read data / save progress and results| DB
 ```
 
 ### Entity Relationship Diagram
@@ -319,38 +320,55 @@ erDiagram
 
 ### Sequence Diagram
 
-1. The website submits a CV file and processing preferences.
-2. The API receives the message from RabbitMQ.
-3. The API extracts text from the uploaded CV and fetches jobs from enabled sources.
-4. The LangGraph agent summarizes the CV, evaluates each job, and generates cover letters for matching roles.
-5. The API persists the generated cover letters and application data.
+1. The user submits a CV file and processing preferences to the Next.js BFF.
+2. The BFF stores the CV, creates a pending processing run in PostgreSQL, publishes a task to RabbitMQ, and returns the run to the user.
+3. The worker consumes the task, extracts text from the uploaded CV, and fetches jobs from enabled sources.
+4. The LangGraph agent summarizes the CV, evaluates each job, and generates cover letters for matching roles. The worker saves progress and results in PostgreSQL.
+5. The website polls its BFF routes, which read processing status and applications directly from PostgreSQL.
 
 ```mermaid
 sequenceDiagram
   actor User
-  participant Website as Website / Next.js
-  participant Api as NestJS API
+  participant Website as Website / Next.js BFF
+  participant Storage as Shared upload storage
   participant Queue as RabbitMQ
+  participant Worker as NestJS Worker
   participant Pdf as PDF Service
   participant Jobs as Jobs Service
   participant Graph as LangGraph Agent
   participant DB as PostgreSQL
 
   User->>Website: Upload CV and select job sources
-  Website->>Api: Submit processing request
-  Api->>Queue: Publish job-processing message
-  Queue-->>Api: Deliver message
-  Api->>Pdf: Extract CV text
-  Api->>Jobs: Fetch jobs from enabled sources
-  Api->>Graph: Summarize CV and evaluate jobs
-  Graph-->>Api: Return generated cover letters
-  Api->>DB: Save applications and cover letters
-  Api-->>Website: Return processing result
+  Website->>Storage: Save uploaded CV
+  Website->>DB: Create pending processing run
+  Website->>Queue: Publish job-processing task
+  Website-->>User: Return pending processing run
+  par Process task in background
+    Queue-->>Worker: Deliver task
+    Worker->>Storage: Read uploaded CV
+    Worker->>Pdf: Extract CV text
+    Worker->>Jobs: Fetch jobs from enabled sources
+    Worker->>DB: Mark processing run in progress
+    Worker->>Graph: Summarize CV and evaluate jobs
+    loop Graph updates
+      Graph-->>Worker: Stream progress and generated cover letters
+      Worker->>DB: Save progress, applications, and cover letters
+    end
+    Worker->>DB: Mark processing run completed
+    Worker->>Queue: Acknowledge task
+  and Poll status and results
+    loop While processing and when viewing results
+      User->>Website: Request processing status and applications
+      Website->>DB: Read status and applications
+      DB-->>Website: Return current status and results
+      Website-->>User: Display status and results
+    end
+  end
 ```
 
 ## AI Agents
 
-The AI workflow is implemented with LangGraph in `apps/api/src/app/ai/langgraph/`.
+The AI workflow is implemented with LangGraph in `apps/worker/src/app/ai/langgraph/`.
 
 ![LangGraph agent diagram](docs/assets/graph.png)
 
@@ -371,7 +389,7 @@ The graph keeps track of how many jobs have already been processed and stops onc
 The Docker setup is split into two compose files:
 
 - [`deployment/docker-compose.yml`](deployment/docker-compose.yml) for production and GitHub Actions deploys. It uses published images only.
-- [`deployment/docker-compose.dev.yml`](deployment/docker-compose.dev.yml) for local development. It adds build contexts for the locally built images, including `ollama`, `api`, `website`, `db-reset`, and `db-migrate`.
+- [`deployment/docker-compose.dev.yml`](deployment/docker-compose.dev.yml) for local development. It adds build contexts for the locally built images, including `ollama`, `worker`, `website`, `db-reset`, and `db-migrate`.
 
 The production compose file expects a `.env` file next to `deployment/docker-compose.yml`. That file should contain the runtime settings for the stack, including the public Supabase values used by the website image build.
 
@@ -454,10 +472,10 @@ To stop all the docker containers, run the following command:
 docker compose -f deployment/docker-compose.yml --env-file deployment/.env --profile "*" down
 ```
 
-To build a docker container for API, run the following command:
+To build a docker container for the worker, run the following command:
 
 ```sh
-docker build --no-cache --progress=plain -f apps/api/Dockerfile -t job-applicator-api:latest .
+docker build --no-cache --progress=plain -f apps/worker/Dockerfile -t job-applicator-worker:latest .
 ```
 
 To build a docker container for the website, run the following command:

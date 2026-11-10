@@ -5,7 +5,7 @@ WORKDIR /app
 ENV NX_DAEMON=false
 
 COPY package.json package-lock.json nx.json tsconfig.base.json ./
-COPY apps/api/package.json apps/api/package.json
+COPY apps/worker/package.json apps/worker/package.json
 
 COPY libs/shared/package.json libs/shared/package.json
 
@@ -14,7 +14,7 @@ RUN npm ci
 COPY . .
 
 RUN SKIP_ENV_VALIDATION=true npx nx build @apps/shared
-RUN SKIP_ENV_VALIDATION=true npx nx build api
+RUN SKIP_ENV_VALIDATION=true npx nx build worker
 
 
 FROM node:22-bookworm-slim AS runner
@@ -25,11 +25,11 @@ ENV NODE_ENV=production
 ENV NX_DAEMON=false
 
 COPY package.json package-lock.json ./
-COPY apps/api/package.json apps/api/package.json
+COPY apps/worker/package.json apps/worker/package.json
 COPY libs/shared/package.json libs/shared/package.json
 RUN npm ci --omit=dev
 COPY --from=builder --chown=node:node /app/libs/shared/dist libs/shared/dist
-COPY --from=builder --chown=node:node /app/apps/api/dist apps/api/dist
+COPY --from=builder --chown=node:node /app/apps/worker/dist apps/worker/dist
 
 RUN mkdir -p /app/uploads && chown -R node:node /app
 
@@ -37,5 +37,5 @@ USER node
 
 EXPOSE 3000
 
-CMD ["node", "apps/api/dist/main.js"]
+CMD ["node", "apps/worker/dist/main.js"]
 

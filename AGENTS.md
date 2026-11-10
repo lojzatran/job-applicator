@@ -27,9 +27,9 @@ This project is an **Nx Monorepo** with the following core technologies:
 
 ## 📂 Project Structure
 
-- `apps/website/`: The main Next.js application.
-- `apps/api/`: The NestJS API that consumes RabbitMQ messages, runs LangGraph, and persists job applications.
-  - `src/app/`: API modules, services, controllers, and persistence.
+- `apps/website/`: The Next.js UI and BFF, which accesses PostgreSQL directly and publishes tasks to RabbitMQ.
+- `apps/worker/`: The NestJS worker that consumes RabbitMQ messages, runs LangGraph, and persists job applications.
+  - `src/app/`: Worker modules, services, message controllers, and persistence.
 - `apps/website-e2e/`: Playwright end-to-end tests.
 - `apps/ai-evaluation/`: The AI evaluation application. This application is used to evaluate langgraph and should mostly import other packages to test them.
 - `libs/shared/`: Shared workspace code, if/when common utilities are extracted.
@@ -49,10 +49,10 @@ Use `nx` to run tasks. In case `nx` is not found, use `npx nx`.
 - **Website Lint**: `nx lint website`
 - **Website Unit Tests**: `nx test website`
 - **Website E2E Tests**: `nx e2e website-e2e`
-- **API Dev**: `nx serve api`
-- **API Build**: `nx build api`
-- **API Lint**: `nx lint api`
-- **API Type Check**: `nx typecheck api`
+- **Worker Dev**: `nx serve worker`
+- **Worker Build**: `nx build worker`
+- **Worker Lint**: `nx lint worker`
+- **Worker Type Check**: `nx typecheck worker`
 - **Run Everything**: `nx dev-all` or `npm run dev-all`
 - **Database Migration**: `npm run migrate`
 - **Reset Local DB**: `npm run db:reset`
@@ -60,7 +60,7 @@ Use `nx` to run tasks. In case `nx` is not found, use `npx nx`.
 
 ## ⚙️ Environment
 
-- The application (website, API, migrations, docker compose) uses a single root `.env` file. Keep it aligned with `.env.example`. Do not add per-app `.env` files for application code.
+- The application (website, worker, migrations, docker compose) uses a single root `.env` file. Keep it aligned with `.env.example`. Do not add per-app `.env` files for application code.
 - Test modules `apps/ai-evaluation` and `apps/website-e2e` intentionally keep their own `.env` (with `.env.example`) so their credentials stay separate from the application. Their files override values from the root `.env`.
 - Required infrastructure variables include PostgreSQL and RabbitMQ connection settings.
 - AI model configuration is split between the job evaluator and the cover letter/critique Ollama models.

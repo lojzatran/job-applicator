@@ -1,5 +1,5 @@
 import { evaluate } from 'langsmith/evaluation';
-import type { Job } from '@apps/api/src/app/jobs/types';
+import type { Job } from '@apps/worker/src/app/jobs/types';
 import { DATASET_NAME, EXPERIMENT_PREFIX } from './constants';
 import {
   createOllamaAgentRuntime,

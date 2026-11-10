@@ -1,5 +1,5 @@
 const config = {
-  displayName: '@apps/api',
+  displayName: '@apps/worker',
   preset: '../../jest.preset.js',
   testEnvironment: 'node',
   transform: {
@@ -11,7 +11,7 @@ const config = {
     ],
   },
   moduleFileExtensions: ['ts', 'js', 'json'],
-  coverageDirectory: '../../coverage/apps/api',
+  coverageDirectory: '../../coverage/apps/worker',
 };
 
 module.exports = config;

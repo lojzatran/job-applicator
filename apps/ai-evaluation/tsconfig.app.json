@@ -9,19 +9,19 @@
   },
   "include": [
     "src/**/*.ts",
-    "../../apps/api/src/**/*.ts",
-    "../../apps/api/src/**/*.json"
+    "../../apps/worker/src/**/*.ts",
+    "../../apps/worker/src/**/*.json"
   ],
   "exclude": [
     "eslint.config.js",
     "eslint.config.cjs",
     "eslint.config.mjs",
-    "../../apps/api/src/**/*.spec.ts",
-    "../../apps/api/src/**/*.test.ts"
+    "../../apps/worker/src/**/*.spec.ts",
+    "../../apps/worker/src/**/*.test.ts"
   ],
   "references": [
     {
-      "path": "../api/tsconfig.app.json"
+      "path": "../worker/tsconfig.app.json"
     },
     {
       "path": "../../libs/shared/tsconfig.lib.json"

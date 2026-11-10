@@ -1,6 +1,6 @@
 import { evaluate } from 'langsmith/evaluation';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
-import type { Job } from '@apps/api/src/app/jobs/types';
+import type { Job } from '@apps/worker/src/app/jobs/types';
 import { PromptTemplate } from '@langchain/core/prompts';
 import { z } from 'zod';
 import { DATASET_NAME, EXPERIMENT_PREFIX } from './constants';

@@ -1,18 +1,18 @@
 import { ChatOllama } from '@langchain/ollama';
-import { LanggraphService } from '@apps/api/src/app/ai/langgraph/langgraph.service';
+import { LanggraphService } from '@apps/worker/src/app/ai/langgraph/langgraph.service';
 import { OllamaEmbeddings } from '@langchain/ollama';
 import { env } from './env';
-import { CvEmbeddingsService } from '@apps/api/src/app/cv/embeddings/cv-summary-embeddings.service';
-import { CvEmbeddingsRepository } from '@apps/api/src/app/cv/embeddings/cv-embeddings.repository';
+import { CvEmbeddingsService } from '@apps/worker/src/app/cv/embeddings/cv-summary-embeddings.service';
+import { CvEmbeddingsRepository } from '@apps/worker/src/app/cv/embeddings/cv-embeddings.repository';
 import { DataSource } from 'typeorm';
 import {
   dataSourceOptions,
   Job as JobEntity,
   JobEmbedding,
 } from '@apps/shared';
-import type { Job } from '@apps/api/src/app/jobs/types';
-import { JobEmbeddingsService } from '@apps/api/src/app/jobs/job-embeddings.service';
-import { EmbeddingsWrapper } from '@apps/api/src/app/ai/providers/embedding.types';
+import type { Job } from '@apps/worker/src/app/jobs/types';
+import { JobEmbeddingsService } from '@apps/worker/src/app/jobs/job-embeddings.service';
+import { EmbeddingsWrapper } from '@apps/worker/src/app/ai/providers/embedding.types';
 import { MemorySaver } from '@langchain/langgraph';
 
 interface OllamaAgentGraphContext {
