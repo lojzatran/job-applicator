@@ -57,9 +57,7 @@ describe('LanggraphService', () => {
       },
     );
     expect(result.coverLetters).toBeDefined();
-    expect(result.coverLetters[0].coverLetter).toBe(
-      'AI: cover letter content 2',
-    );
+    expect(result.coverLetters[0].coverLetter).toBe('cover letter content 2');
     expect(critiqueLlm.callCount).toBe(1);
     expect(coverLetterGeneratorLlm.callCount).toBe(2);
     expect(jobEvaluatorSpy).toHaveBeenCalledTimes(1);
@@ -122,9 +120,7 @@ describe('LanggraphService', () => {
       },
     );
     expect(result.coverLetters).toBeDefined();
-    expect(result.coverLetters[0].coverLetter).toBe(
-      'AI: cover letter content 2',
-    );
+    expect(result.coverLetters[0].coverLetter).toBe('cover letter content 2');
     expect(critiqueLlm.callCount).toBe(1);
     expect(coverLetterGeneratorLlm.callCount).toBe(2);
     expect(jobEvaluatorSpy).toHaveBeenCalledTimes(1);
@@ -359,9 +355,7 @@ describe('LanggraphService', () => {
     );
 
     expect(result.coverLetters).toHaveLength(1);
-    expect(result.coverLetters[0].coverLetter).toBe(
-      'AI: cover letter content 2',
-    );
+    expect(result.coverLetters[0].coverLetter).toBe('cover letter content 2');
 
     // First attempt throws error, then it retries.
     // Total invokes: 1 (error) + 1 (generate) + 1 (rewrite) = 3
@@ -418,9 +412,7 @@ describe('LanggraphService', () => {
     );
 
     expect(result.coverLetters).toHaveLength(1);
-    expect(result.coverLetters[0].coverLetter).toBe(
-      'AI: cover letter content 2',
-    );
+    expect(result.coverLetters[0].coverLetter).toBe('cover letter content 2');
 
     // Total invokes for generator: 1st gen + rewrite = 2
     expect(coverLetterGeneratorLlm.callCount).toBe(2);

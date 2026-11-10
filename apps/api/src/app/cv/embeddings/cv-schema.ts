@@ -1,13 +1,12 @@
 import { z } from 'zod';
 
-const StringArray = z.array(z.string().trim().min(1));
+const StringArray = z.array(z.string().min(1));
 
 const CvSchema = z.object({
   summary: z
     .string()
-    .optional()
     .describe(
-      'A short professional summary or about me section. Do NOT include the entire CV text here, only the specific summary part if available.',
+      'A short professional summary or about me section. Do NOT include the entire CV text here, only the specific summary part if available. Return an empty string if missing.',
     ),
 
   skills: StringArray.describe(
@@ -38,8 +37,9 @@ const CvSchema = z.object({
 
   other: z
     .array(z.string())
-    .optional()
-    .describe('Any other texts in CV that did not fit the rest of the schema'),
+    .describe(
+      'Any other texts in CV that did not fit the rest of the schema. Return an empty array if none.',
+    ),
 });
 
 export { CvSchema };

@@ -53,13 +53,13 @@ export class CvEmbeddingsService {
       1. **Preserve Exact Wording**: NEVER rewrite, summarize, or improve the candidate's text. Copy and paste the original text into the fields.
       2. **Isolate Sections**: Distribute the CV content across the appropriate fields. Do NOT put information belonging to skills, experience, or education into the 'summary' field.
       3. **Field Mapping Logic**:
-         - **summary**: Use only the "About Me" or "Professional Profile" section. If the CV lacks a summary, leave this empty.
+         - **summary**: Use only the "About Me" or "Professional Profile" section. If the CV lacks a summary, return an empty string ("").
          - **skills**: Map the list of technologies, tools, and soft skills here.
          - **experience**: Map each work history entry. Format each string as: \`<companyName> - <jobTitle>: <jobDescription>\`.
          - **projects**: Map each project. Format each string as: \`<projectName>: <projectDescription>\`.
          - **education**: Map educational history. Format each string as: \`<school> - <degree> - <description optional>\`.
          - **other**: Maps any text that does not belong to the categories above.
-      4. **Handle Missing Data**: If a section is missing from the CV, return an empty array (for list fields) or omit the field (for optional strings). Do not invent facts.
+      4. **Handle Missing Data**: Always include all fields. If a section is missing from the CV, return an empty array ([]) for list fields or an empty string ("") for summary. Do not return null or omit fields. Do not invent facts.
 
       ## Example
       Input: "John Doe. Java developer with 5 years exp. Experience: Acme Corp - Senior Dev: Built web apps. Education: MIT - CS degree. Skills: Java, Spring."
