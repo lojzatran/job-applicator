@@ -5,12 +5,19 @@ import { env } from './env';
 import { CvEmbeddingsService } from '@apps/api/src/app/cv/embeddings/cv-summary-embeddings.service';
 import { CvEmbeddingsRepository } from '@apps/api/src/app/cv/embeddings/cv-embeddings.repository';
 import { DataSource } from 'typeorm';
-import { dataSourceOptions } from '@apps/shared';
+import {
+  dataSourceOptions,
+  Job as JobEntity,
+  JobEmbedding,
+} from '@apps/shared';
+import type { Job } from '@apps/api/src/app/jobs/types';
+import { JobEmbeddingsService } from '@apps/api/src/app/jobs/job-embeddings.service';
 import { EmbeddingsWrapper } from '@apps/api/src/app/ai/providers/embedding.types';
 import { MemorySaver } from '@langchain/langgraph';
 
 interface OllamaAgentGraphContext {
   graph: Awaited<ReturnType<InstanceType<typeof LanggraphService>['build']>>;
+  prepareJobs: (jobs: Job[]) => Promise<void>;
   cleanup: () => Promise<void>;
 }
 
@@ -47,17 +54,39 @@ export async function createOllamaAgentRuntime(
       dataSource,
     );
 
+    const jobEmbeddingsService = new JobEmbeddingsService(
+      dataSource.getRepository(JobEmbedding),
+      dataSource.getRepository(JobEntity),
+      cvEmbeddingsService,
+      embeddingModel,
+    );
     const langgraphService = new LanggraphService(
       llm as any,
       llm as any,
       llm as any,
       cvEmbeddingsService,
+      jobEmbeddingsService,
       checkpointer as any,
     );
 
     return {
       graph: await langgraphService.build(),
       cvEmbeddingsService,
+      prepareJobs: async (jobs) => {
+        for (const job of jobs) {
+          await dataSource.getRepository(JobEntity).upsert(
+            {
+              url: job.url,
+              title: job.title,
+              description: job.description,
+              company: job.company,
+              source: job.source,
+            },
+            ['url'],
+          );
+          await jobEmbeddingsService.ensureJobEmbeddings(job);
+        }
+      },
       cleanup: async () => {
         await dataSource.destroy();
       },
@@ -79,6 +108,7 @@ export async function createOllamaAgentGraph(
 
   return {
     graph: runtime.graph,
+    prepareJobs: runtime.prepareJobs,
     cleanup: runtime.cleanup,
   };
 }

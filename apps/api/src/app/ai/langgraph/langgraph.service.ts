@@ -20,6 +20,7 @@ import {
   JOB_EVALUATOR_LLM,
 } from '../ai.constants';
 import { createLogger } from '@apps/shared';
+import { JobEmbeddingsService } from '../../jobs/job-embeddings.service';
 
 interface CoverLetterEntry {
   coverLetter: string;
@@ -76,6 +77,7 @@ export class LanggraphService {
     @Inject(CRITIQUE_LLM)
     critiqueLlm: BaseChatModel,
     private readonly cvEmbeddingsService: CvEmbeddingsService,
+    private readonly jobEmbeddingsService: JobEmbeddingsService,
     @Inject(CHECKPOINTER)
     private readonly checkpointer: BaseCheckpointSaver,
   ) {
@@ -126,18 +128,10 @@ export class LanggraphService {
 
     try {
       const jobDescriptionEmbedding =
-        await this.cvEmbeddingsService.createEmbeddingsForJobDescription(
-          state.job!.description,
-        );
-      const jobDescriptionEmbeddingVectors = jobDescriptionEmbedding.map(
-        (embedding) => ({
-          embedding: embedding.embedding,
-          weight: 1,
-        }),
-      );
+        await this.jobEmbeddingsService.getJobEmbeddings(state.job!);
       const score = await this.cvEmbeddingsService.getJobAndCvMatchingScore(
         state.cvEntityId,
-        jobDescriptionEmbeddingVectors,
+        jobDescriptionEmbedding,
       );
 
       this.logger.info(`Job score for ${state.job?.title}: ${score}`);

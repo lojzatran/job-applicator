@@ -4,6 +4,7 @@ import { DataSourceOptions } from 'typeorm';
 import { env } from '../utils/env';
 import { JobApplicationProcessingRun } from '../entities/job-application-processing-run.entity';
 import { Job } from '../entities/job.entity';
+import { JobEmbedding } from '../entities/job-embeddings.entity';
 
 export const postgresConnectionOptions = {
   type: 'postgres',
@@ -21,7 +22,13 @@ export const dataSourceOptions = {
   logging: ['error', ...(env.ENABLE_QUERY_LOG ? (['query'] as const) : [])],
   logger:
     env.NODE_ENV === 'development' ? 'formatted-console' : 'advanced-console',
-  entities: [JobApplication, Cv, Job, JobApplicationProcessingRun],
+  entities: [
+    JobApplication,
+    Cv,
+    Job,
+    JobEmbedding,
+    JobApplicationProcessingRun,
+  ],
   subscribers: [],
   migrations: [],
 } as DataSourceOptions;

@@ -3,9 +3,17 @@ import { AIMessage, fakeModel } from 'langchain';
 import { CvEmbeddingsService } from '../../cv/embeddings/cv-summary-embeddings.service';
 import { MemorySaver } from '@langchain/langgraph';
 import { FakeBuiltModel } from '@langchain/core/testing';
+import { JobEmbeddingsService } from '../../jobs/job-embeddings.service';
 
 describe('LanggraphService', () => {
   let service: LanggraphService;
+  const jobEmbeddingsService = {
+    getJobEmbeddings: jest.fn(async () => []),
+  } as unknown as JobEmbeddingsService;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
 
   it('should generate cover letter for user', async () => {
     const coverLetterGeneratorLlm: FakeBuiltModel = fakeModel()
@@ -34,6 +42,7 @@ describe('LanggraphService', () => {
       coverLetterGeneratorLlm,
       critiqueLlm,
       cvEmbeddingsService,
+      jobEmbeddingsService,
       checkpointer,
     );
 
@@ -61,6 +70,10 @@ describe('LanggraphService', () => {
     expect(critiqueLlm.callCount).toBe(1);
     expect(coverLetterGeneratorLlm.callCount).toBe(2);
     expect(jobEvaluatorSpy).toHaveBeenCalledTimes(1);
+    expect(jobEmbeddingsService.getJobEmbeddings).toHaveBeenCalledWith(job);
+    expect(
+      cvEmbeddingsService.createEmbeddingsForJobDescription,
+    ).not.toHaveBeenCalled();
   });
 
   it('should skip llm calls for the first job if it is not passing embedding matching', async () => {
@@ -89,6 +102,7 @@ describe('LanggraphService', () => {
       coverLetterGeneratorLlm,
       critiqueLlm,
       cvEmbeddingsService,
+      jobEmbeddingsService,
       checkpointer,
     );
 
@@ -126,7 +140,8 @@ describe('LanggraphService', () => {
     expect(jobEvaluatorSpy).toHaveBeenCalledTimes(1);
     expect(
       cvEmbeddingsService.createEmbeddingsForJobDescription,
-    ).toHaveBeenCalledTimes(2);
+    ).not.toHaveBeenCalled();
+    expect(jobEmbeddingsService.getJobEmbeddings).toHaveBeenCalledTimes(2);
   });
 
   it('should skip cover letter generation if LLM evaluates job as invalid', async () => {
@@ -149,6 +164,7 @@ describe('LanggraphService', () => {
       coverLetterGeneratorLlm,
       critiqueLlm,
       cvEmbeddingsService,
+      jobEmbeddingsService,
       checkpointer,
     );
 
@@ -202,6 +218,7 @@ describe('LanggraphService', () => {
       coverLetterGeneratorLlm,
       critiqueLlm,
       cvEmbeddingsService,
+      jobEmbeddingsService,
       checkpointer,
     );
 
@@ -257,6 +274,7 @@ describe('LanggraphService', () => {
       coverLetterGeneratorLlm,
       critiqueLlm,
       cvEmbeddingsService,
+      jobEmbeddingsService,
       checkpointer,
     );
 
@@ -332,6 +350,7 @@ describe('LanggraphService', () => {
       coverLetterGeneratorLlm,
       critiqueLlm,
       cvEmbeddingsService,
+      jobEmbeddingsService,
       checkpointer,
     );
 
@@ -389,6 +408,7 @@ describe('LanggraphService', () => {
       coverLetterGeneratorLlm,
       critiqueLlm,
       cvEmbeddingsService,
+      jobEmbeddingsService,
       checkpointer,
     );
 

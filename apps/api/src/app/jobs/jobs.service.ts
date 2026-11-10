@@ -2,16 +2,20 @@ import { Injectable } from '@nestjs/common';
 import { LinkedinService } from './linkedin/linkedin.service';
 import { StartupJobsService } from './startupjobs/startupjobs.service';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Job, JobApplication } from '@apps/shared';
+import { createLogger, Job, JobApplication } from '@apps/shared';
 import { In, Repository } from 'typeorm';
+import { JobEmbeddingsService } from './job-embeddings.service';
 
 @Injectable()
 export class JobsService {
+  private readonly logger = createLogger(JobsService.name);
+
   constructor(
     @InjectRepository(JobApplication)
     private readonly jobApplicationRepository: Repository<JobApplication>,
     private readonly linkedinService: LinkedinService,
     private readonly startupjobsService: StartupJobsService,
+    private readonly jobEmbeddingsService: JobEmbeddingsService,
   ) {}
 
   async fetchJobs(
@@ -25,7 +29,18 @@ export class JobsService {
         : Promise.resolve([]),
     ]);
 
-    return [...linkedInJobs, ...startupJobs];
+    const jobs = [...linkedInJobs, ...startupJobs];
+    for (const job of jobs) {
+      try {
+        await this.jobEmbeddingsService.ensureJobEmbeddings(job);
+      } catch (error) {
+        this.logger.error(
+          { err: error, url: job.url },
+          'Failed to prepare job embeddings',
+        );
+      }
+    }
+    return jobs;
   }
 
   async filterOutJobsWithApplications(

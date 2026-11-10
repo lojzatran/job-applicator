@@ -3,6 +3,7 @@ import { AppController } from './app.controller';
 import { LinkedinService } from './jobs/linkedin/linkedin.service';
 import { StartupJobsService } from './jobs/startupjobs/startupjobs.service';
 import { JobsService } from './jobs/jobs.service';
+import { JobEmbeddingsService } from './jobs/job-embeddings.service';
 import { AgentService } from './ai/langgraph/agent.service';
 import { LanggraphService } from './ai/langgraph/langgraph.service';
 import {
@@ -15,7 +16,12 @@ import { embeddingModelProvider } from './ai/providers/embedding.provider';
 import { PdfService } from './documents/pdf/pdf.service';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Job, JobApplication, dataSourceOptions } from '@apps/shared';
+import {
+  Job,
+  JobApplication,
+  JobEmbedding,
+  dataSourceOptions,
+} from '@apps/shared';
 import { CvEmbeddingsService } from './cv/embeddings/cv-summary-embeddings.service';
 import { CvEmbeddingsRepository } from './cv/embeddings/cv-embeddings.repository';
 import { Cv, JobApplicationProcessingRun } from '@apps/shared';
@@ -29,6 +35,7 @@ import { checkpointerProvider } from './ai/providers/checkpointer.provider';
       JobApplication,
       Cv,
       Job,
+      JobEmbedding,
       JobApplicationProcessingRun,
     ]),
   ],
@@ -36,6 +43,7 @@ import { checkpointerProvider } from './ai/providers/checkpointer.provider';
   providers: [
     LinkedinService,
     JobsService,
+    JobEmbeddingsService,
     StartupJobsService,
     AgentService,
     LanggraphService,

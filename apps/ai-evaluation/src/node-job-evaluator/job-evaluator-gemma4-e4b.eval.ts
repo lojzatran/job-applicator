@@ -33,6 +33,7 @@ async function runNode(inputs: {
 
   try {
     const cvEntityId = await seedCvEmbeddingsForRuntime(runtime, cvText);
+    await runtime.prepareJobs([job]);
     const { graph } = runtime;
     const node = graph.nodes['job_evaluator'];
     const response = await node.invoke({

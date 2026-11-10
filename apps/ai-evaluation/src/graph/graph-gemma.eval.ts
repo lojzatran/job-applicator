@@ -88,9 +88,10 @@ async function correctnessEvaluator({
 
 async function runGraph(inputs: EvalInput, model: string): Promise<EvalOutput> {
   logger.info(`Starting graph for model ${model}...`);
-  const { graph, cleanup } = await createOllamaAgentGraph(model);
+  const { graph, prepareJobs, cleanup } = await createOllamaAgentGraph(model);
 
   try {
+    await prepareJobs(inputs.jobs);
     const answer = await graph.invoke(
       {
         cvText: inputs.cvText,

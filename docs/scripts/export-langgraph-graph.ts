@@ -1,5 +1,7 @@
 import { LanggraphService } from '../../apps/api/src/app/ai/langgraph/langgraph.service';
 import type { CvEmbeddingsService } from '../../apps/api/src/app/cv/embeddings/cv-summary-embeddings.service';
+import type { JobEmbeddingsService } from '../../apps/api/src/app/jobs/job-embeddings.service';
+import { MemorySaver } from '@langchain/langgraph';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import * as fs from 'fs/promises';
 import * as path from 'path';
@@ -13,11 +15,13 @@ async function main() {
 
   const cvEmbeddingsService = {} as unknown as CvEmbeddingsService;
 
-  const graph = new LanggraphService(
+  const graph = await new LanggraphService(
     llm,
     llm,
     llm,
     cvEmbeddingsService,
+    {} as JobEmbeddingsService,
+    new MemorySaver(),
   ).build();
 
   const drawableGraph = await graph.getGraphAsync();
