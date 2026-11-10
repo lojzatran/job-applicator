@@ -4,6 +4,7 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import type { DataSource, EntityManager } from 'typeorm';
 import { Cv } from '@apps/shared';
 import { CvEmbeddingsService } from '../cv-summary-embeddings.service';
+import { CvService } from '../../cv.service';
 import type { CvEmbeddingsRepository } from '../cv-embeddings.repository';
 import { EmbeddingsWrapper } from '../../../ai/providers/embedding.types';
 
@@ -44,7 +45,7 @@ describe('CvEmbeddingsService', () => {
     };
     const dataSource = createDataSource(manager as unknown as EntityManager);
     const service = new CvEmbeddingsService(
-      cvParserLlm,
+      new CvService(cvParserLlm, dataSource),
       embeddingModel,
       repository as unknown as CvEmbeddingsRepository,
       dataSource,
@@ -130,7 +131,7 @@ function createService(
   const dataSource = createDataSource();
 
   return new CvEmbeddingsService(
-    cvParserLlm,
+    new CvService(cvParserLlm, dataSource),
     embeddingModel,
     cvEmbeddingsRepository,
     dataSource,

@@ -83,6 +83,7 @@ Use `nx` to run tasks. In case `nx` is not found, use `npx nx`.
 ## Typescript usage
 
 1. **Use interface**: Default to `interface`, use `type` when you need what interfaces can’t do (unions, tuples, advanced mapped/conditional types).
+2. **Use descriptive names**: Name variables and parameters after what they hold (`answers`, `presentBlocker`). Avoid single-letter names except for short loop indices.
 
 ## React guidelines
 

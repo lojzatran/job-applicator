@@ -23,9 +23,12 @@ import {
   dataSourceOptions,
 } from '@apps/shared';
 import { CvEmbeddingsService } from './cv/embeddings/cv-summary-embeddings.service';
+import { CvService } from './cv/cv.service';
 import { CvEmbeddingsRepository } from './cv/embeddings/cv-embeddings.repository';
 import { Cv, JobApplicationProcessingRun } from '@apps/shared';
 import { checkpointerProvider } from './ai/providers/checkpointer.provider';
+import { jobEvaluatorProvider } from './ai/providers/job-evaluator.provider';
+import { decisionProvider } from './ai/providers/decision.provider';
 
 @Module({
   imports: [
@@ -55,7 +58,10 @@ import { checkpointerProvider } from './ai/providers/checkpointer.provider';
     PdfService,
     CvEmbeddingsRepository,
     CvEmbeddingsService,
+    CvService,
     checkpointerProvider,
+    decisionProvider,
+    jobEvaluatorProvider,
   ],
 })
 export class AppModule {}

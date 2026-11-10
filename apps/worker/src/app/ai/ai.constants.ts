@@ -5,3 +5,4 @@ export const CV_PARSER_LLM = Symbol('CV_PARSER_LLM');
 export const EMBEDDING_MODEL = Symbol('EMBEDDING_MODEL');
 export const DECISION_MODEL = Symbol('DECISION_MODEL');
 export const CHECKPOINTER = Symbol('CHECKPOINTER');
+export const JOB_EVALUATOR = Symbol('JOB_EVALUATOR');

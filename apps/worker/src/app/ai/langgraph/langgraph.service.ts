@@ -8,19 +8,17 @@ import {
 } from '@langchain/langgraph';
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { JobSchema } from '../../jobs/types';
-import { PromptTemplate } from '@langchain/core/prompts';
 import { z } from 'zod';
 import { CoverLetterGraph } from './graphs/CoverLetterGraph';
-import { CvEmbeddingsService } from '../../cv/embeddings/cv-summary-embeddings.service';
 import { Inject, Injectable } from '@nestjs/common';
 import {
   CHECKPOINTER,
   COVER_LETTER_GENERATOR_LLM,
   CRITIQUE_LLM,
-  JOB_EVALUATOR_LLM,
+  JOB_EVALUATOR,
 } from '../ai.constants';
 import { createLogger } from '@apps/shared';
-import { JobEmbeddingsService } from '../../jobs/job-embeddings.service';
+import type { JobEvaluator } from '../job-evaluator/job-evaluator';
 
 interface CoverLetterEntry {
   coverLetter: string;
@@ -62,22 +60,18 @@ const AgentStateAnnotation = Annotation.Root({
 
 type AgentState = typeof AgentStateAnnotation.State;
 
-const THRESHOLD = 0.9;
-
 @Injectable()
 export class LanggraphService {
   private readonly coverLetterSubgraph;
   private readonly logger = createLogger(LanggraphService.name);
 
   constructor(
-    @Inject(JOB_EVALUATOR_LLM)
-    private readonly jobEvaluatorLlm: BaseChatModel,
+    @Inject(JOB_EVALUATOR)
+    private readonly jobEvaluator: JobEvaluator,
     @Inject(COVER_LETTER_GENERATOR_LLM)
     coverLetterGeneratorLlm: BaseChatModel,
     @Inject(CRITIQUE_LLM)
     critiqueLlm: BaseChatModel,
-    private readonly cvEmbeddingsService: CvEmbeddingsService,
-    private readonly jobEmbeddingsService: JobEmbeddingsService,
     @Inject(CHECKPOINTER)
     private readonly checkpointer: BaseCheckpointSaver,
   ) {
@@ -94,9 +88,7 @@ export class LanggraphService {
 
     this.logger.info('Summarizing CV...');
 
-    const cvEntityId = await this.cvEmbeddingsService.ensureCvAndEmbeddings(
-      state.cvText,
-    );
+    const cvEntityId = await this.jobEvaluator.prepareCv(state.cvText);
 
     return { cvEntityId };
   }
@@ -127,75 +119,20 @@ export class LanggraphService {
     this.logger.info(`Evaluating job: ${JSON.stringify(state.job?.title)}`);
 
     try {
-      const jobDescriptionEmbedding =
-        await this.jobEmbeddingsService.getJobEmbeddings(state.job!);
-      const score = await this.cvEmbeddingsService.getJobAndCvMatchingScore(
-        state.cvEntityId,
-        jobDescriptionEmbedding,
+      const { verdict, score } = await this.jobEvaluator.evaluate(
+        { entityId: state.cvEntityId, text: state.cvText },
+        state.job!,
       );
-
-      this.logger.info(`Job score for ${state.job?.title}: ${score}`);
-
-      if (score > THRESHOLD) {
-        const template = PromptTemplate.fromTemplate(`
-          You are an experienced technical recruiter and hiring manager.
-  
-          Your task is to evaluate if a candidate matches a job description.
-  
-          RULES:
-          - Be strict and realistic.
-          - The candidate should meet most core requirements (not everything, but clearly relevant).
-          - Ignore minor or nice-to-have requirements.
-          - Focus on actual ability to do the job, not just keyword matching.
-  
-          INPUTS:
-          1) Candidate CV:
-          {cvText}
-  
-          2) Job Title:
-          {jobTitle}
-  
-          3) Job Description:
-          {jobDescription}
-  
-          OUTPUT:
-          - Return a JSON object with the key "isValidJob" set to true if the candidate meets most core requirements.
-          - Set "isValidJob" to false otherwise.
-          - Example: {{ "isValidJob": true }}
-        `);
-
-        const prompt = await template.invoke({
-          cvText: state.cvText,
-          jobTitle: state.job!.title,
-          jobDescription: state.job!.description,
-        });
-
-        const response = await this.jobEvaluatorLlm
-          .withStructuredOutput(
-            z.object({
-              isValidJob: z.union([z.boolean(), z.string()]),
-            }),
-          )
-          .invoke(prompt);
-        this.logger.info(`Evaluated job by LLM: ${JSON.stringify(response)}`);
-        const isValidJob =
-          typeof response.isValidJob === 'boolean'
-            ? response.isValidJob
-            : response.isValidJob.trim().toLowerCase() === 'true';
-        return {
-          isValidJob,
-          url: isValidJob ? null : state.job?.url,
-          evaluatedJobsCount: state.evaluatedJobsCount + 1,
-          dismissedJobsCount: state.dismissedJobsCount + (isValidJob ? 0 : 1),
-        };
-      } else {
-        return {
-          isValidJob: false,
-          url: state.job?.url,
-          evaluatedJobsCount: state.evaluatedJobsCount + 1,
-          dismissedJobsCount: state.dismissedJobsCount + 1,
-        };
-      }
+      this.logger.info(
+        `Job evaluation for ${state.job?.title}: ${verdict} (score ${score})`,
+      );
+      const isValidJob = verdict === 'apply';
+      return {
+        isValidJob,
+        url: isValidJob ? null : state.job?.url,
+        evaluatedJobsCount: state.evaluatedJobsCount + 1,
+        dismissedJobsCount: state.dismissedJobsCount + (isValidJob ? 0 : 1),
+      };
     } catch (error) {
       this.logger.error(error, 'Failed to evaluate job');
       return {

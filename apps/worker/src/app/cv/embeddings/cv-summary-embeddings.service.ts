@@ -1,23 +1,20 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { ChatPromptTemplate } from '@langchain/core/prompts';
-import { CvSchema } from './cv-schema';
-import { RunnableSequence } from '@langchain/core/runnables';
+import type { CvSchema } from '../cv-schema';
 import { HumanMessage } from '@langchain/core/messages';
 import { countTokensApproximately } from 'langchain';
 import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import { stripHtml } from 'string-strip-html';
-import { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { CV_PARSER_LLM, EMBEDDING_MODEL } from '../../ai/ai.constants';
+import { EMBEDDING_MODEL } from '../../ai/ai.constants';
 import type { EmbeddingsWrapper } from '../../ai/providers/embedding.types';
 import sectionWeights from './cv-section-weights';
 import { CvEmbeddingsRepository } from './cv-embeddings.repository';
 import { EntityManager } from 'typeorm';
 import { Cv } from '@apps/shared';
-import * as crypto from 'crypto';
 import { DataSource } from 'typeorm';
 import { WeightedEmbedding, SqlExecutor } from './types';
 import { createLogger } from '@apps/shared';
 import type { z } from 'zod';
+import { CvService } from '../cv.service';
 
 interface CvEmbeddingResult {
   parsedCv: z.infer<typeof CvSchema>;
@@ -29,8 +26,7 @@ export class CvEmbeddingsService {
   private readonly logger = createLogger(CvEmbeddingsService.name);
 
   constructor(
-    @Inject(CV_PARSER_LLM)
-    private readonly cvParserLlm: BaseChatModel,
+    private readonly cvService: CvService,
     @Inject(EMBEDDING_MODEL)
     private readonly embeddingModel: EmbeddingsWrapper,
     private readonly cvEmbeddingsRepository: CvEmbeddingsRepository,
@@ -49,57 +45,11 @@ export class CvEmbeddingsService {
   async createWeightedEmbeddingsForCv(
     cvText: string,
   ): Promise<CvEmbeddingResult> {
-    const template = ChatPromptTemplate.fromMessages([
-      [
-        'system',
-        `**You are a high-fidelity CV parsing agent. Your goal is to map the raw CV text into a structured JSON format.**
-
-      ## Instructions
-
-      1. **Preserve Exact Wording**: NEVER rewrite, summarize, or improve the candidate's text. Copy and paste the original text into the fields.
-      2. **Isolate Sections**: Distribute the CV content across the appropriate fields. Do NOT put information belonging to skills, experience, or education into the 'summary' field.
-      3. **Field Mapping Logic**:
-         - **summary**: Use only the "About Me" or "Professional Profile" section. If the CV lacks a summary, return an empty string ("").
-         - **skills**: Map the list of technologies, tools, and soft skills here.
-         - **experience**: Map each work history entry. Format each string as: \`<companyName> - <jobTitle>: <jobDescription>\`.
-         - **projects**: Map each project. Format each string as: \`<projectName>: <projectDescription>\`.
-         - **education**: Map educational history. Format each string as: \`<school> - <degree> - <description optional>\`.
-         - **other**: Maps any text that does not belong to the categories above.
-      4. **Handle Missing Data**: Always include all fields. If a section is missing from the CV, return an empty array ([]) for list fields or an empty string ("") for summary. Do not return null or omit fields. Do not invent facts.
-
-      ## Example
-      Input: "John Doe. Java developer with 5 years exp. Experience: Acme Corp - Senior Dev: Built web apps. Education: MIT - CS degree. Skills: Java, Spring."
-      Output: {{
-        "summary": "Java developer with 5 years exp.",
-        "skills": ["Java", "Spring"],
-        "experience": ["Acme Corp - Senior Dev: Built web apps."],
-        "projects": [],
-        "education": ["MIT - CS degree."],
-        "other": ["John Doe."]
-      }}`,
-      ],
-      ['human', '## Input CV Text\n{cvText}'],
-    ]);
-
-    const llm = this.cvParserLlm.withStructuredOutput(CvSchema, {
-      method: 'jsonSchema',
-    });
-
-    const chain = RunnableSequence.from([
-      template,
-      llm,
-      async (input) => {
-        this.logger.debug(`Parsed CV: ${JSON.stringify(input)}`);
-        return {
-          parsedCv: input,
-          embeddings: await this.createWeightedEmbeddings(input, cvText),
-        };
-      },
-    ]);
-
-    const response = await chain.invoke({ cvText });
-
-    return response;
+    const parsedCv = await this.cvService.parseCv(cvText);
+    return {
+      parsedCv,
+      embeddings: await this.createWeightedEmbeddings(parsedCv, cvText),
+    };
   }
 
   private async createWeightedEmbeddings(
@@ -264,44 +214,6 @@ export class CvEmbeddingsService {
     );
   }
 
-  private async ensureCvEntity(
-    manager: EntityManager,
-    cvText: string,
-  ): Promise<Cv> {
-    const cvHash = crypto.createHash('md5').update(cvText).digest('hex');
-    const cvRepository = manager.getRepository(Cv);
-    const cvEntity = await cvRepository.findOne({
-      where: { hash: cvHash },
-    });
-
-    if (!cvEntity) {
-      await cvRepository
-        .createQueryBuilder()
-        .insert()
-        .into(Cv)
-        .values({
-          path: 'temp',
-          rawText: cvText,
-          hash: cvHash,
-          createdAt: new Date(),
-        })
-        .orIgnore()
-        .execute();
-
-      const persistedCvEntity = await cvRepository.findOne({
-        where: { hash: cvHash },
-      });
-
-      if (!persistedCvEntity) {
-        throw new Error(`Failed to reload CV row for hash ${cvHash}`);
-      }
-
-      return persistedCvEntity;
-    } else {
-      return cvEntity;
-    }
-  }
-
   private async ensureCvEmbeddings(
     manager: EntityManager,
     cvEntity: Cv,
@@ -341,7 +253,7 @@ export class CvEmbeddingsService {
     modelName: string = this.embeddingModel.modelName,
   ): Promise<number> {
     return this.dataSource.transaction(async (manager) => {
-      const cvEntity = await this.ensureCvEntity(manager, cvText);
+      const cvEntity = await this.cvService.ensureCvEntity(manager, cvText);
       await this.ensureCvEmbeddings(manager, cvEntity, modelName);
       return cvEntity.id;
     });

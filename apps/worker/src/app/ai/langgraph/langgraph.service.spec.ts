@@ -4,10 +4,12 @@ import { CvEmbeddingsService } from '../../cv/embeddings/cv-summary-embeddings.s
 import { MemorySaver } from '@langchain/langgraph';
 import { FakeBuiltModel } from '@langchain/core/testing';
 import { JobEmbeddingsService } from '../../jobs/job-embeddings.service';
+import { EmbeddingLlmJobEvaluator } from '../job-evaluator/embedding-llm.job-evaluator';
 
 describe('LanggraphService', () => {
   let service: LanggraphService;
   const jobEmbeddingsService = {
+    ensureJobEmbeddings: jest.fn(async () => undefined),
     getJobEmbeddings: jest.fn(async () => []),
   } as unknown as JobEmbeddingsService;
 
@@ -38,11 +40,13 @@ describe('LanggraphService', () => {
 
     const checkpointer = new MemorySaver();
     service = new LanggraphService(
-      jobEvaluatorLlm,
+      new EmbeddingLlmJobEvaluator(
+        jobEvaluatorLlm,
+        cvEmbeddingsService,
+        jobEmbeddingsService,
+      ),
       coverLetterGeneratorLlm,
       critiqueLlm,
-      cvEmbeddingsService,
-      jobEmbeddingsService,
       checkpointer,
     );
 
@@ -70,6 +74,7 @@ describe('LanggraphService', () => {
     expect(critiqueLlm.callCount).toBe(1);
     expect(coverLetterGeneratorLlm.callCount).toBe(2);
     expect(jobEvaluatorSpy).toHaveBeenCalledTimes(1);
+    expect(jobEmbeddingsService.ensureJobEmbeddings).toHaveBeenCalledWith(job);
     expect(jobEmbeddingsService.getJobEmbeddings).toHaveBeenCalledWith(job);
     expect(
       cvEmbeddingsService.createEmbeddingsForJobDescription,
@@ -98,11 +103,13 @@ describe('LanggraphService', () => {
 
     const checkpointer = new MemorySaver();
     service = new LanggraphService(
-      jobEvaluatorLlm,
+      new EmbeddingLlmJobEvaluator(
+        jobEvaluatorLlm,
+        cvEmbeddingsService,
+        jobEmbeddingsService,
+      ),
       coverLetterGeneratorLlm,
       critiqueLlm,
-      cvEmbeddingsService,
-      jobEmbeddingsService,
       checkpointer,
     );
 
@@ -141,6 +148,7 @@ describe('LanggraphService', () => {
     expect(
       cvEmbeddingsService.createEmbeddingsForJobDescription,
     ).not.toHaveBeenCalled();
+    expect(jobEmbeddingsService.ensureJobEmbeddings).toHaveBeenCalledTimes(2);
     expect(jobEmbeddingsService.getJobEmbeddings).toHaveBeenCalledTimes(2);
   });
 
@@ -160,11 +168,13 @@ describe('LanggraphService', () => {
 
     const checkpointer = new MemorySaver();
     service = new LanggraphService(
-      jobEvaluatorLlm,
+      new EmbeddingLlmJobEvaluator(
+        jobEvaluatorLlm,
+        cvEmbeddingsService,
+        jobEmbeddingsService,
+      ),
       coverLetterGeneratorLlm,
       critiqueLlm,
-      cvEmbeddingsService,
-      jobEmbeddingsService,
       checkpointer,
     );
 
@@ -214,11 +224,13 @@ describe('LanggraphService', () => {
 
     const checkpointer = new MemorySaver();
     service = new LanggraphService(
-      jobEvaluatorLlm,
+      new EmbeddingLlmJobEvaluator(
+        jobEvaluatorLlm,
+        cvEmbeddingsService,
+        jobEmbeddingsService,
+      ),
       coverLetterGeneratorLlm,
       critiqueLlm,
-      cvEmbeddingsService,
-      jobEmbeddingsService,
       checkpointer,
     );
 
@@ -270,11 +282,13 @@ describe('LanggraphService', () => {
 
     const checkpointer = new MemorySaver();
     service = new LanggraphService(
-      jobEvaluatorLlm,
+      new EmbeddingLlmJobEvaluator(
+        jobEvaluatorLlm,
+        cvEmbeddingsService,
+        jobEmbeddingsService,
+      ),
       coverLetterGeneratorLlm,
       critiqueLlm,
-      cvEmbeddingsService,
-      jobEmbeddingsService,
       checkpointer,
     );
 
@@ -346,11 +360,13 @@ describe('LanggraphService', () => {
 
     const checkpointer = new MemorySaver();
     service = new LanggraphService(
-      jobEvaluatorLlm,
+      new EmbeddingLlmJobEvaluator(
+        jobEvaluatorLlm,
+        cvEmbeddingsService,
+        jobEmbeddingsService,
+      ),
       coverLetterGeneratorLlm,
       critiqueLlm,
-      cvEmbeddingsService,
-      jobEmbeddingsService,
       checkpointer,
     );
 
@@ -404,11 +420,13 @@ describe('LanggraphService', () => {
 
     const checkpointer = new MemorySaver();
     service = new LanggraphService(
-      jobEvaluatorLlm,
+      new EmbeddingLlmJobEvaluator(
+        jobEvaluatorLlm,
+        cvEmbeddingsService,
+        jobEmbeddingsService,
+      ),
       coverLetterGeneratorLlm,
       critiqueLlm,
-      cvEmbeddingsService,
-      jobEmbeddingsService,
       checkpointer,
     );
 

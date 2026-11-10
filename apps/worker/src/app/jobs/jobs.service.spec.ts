@@ -5,13 +5,11 @@ import { Repository } from 'typeorm';
 import { JobsService } from './jobs.service';
 import { LinkedinService } from './linkedin/linkedin.service';
 import { StartupJobsService } from './startupjobs/startupjobs.service';
-import { JobEmbeddingsService } from './job-embeddings.service';
 
 describe('JobsService', () => {
   let service: JobsService;
   let linkedinService: jest.Mocked<LinkedinService>;
   let startupjobsService: jest.Mocked<StartupJobsService>;
-  let jobEmbeddingsService: jest.Mocked<JobEmbeddingsService>;
   let jobApplicationRepository: jest.Mocked<Repository<JobApplication>>;
 
   const asJobs = (jobs: Partial<Job>[]) => jobs as Job[];
@@ -48,10 +46,6 @@ describe('JobsService', () => {
           useValue: mockStartupJobsService,
         },
         {
-          provide: JobEmbeddingsService,
-          useValue: { ensureJobEmbeddings: jest.fn() },
-        },
-        {
           provide: getRepositoryToken(JobApplication),
           useValue: mockJobApplicationRepository,
         },
@@ -65,7 +59,6 @@ describe('JobsService', () => {
     startupjobsService = module.get(
       StartupJobsService,
     ) as jest.Mocked<StartupJobsService>;
-    jobEmbeddingsService = module.get(JobEmbeddingsService);
     jobApplicationRepository = module.get(
       getRepositoryToken(JobApplication),
     ) as jest.Mocked<Repository<JobApplication>>;
@@ -87,12 +80,6 @@ describe('JobsService', () => {
     expect(linkedinService.fetchJobs).toHaveBeenCalledTimes(1);
     expect(startupjobsService.fetchJobs).toHaveBeenCalledTimes(1);
     expect(result).toEqual([...mockLinkedinJobs, ...mockStartupJobs]);
-    expect(jobEmbeddingsService.ensureJobEmbeddings).toHaveBeenCalledWith(
-      mockLinkedinJobs[0],
-    );
-    expect(jobEmbeddingsService.ensureJobEmbeddings).toHaveBeenCalledWith(
-      mockStartupJobs[0],
-    );
   });
 
   it('should fetch jobs from linkedin only when linkedin is enabled and startupjobs is disabled', async () => {
@@ -125,20 +112,6 @@ describe('JobsService', () => {
     expect(linkedinService.fetchJobs).not.toHaveBeenCalled();
     expect(startupjobsService.fetchJobs).not.toHaveBeenCalled();
     expect(result).toEqual([]);
-    expect(jobEmbeddingsService.ensureJobEmbeddings).not.toHaveBeenCalled();
-  });
-
-  it('should continue preparing other jobs when one embedding fails', async () => {
-    const jobs = asJobs([{ id: 1 }, { id: 2 }]);
-    linkedinService.fetchJobs.mockResolvedValue(jobs);
-    jobEmbeddingsService.ensureJobEmbeddings.mockRejectedValueOnce(
-      new Error('Embedding unavailable'),
-    );
-
-    await expect(service.fetchJobs(true, false)).resolves.toEqual(jobs);
-    expect(jobEmbeddingsService.ensureJobEmbeddings).toHaveBeenLastCalledWith(
-      jobs[1],
-    );
   });
 
   describe('removeProcessedJobs', () => {

@@ -3,6 +3,7 @@ import { Pool } from 'pg';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { env } from '../../../../utils/env';
 import { CvEmbeddingsService } from '../cv-summary-embeddings.service';
+import { CvService } from '../../cv.service';
 import { CvEmbeddingsRepository } from '../cv-embeddings.repository';
 import { cvParserLlmProvider } from '../../../ai/providers/llm.provider';
 import { embeddingModelProvider } from '../../../ai/providers/embedding.provider';
@@ -53,6 +54,7 @@ describe('Cv Embeddings Service integration', () => {
       providers: [
         CvEmbeddingsRepository,
         CvEmbeddingsService,
+        CvService,
         cvParserLlmProvider,
         embeddingModelProvider,
       ],

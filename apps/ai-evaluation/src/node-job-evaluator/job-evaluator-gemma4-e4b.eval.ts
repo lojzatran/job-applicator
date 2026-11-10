@@ -3,7 +3,9 @@ import type { Job } from '@apps/worker/src/app/jobs/types';
 import { DATASET_NAME, EXPERIMENT_PREFIX } from './constants';
 import {
   createOllamaAgentRuntime,
+  parsedCvToText,
   seedCvEmbeddingsForRuntime,
+  type ParsedCv,
 } from '../utils/agent-utils';
 import { createLogger } from '@apps/shared';
 
@@ -25,13 +27,14 @@ async function correctnessEvaluator({
 }
 
 async function runNode(inputs: {
-  cvText: string;
+  parsedCv: ParsedCv;
   job: Job;
 }): Promise<{ response: boolean }> {
-  const { cvText, job } = inputs;
+  const { parsedCv, job } = inputs;
   const runtime = await createOllamaAgentRuntime(LLM_MODEL);
 
   try {
+    const cvText = parsedCvToText(parsedCv);
     const cvEntityId = await seedCvEmbeddingsForRuntime(runtime, cvText);
     await runtime.prepareJobs([job]);
     const { graph } = runtime;

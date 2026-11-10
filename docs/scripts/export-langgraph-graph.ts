@@ -1,6 +1,5 @@
 import { LanggraphService } from '../../apps/worker/src/app/ai/langgraph/langgraph.service';
-import type { CvEmbeddingsService } from '../../apps/worker/src/app/cv/embeddings/cv-summary-embeddings.service';
-import type { JobEmbeddingsService } from '../../apps/worker/src/app/jobs/job-embeddings.service';
+import type { JobEvaluator } from '../../apps/worker/src/app/ai/job-evaluator/job-evaluator';
 import { MemorySaver } from '@langchain/langgraph';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import * as fs from 'fs/promises';
@@ -13,14 +12,10 @@ const logger = createLogger('export-langgraph-graph');
 async function main() {
   const llm = {} as BaseChatModel;
 
-  const cvEmbeddingsService = {} as unknown as CvEmbeddingsService;
-
   const graph = await new LanggraphService(
+    {} as JobEvaluator,
     llm,
     llm,
-    llm,
-    cvEmbeddingsService,
-    {} as JobEmbeddingsService,
     new MemorySaver(),
   ).build();
 
