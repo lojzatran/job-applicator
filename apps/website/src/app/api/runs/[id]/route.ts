@@ -1,4 +1,4 @@
-import { getJobApplicationProcessingRunByThreadIdAndUserId } from '@/app/lib/db/db-client';
+import { getJobApplicationProcessingRunByThreadIdAndUserId } from '@/app/lib/db/processing-run.repository';
 import { withAuth } from '@/app/lib/auth/with-auth';
 import { NextResponse } from 'next/server';
 

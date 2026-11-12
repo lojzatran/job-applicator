@@ -2,10 +2,15 @@ import amqplib from 'amqplib';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { extname, join } from 'node:path';
 import { v4 as uuidv4 } from 'uuid';
-import { saveJobApplicationProcessingRun } from '../../lib/db/db-client';
+import { failPendingJobApplicationProcessingRun } from '../../lib/db/processing-run.repository';
+import {
+  ProcessingRunLimitError,
+  reserveJobApplicationProcessingRun,
+} from '../../lib/services/processing-run.service';
 import { env } from '../../utils/env';
 import { withAuth } from '../../lib/auth/with-auth';
 import { NextResponse } from 'next/server';
+import type { JobApplicationProcessingRun } from '@apps/shared';
 
 export const runtime = 'nodejs';
 // Removed unused logger
@@ -101,21 +106,44 @@ export const POST = withAuth(async (request, ctx) => {
     );
   }
 
-  await mkdir(env.STORAGE_DIR, { recursive: true });
-
-  const storedName = createStoredFilename(fileEntry.name);
-  const filePath = join(env.STORAGE_DIR, storedName);
-  const buffer = Buffer.from(await fileEntry.arrayBuffer());
-
-  await writeFile(filePath, buffer);
+  const threadId = uuidv4();
+  let jobProcessingRun: JobApplicationProcessingRun;
 
   try {
-    const threadId = uuidv4();
-
-    const jobProcessingRun = await saveJobApplicationProcessingRun({
+    jobProcessingRun = await reserveJobApplicationProcessingRun({
       threadId,
       userId,
     });
+  } catch (error) {
+    if (error instanceof ProcessingRunLimitError) {
+      return NextResponse.json(
+        {
+          message: error.message,
+          code:
+            error.status === 429
+              ? 'processing_rate_limited'
+              : 'processing_run_active',
+        },
+        {
+          status: error.status,
+          headers: error.retryAfterSeconds
+            ? { 'Retry-After': String(error.retryAfterSeconds) }
+            : undefined,
+        },
+      );
+    }
+
+    throw error;
+  }
+
+  let filePath: string | undefined;
+
+  try {
+    await mkdir(env.STORAGE_DIR, { recursive: true });
+    const buffer = Buffer.from(await fileEntry.arrayBuffer());
+    const storedName = createStoredFilename(fileEntry.name);
+    filePath = join(env.STORAGE_DIR, storedName);
+    await writeFile(filePath, buffer);
 
     await sendToQueue({
       filePath,
@@ -141,7 +169,10 @@ export const POST = withAuth(async (request, ctx) => {
       jobProcessingRun,
     });
   } catch (error) {
-    await rm(filePath, { force: true });
+    await Promise.all([
+      filePath ? rm(filePath, { force: true }) : undefined,
+      failPendingJobApplicationProcessingRun(threadId, userId),
+    ]);
     throw error;
   }
 }, 'upload');

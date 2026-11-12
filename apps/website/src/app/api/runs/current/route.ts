@@ -1,4 +1,4 @@
-import { getInProgressJobApplicationProcessingRunForUser } from '@/app/lib/db/db-client';
+import { getInProgressJobApplicationProcessingRunForUser } from '@/app/lib/db/processing-run.repository';
 import { NextResponse } from 'next/server';
 import { withAuth } from '../../../lib/auth/with-auth';
 

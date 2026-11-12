@@ -1,4 +1,4 @@
-import { listJobApplications } from '@/app/lib/db/db-client';
+import { listJobApplications } from '@/app/lib/db/job-application.repository';
 import { NextResponse } from 'next/server';
 import { withAuth } from '../../lib/auth/with-auth';
 

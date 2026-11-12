@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getJobApplication } from '@/app/lib/db/db-client';
+import { getJobApplication } from '@/app/lib/db/job-application.repository';
 import { withAuth } from '@/app/lib/auth/with-auth';
 
 export const runtime = 'nodejs';

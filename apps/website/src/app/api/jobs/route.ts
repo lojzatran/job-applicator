@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { listJobs } from '@/app/lib/db/db-client';
+import { listJobs } from '@/app/lib/db/job.repository';
 
 export const runtime = 'nodejs';
 

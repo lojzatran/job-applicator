@@ -3,10 +3,10 @@
  */
 
 import { GET } from './route';
-import { getJobApplication } from '../../../lib/db/db-client';
+import { getJobApplication } from '../../../lib/db/job-application.repository';
 import { NextRequest } from 'next/server';
 
-jest.mock('../../../lib/db/db-client', () => ({
+jest.mock('../../../lib/db/job-application.repository', () => ({
   getJobApplication: jest.fn(),
 }));
 
