@@ -8,6 +8,7 @@ import {
   Unique,
 } from 'typeorm';
 import { Job } from './job.entity';
+import { DatabaseEntity } from './databaseEntity.interface';
 
 @Entity('job_embedding')
 @Unique('UQ_job_embedding_content_model_chunk', [
@@ -16,7 +17,7 @@ import { Job } from './job.entity';
   'model',
   'chunkIndex',
 ])
-export class JobEmbedding {
+export class JobEmbedding implements DatabaseEntity {
   @PrimaryGeneratedColumn({ primaryKeyConstraintName: 'PK_job_embedding' })
   id!: number;
 

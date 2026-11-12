@@ -4,9 +4,10 @@ import {
   Entity,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { DatabaseEntity } from './databaseEntity.interface';
 
 @Entity('job_application_processing_run')
-export class JobApplicationProcessingRun {
+export class JobApplicationProcessingRun implements DatabaseEntity {
   @PrimaryGeneratedColumn()
   id!: number;
 

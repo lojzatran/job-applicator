@@ -48,12 +48,13 @@ export async function listJobs(): Promise<Job[]> {
 
 export async function getJobApplication(
   id: number,
+  userId: string,
 ): Promise<JobApplication | null> {
   const appDataSource = await getAppDataSource();
 
   const jobApplicationsRepository = appDataSource.getRepository(JobApplication);
   return jobApplicationsRepository.findOne({
-    where: { id },
+    where: { id, userId },
     relations: { job: true },
   });
 }

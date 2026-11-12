@@ -7,9 +7,10 @@ import {
 } from 'typeorm';
 import { Job } from './job.entity';
 import { Cv } from './cv.entity';
+import { DatabaseEntity } from './databaseEntity.interface';
 
 @Entity('job_application')
-export class JobApplication {
+export class JobApplication implements DatabaseEntity {
   @PrimaryGeneratedColumn()
   id!: number;
 
