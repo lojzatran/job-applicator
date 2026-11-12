@@ -1,6 +1,7 @@
 'use client';
 
 import { useJobProcessingRun } from '../hooks/useJobProcessingRun';
+import { CancelProcessingRunButton } from './CancelProcessingRunButton';
 
 const formatJobProcessingRunId = (jobProcessingRunId: string | number) => {
   const strId = String(jobProcessingRunId);
@@ -60,6 +61,7 @@ export const JobProcessingRunBadge = () => {
           Job processing failed. Please try again.
         </p>
       )}
+      <CancelProcessingRunButton />
     </div>
   );
 };

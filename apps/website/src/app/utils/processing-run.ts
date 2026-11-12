@@ -1,0 +1,3 @@
+const SECOND_IN_MS = 1000;
+const MINUTE = 60 * SECOND_IN_MS;
+export const PROCESSING_RUN_STALE_AFTER_MS = 15 * MINUTE;

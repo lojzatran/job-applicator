@@ -3,6 +3,7 @@ import {
   CreateDateColumn,
   Entity,
   PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 import { DatabaseEntity } from './databaseEntity.interface';
 
@@ -34,4 +35,7 @@ export class JobApplicationProcessingRun implements DatabaseEntity {
 
   @CreateDateColumn()
   createdAt!: Date;
+
+  @UpdateDateColumn({ type: 'timestamptz' })
+  lastUpdatedAt!: Date;
 }
