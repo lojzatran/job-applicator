@@ -1,10 +1,10 @@
 import { Job } from '@apps/shared';
-import { getAppDataSource } from './db-source';
+import { getDataSource } from './db-source';
 
 export async function listJobs(): Promise<Job[]> {
-  const appDataSource = await getAppDataSource();
+  const dataSource = await getDataSource();
 
-  const jobRepository = appDataSource.getRepository(Job);
+  const jobRepository = dataSource.getRepository(Job);
   return jobRepository
     .createQueryBuilder('job')
     .orderBy('job.id', 'DESC')

@@ -1,13 +1,13 @@
 import { JobApplicationProcessingRun } from '@apps/shared';
 import { In } from 'typeorm';
-import { getAppDataSource } from './db-source';
+import { getDataSource } from './db-source';
 
 export async function failPendingJobApplicationProcessingRun(
   threadId: string,
   userId: string,
 ): Promise<void> {
-  const appDataSource = await getAppDataSource();
-  await appDataSource
+  const dataSource = await getDataSource();
+  await dataSource
     .getRepository(JobApplicationProcessingRun)
     .update({ threadId, userId, status: 'pending' }, { status: 'failed' });
 }
@@ -16,9 +16,9 @@ export async function getJobApplicationProcessingRunByThreadIdAndUserId(
   threadId: string,
   userId: string,
 ): Promise<JobApplicationProcessingRun | null> {
-  const appDataSource = await getAppDataSource();
+  const dataSource = await getDataSource();
 
-  const jobApplicationProcessingRunRepository = appDataSource.getRepository(
+  const jobApplicationProcessingRunRepository = dataSource.getRepository(
     JobApplicationProcessingRun,
   );
 
@@ -28,9 +28,9 @@ export async function getJobApplicationProcessingRunByThreadIdAndUserId(
 export async function getInProgressJobApplicationProcessingRunForUser(
   userId: string,
 ): Promise<JobApplicationProcessingRun | null> {
-  const appDataSource = await getAppDataSource();
+  const dataSource = await getDataSource();
 
-  const jobApplicationProcessingRunRepository = appDataSource.getRepository(
+  const jobApplicationProcessingRunRepository = dataSource.getRepository(
     JobApplicationProcessingRun,
   );
 

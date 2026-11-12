@@ -3,6 +3,7 @@
 import { ChangeEvent, DragEvent, FormEvent, useRef, useState } from 'react';
 import { UploadResponse } from '../types/upload';
 import { useJobProcessingRun } from './useJobProcessingRun';
+import { useProcessingRunQuota } from './useProcessingRunQuota';
 
 const acceptedExtensions = ['pdf'];
 const maxFileSize = 5 * 1024 * 1024;
@@ -23,6 +24,7 @@ const validateFile = (file: File) => {
 
 export const useResumeUpload = () => {
   const { setJobProcessingRun } = useJobProcessingRun();
+  const { quota, quotaError, refreshQuota } = useProcessingRunQuota();
   const [linkedinEnabled, setLinkedinEnabled] = useState(false);
   const [startupJobsEnabled, setStartupJobsEnabled] = useState(false);
   const [maxJobs, setMaxJobs] = useState(5);
@@ -125,6 +127,7 @@ export const useResumeUpload = () => {
       setValidationMessage('Upload failed. Please try again.');
     } finally {
       setIsUploading(false);
+      void refreshQuota();
     }
   };
 
@@ -133,6 +136,9 @@ export const useResumeUpload = () => {
   };
 
   return {
+    quota,
+    quotaError,
+    refreshQuota,
     linkedinEnabled,
     setLinkedinEnabled,
     startupJobsEnabled,

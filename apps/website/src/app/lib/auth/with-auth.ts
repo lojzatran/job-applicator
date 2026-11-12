@@ -2,12 +2,12 @@ import { createClient as createSupabaseClient } from '../supabase/server';
 import { createLogger } from '@apps/shared/pinoLogger';
 import { NextRequest, NextResponse } from 'next/server';
 import { User, SupabaseClient } from '@supabase/supabase-js';
-import { DatabaseEntity } from '@apps/shared';
 
 const logger = createLogger('auth-wrapper');
 
 export interface AuthenticatedHandler<
   RouteParams extends Record<string, string> = Record<string, string>,
+  ResponseBody = unknown,
 > {
   (
     request: NextRequest,
@@ -20,8 +20,7 @@ export interface AuthenticatedHandler<
     | NextResponse<{
         message: string;
       }>
-    | NextResponse<DatabaseEntity | null>
-    | NextResponse<DatabaseEntity[]>
+    | NextResponse<ResponseBody>
   >;
 }
 
@@ -33,12 +32,13 @@ export interface AuthenticatedHandler<
  * @returns A wrapped handler that checks for a valid user session
  */
 export function withAuth<
+  ResponseBody = unknown,
   RouteParams extends Record<string, string> = Record<string, string>,
->(handler: AuthenticatedHandler<RouteParams>, routeName: string) {
+>(handler: AuthenticatedHandler<RouteParams, ResponseBody>, routeName: string) {
   return async (
     request: NextRequest,
     ctx: { params: Promise<RouteParams> },
-  ): ReturnType<AuthenticatedHandler<RouteParams>> => {
+  ): ReturnType<AuthenticatedHandler<RouteParams, ResponseBody>> => {
     const params = await ctx.params;
     const supabase = await createSupabaseClient();
     const {

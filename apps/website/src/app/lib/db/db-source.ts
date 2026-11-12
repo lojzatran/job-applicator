@@ -2,23 +2,23 @@ import 'reflect-metadata';
 import { DataSource } from 'typeorm';
 import { dataSourceOptions } from '@apps/shared';
 
-export const AppDataSource = new DataSource(dataSourceOptions);
+export const dataSource = new DataSource(dataSourceOptions);
 
-let appDataSourceInitialization: Promise<typeof AppDataSource> | null = null;
+let dataSourceInitialization: Promise<typeof dataSource> | null = null;
 
-export async function getAppDataSource(): Promise<typeof AppDataSource> {
-  if (AppDataSource.isInitialized) {
-    return AppDataSource;
+export async function getDataSource(): Promise<typeof dataSource> {
+  if (dataSource.isInitialized) {
+    return dataSource;
   }
 
-  if (!appDataSourceInitialization) {
-    appDataSourceInitialization = AppDataSource.initialize();
+  if (!dataSourceInitialization) {
+    dataSourceInitialization = dataSource.initialize();
   }
 
   try {
-    return await appDataSourceInitialization;
+    return await dataSourceInitialization;
   } catch (error) {
-    appDataSourceInitialization = null;
+    dataSourceInitialization = null;
     throw error;
   }
 }

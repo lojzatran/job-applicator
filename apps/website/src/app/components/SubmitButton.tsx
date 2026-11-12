@@ -2,13 +2,14 @@
 
 interface SubmitButtonProps {
   isUploading: boolean;
+  disabled?: boolean;
 }
 
-export const SubmitButton = ({ isUploading }: SubmitButtonProps) => {
+export const SubmitButton = ({ isUploading, disabled }: SubmitButtonProps) => {
   return (
     <button
       type="submit"
-      disabled={isUploading}
+      disabled={isUploading || disabled}
       className="group flex w-full items-center justify-center space-x-3 overflow-hidden rounded-2xl bg-slate-900 py-3.5 font-bold text-white shadow-xl shadow-emerald-500/20 transition-all duration-300 hover:bg-slate-800 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-80 dark:bg-emerald-600 dark:hover:bg-emerald-500 sm:py-4"
     >
       <span className="relative z-10 text-sm sm:text-base">

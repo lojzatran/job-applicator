@@ -1,12 +1,12 @@
 import { JobApplication } from '@apps/shared';
-import { getAppDataSource } from './db-source';
+import { getDataSource } from './db-source';
 
 export async function listJobApplications(
   userId: string,
 ): Promise<JobApplication[]> {
-  const appDataSource = await getAppDataSource();
+  const dataSource = await getDataSource();
 
-  const jobApplicationsRepository = appDataSource.getRepository(JobApplication);
+  const jobApplicationsRepository = dataSource.getRepository(JobApplication);
   return jobApplicationsRepository
     .createQueryBuilder('job_application')
     .orderBy('job_application.coverLetter', 'DESC', 'NULLS LAST')
@@ -21,9 +21,9 @@ export async function getJobApplication(
   id: number,
   userId: string,
 ): Promise<JobApplication | null> {
-  const appDataSource = await getAppDataSource();
+  const dataSource = await getDataSource();
 
-  const jobApplicationsRepository = appDataSource.getRepository(JobApplication);
+  const jobApplicationsRepository = dataSource.getRepository(JobApplication);
   return jobApplicationsRepository.findOne({
     where: { id, userId },
     relations: { job: true },

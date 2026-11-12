@@ -1,8 +1,9 @@
 import { getJobApplicationProcessingRunByThreadIdAndUserId } from '@/app/lib/db/processing-run.repository';
 import { withAuth } from '@/app/lib/auth/with-auth';
 import { NextResponse } from 'next/server';
+import { JobApplicationProcessingRun } from '@apps/shared';
 
-export const GET = withAuth(async (_request, ctx) => {
+export const GET = withAuth<JobApplicationProcessingRun>(async (_request, ctx) => {
   const params = ctx.params ? await ctx.params : {};
   const jobApplicationProcessingRun =
     await getJobApplicationProcessingRunByThreadIdAndUserId(

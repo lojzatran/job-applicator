@@ -16,10 +16,14 @@ import { useResumeUpload } from './hooks/useResumeUpload';
 import { ProcessingState } from './components/ProcessingState';
 import { useThemePreference } from './hooks/useThemePreference';
 import { useJobProcessingRun } from './hooks/useJobProcessingRun';
+import { ProcessingRunQuotaStatus } from './components/ProcessingRunQuotaStatus';
 
 export default function Index() {
   const { isDarkMode, toggleDarkMode } = useThemePreference();
   const {
+    quota,
+    quotaError,
+    refreshQuota,
     linkedinEnabled,
     setLinkedinEnabled,
     startupJobsEnabled,
@@ -58,6 +62,12 @@ export default function Index() {
           <div className="w-full animate-in fade-in slide-in-from-bottom-8 duration-700">
             <PageHero />
 
+            <ProcessingRunQuotaStatus
+              quota={quota}
+              error={quotaError}
+              onRetry={() => void refreshQuota()}
+            />
+
             {isActive ? (
               <ProcessingState />
             ) : (
@@ -93,7 +103,10 @@ export default function Index() {
 
                   <MaxJobsField value={maxJobs} onChange={setMaxJobs} />
 
-                  <SubmitButton isUploading={isUploading} />
+                  <SubmitButton
+                    isUploading={isUploading}
+                    disabled={quota?.remaining === 0}
+                  />
                 </form>
               </section>
             )}
