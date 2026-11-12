@@ -116,6 +116,7 @@ export const ResumeDropzone = ({
           <span className="rounded-full bg-slate-900 px-2.5 py-1 text-white dark:bg-slate-100 dark:text-slate-900">
             PDF
           </span>
+          <span>Max 5 MB</span>
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 dark:border-slate-800 dark:bg-slate-950/60">

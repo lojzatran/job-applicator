@@ -5,12 +5,17 @@ import { UploadResponse } from '../types/upload';
 import { useJobProcessingRun } from './useJobProcessingRun';
 
 const acceptedExtensions = ['pdf'];
+const maxFileSize = 5 * 1024 * 1024;
 
 const validateFile = (file: File) => {
   const extension = file.name.split('.').pop()?.toLowerCase() ?? '';
 
   if (!acceptedExtensions.includes(extension)) {
     return 'Upload a PDF resume.';
+  }
+
+  if (file.size > maxFileSize) {
+    return 'Resume must be 5 MB or smaller.';
   }
 
   return '';
