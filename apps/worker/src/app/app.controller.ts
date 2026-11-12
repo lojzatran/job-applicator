@@ -39,9 +39,13 @@ export class AppController {
         threadId,
       });
       channelRef.ack(context.getMessage());
-    } catch (e) {
-      this.logger.error(e, 'Error processing job applications');
-      channelRef.nack(context.getMessage());
+    } catch (error) {
+      this.logger.error(
+        { err: error, threadId },
+        'Error processing job applications',
+      );
+      // https://amqp-node.github.io/amqplib/channel_api.html#channel_nack
+      channelRef.nack(context.getMessage(), false, false);
     }
   }
 }

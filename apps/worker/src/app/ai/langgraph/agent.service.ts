@@ -94,26 +94,24 @@ export class AgentService {
       threadId: string;
     },
   ) {
-    const [cvText, jobs] = await Promise.all([
-      this.pdfService.extractTextContent(filePath),
-      this.jobsService.fetchJobs(
-        options.linkedinEnabled,
-        options.startupJobsEnabled,
-      ),
-    ]);
-
-    const jobsToProcess = await this.jobsService.filterOutJobsWithApplications(
-      userId,
-      jobs,
-    );
-
-    await this.initializeProcessingRun(
-      userId,
-      options.threadId,
-      jobsToProcess.length,
-    );
-
     try {
+      const [cvText, jobs] = await Promise.all([
+        this.pdfService.extractTextContent(filePath),
+        this.jobsService.fetchJobs(
+          options.linkedinEnabled,
+          options.startupJobsEnabled,
+        ),
+      ]);
+
+      const jobsToProcess =
+        await this.jobsService.filterOutJobsWithApplications(userId, jobs);
+
+      await this.initializeProcessingRun(
+        userId,
+        options.threadId,
+        jobsToProcess.length,
+      );
+
       const agent = await this.langgraphService.build();
       const result: AsyncGenerator<StreamChunk, void, unknown> =
         await agent.stream(
@@ -145,12 +143,19 @@ export class AgentService {
         },
       );
     } catch (error) {
-      await this.jobApplicationProcessingRunRepository.update(
-        { threadId: options.threadId },
-        {
-          status: 'failed',
-        },
-      );
+      try {
+        await this.jobApplicationProcessingRunRepository.update(
+          { threadId: options.threadId },
+          {
+            status: 'failed',
+          },
+        );
+      } catch (statusError) {
+        this.logger.error(
+          { err: statusError, threadId: options.threadId },
+          'Failed to mark processing run as failed',
+        );
+      }
       throw error;
     }
   }
