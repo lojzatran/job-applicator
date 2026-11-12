@@ -106,10 +106,11 @@ export class LanggraphService {
     this.logger.trace(
       `Should continue: ${state.appliedJobsCount} >= ${state.maxAppliedJobs}`,
     );
-    if (!state.job || state.appliedJobsCount >= state.maxAppliedJobs) {
-      return END;
+    const hasJob = state.job !== undefined || state.jobs.length > 0;
+    if (hasJob && state.appliedJobsCount < state.maxAppliedJobs) {
+      return 'next_node';
     }
-    return 'job_evaluator';
+    return END;
   }
 
   private async evaluateJob(state: AgentState) {
@@ -188,16 +189,19 @@ export class LanggraphService {
       .addNode('clean_state', this.cleanState.bind(this))
       .addEdge(START, 'cv_summarizer')
       .addEdge('cv_summarizer', 'job_supplier')
-      .addConditionalEdges('job_supplier', this.shouldContinue.bind(this), [
-        'job_evaluator',
-        END,
-      ])
+      .addConditionalEdges('job_supplier', this.shouldContinue.bind(this), {
+        next_node: 'job_evaluator',
+        [END]: END,
+      })
       .addConditionalEdges('job_evaluator', this.filterJobs.bind(this), [
         'cover_letter_generator',
         'clean_state',
       ])
       .addEdge('cover_letter_generator', 'clean_state')
-      .addEdge('clean_state', 'job_supplier')
+      .addConditionalEdges('clean_state', this.shouldContinue.bind(this), {
+        next_node: 'job_supplier',
+        [END]: END,
+      })
       .compile({
         checkpointer: this.checkpointer,
       });
