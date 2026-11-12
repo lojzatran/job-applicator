@@ -177,8 +177,10 @@ async function setupSupabaseTestUser(): Promise<void> {
 export default async function globalSetup() {
   console.log('Setting up e2e test infrastructure...');
 
+  // --build ensures db-reset runs migrations from the current checkout
+  // instead of a stale published image.
   execSync(
-    'docker compose -f deployment/docker-compose.yml -f deployment/docker-compose.dev.yml --env-file .env --profile infrastructure --profile tools-reset up -d',
+    'docker compose -f deployment/docker-compose.yml -f deployment/docker-compose.dev.yml --env-file .env --profile infrastructure --profile tools-reset up -d --build',
     {
       cwd: workspaceRoot,
       stdio: 'inherit',

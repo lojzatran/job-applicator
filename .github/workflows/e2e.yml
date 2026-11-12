@@ -5,7 +5,8 @@ on:
 
 jobs:
   e2e:
-    runs-on: ubuntu-latest
+    # Pinned: Playwright 1.58 cannot install deps on Ubuntu 26.04 (new ubuntu-latest).
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
 
     env:
