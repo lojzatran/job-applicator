@@ -13,7 +13,6 @@ import { NextResponse } from 'next/server';
 import type { JobApplicationProcessingRun } from '@apps/shared';
 
 export const runtime = 'nodejs';
-// Removed unused logger
 
 const toBoolean = (value: FormDataEntryValue | null): boolean => {
   if (typeof value !== 'string') {
@@ -93,7 +92,7 @@ export const POST = withAuth(async (request, ctx) => {
   const fileEntry = formData.get('file');
   const linkedinEnabled = toBoolean(formData.get('linkedinEnabled'));
   const startupJobsEnabled = toBoolean(formData.get('startupJobsEnabled'));
-  const maxJobs = toPositiveInteger(formData.get('maxJobs'), 10);
+  const maxJobs = Math.min(toPositiveInteger(formData.get('maxJobs'), 10), 20);
 
   if (!(fileEntry instanceof File)) {
     return NextResponse.json({ message: 'File is required.' }, { status: 400 });

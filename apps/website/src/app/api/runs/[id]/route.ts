@@ -3,20 +3,23 @@ import { withAuth } from '@/app/lib/auth/with-auth';
 import { NextResponse } from 'next/server';
 import { JobApplicationProcessingRun } from '@apps/shared';
 
-export const GET = withAuth<JobApplicationProcessingRun>(async (_request, ctx) => {
-  const params = ctx.params ? await ctx.params : {};
-  const jobApplicationProcessingRun =
-    await getJobApplicationProcessingRunByThreadIdAndUserId(
-      params.id as string,
-      ctx.user.id,
-    );
+export const GET = withAuth<JobApplicationProcessingRun>(
+  async (_request, ctx) => {
+    const params = ctx.params ? await ctx.params : {};
+    const jobApplicationProcessingRun =
+      await getJobApplicationProcessingRunByThreadIdAndUserId(
+        params.id as string,
+        ctx.user.id,
+      );
 
-  if (!jobApplicationProcessingRun) {
-    return NextResponse.json(
-      { message: 'Job application processing run not found' },
-      { status: 404 },
-    );
-  }
+    if (!jobApplicationProcessingRun) {
+      return NextResponse.json(
+        { message: 'Job application processing run not found' },
+        { status: 404 },
+      );
+    }
 
-  return NextResponse.json(jobApplicationProcessingRun);
-}, 'runs/[id]');
+    return NextResponse.json(jobApplicationProcessingRun);
+  },
+  'runs/[id]',
+);

@@ -17,7 +17,7 @@ export const MaxJobsField = ({ value, onChange }: MaxJobsFieldProps) => {
             Max applied jobs
           </label>
           <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500 sm:text-xs">
-            Limit how many jobs are successfully applied
+            Choose 1–20 jobs to apply to per run.
           </p>
         </div>
 
@@ -30,6 +30,7 @@ export const MaxJobsField = ({ value, onChange }: MaxJobsFieldProps) => {
         id="max-jobs"
         type="number"
         min={1}
+        max={20}
         step={1}
         value={value}
         onChange={(event) => onChange(Number(event.target.value) || 1)}
