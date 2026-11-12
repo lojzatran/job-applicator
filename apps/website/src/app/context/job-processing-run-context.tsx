@@ -45,6 +45,14 @@ export const JobProcessingRunProvider = ({
   }, []);
 
   useEffect(() => {
+    if (
+      !jobProcessingRun ||
+      (jobProcessingRun.status !== 'pending' &&
+        jobProcessingRun.status !== 'in progress')
+    ) {
+      return;
+    }
+
     const controller = new AbortController();
     let timer: NodeJS.Timeout;
 
@@ -58,7 +66,7 @@ export const JobProcessingRunProvider = ({
           if (!res.ok) throw new Error('Request failed');
 
           const json = await res.json();
-          if (json.status === 'completed' || json.status === 'failed') {
+          if (json.status === 'completed') {
             setJobProcessingRun(null);
           } else {
             setJobProcessingRun(json);
