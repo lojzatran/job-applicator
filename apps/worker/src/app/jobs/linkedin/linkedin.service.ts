@@ -76,7 +76,19 @@ export class LinkedinService {
     }
   }
 
-  private async fetchJobDescription(url: string) {
+  private async fetchJobDescription(url: string): Promise<string> {
+    const response = await this.fetchWithRetry(url);
+    const html = await response.text();
+    const $ = cheerio.load(html);
+    const descriptionElement = $('.description__text').first();
+    const description = cleanHtml(descriptionElement.html() || '');
+    return description;
+  }
+
+  private async fetchWithRetry(
+    url: string,
+    retryAttempt = 0,
+  ): Promise<Response> {
     const response = await fetch(url, {
       headers: {
         'User-Agent':
@@ -91,10 +103,22 @@ export class LinkedinService {
         'Upgrade-Insecure-Requests': '1',
       },
     });
-    const html = await response.text();
-    const $ = cheerio.load(html);
-    const descriptionElement = $('.description__text').first();
-    const description = cleanHtml(descriptionElement.html() || '');
-    return description;
+    if (response.status === 429 && retryAttempt < 3) {
+      const retryAfter = response.headers.get('Retry-After');
+      const retryAfterMs = Number.isFinite(Number(retryAfter))
+        ? Number(retryAfter) * 1_000
+        : Date.parse(retryAfter || '') - Date.now();
+      const retryDelayMs = Math.max(
+        1_000 * 2 ** retryAttempt,
+        Number.isFinite(retryAfterMs) ? retryAfterMs : 0,
+      );
+      await response.body?.cancel();
+      await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+      return this.fetchWithRetry(url, retryAttempt + 1);
+    }
+    if (!response.ok) {
+      throw new Error(`LinkedIn HTTP ${response.status}: ${url}`);
+    }
+    return response;
   }
 }
