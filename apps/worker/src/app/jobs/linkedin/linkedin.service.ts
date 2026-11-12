@@ -7,15 +7,20 @@ import { Job } from '@apps/shared';
 import { Repository } from 'typeorm';
 import { Between } from 'typeorm';
 import { createLogger } from '@apps/shared';
+import type { JobsFetcher } from '../jobs-fetcher.interface';
 
 @Injectable()
-export class LinkedinService {
+export class LinkedinService implements JobsFetcher {
   private readonly logger = createLogger('linkedin-service');
 
   constructor(
     @InjectRepository(Job)
     private readonly jobRepository: Repository<Job>,
   ) {}
+
+  getSourceName() {
+    return 'linkedin';
+  }
 
   async fetchJobs(): Promise<Omit<Job, 'id'>[]> {
     this.logger.info('Fetching jobs from linkedin...');
@@ -35,7 +40,7 @@ export class LinkedinService {
     if (fetchedJobs.length > 0) {
       return fetchedJobs;
     } else {
-      const { default: pMap } = await import(/* webpackIgnore: true */ 'p-map');
+      const pMapModule = await import(/* webpackIgnore: true */ 'p-map');
       const linkedinJobs: LinkedInJob[] = await linkedIn.query({
         location: 'Prague',
         dateSincePosted: '24hr',
@@ -46,24 +51,27 @@ export class LinkedinService {
         under_10_applicants: false,
       });
 
-      const jobUrls = linkedinJobs.map((job) => job.jobUrl);
+      const jobs = await pMapModule.default<LinkedInJob, Omit<Job, 'id'>>(
+        linkedinJobs,
+        async (job) => {
+          const description = await this.fetchJobDescription(job.jobUrl);
+          if (!description) {
+            return pMapModule.pMapSkip;
+          }
 
-      const descriptions = await pMap(
-        jobUrls,
-        (url) => this.fetchJobDescription(url),
+          return {
+            url: job.jobUrl,
+            title: job.position,
+            company: job.company,
+            source: 'linkedin',
+            description,
+            createdAt: new Date(),
+          };
+        },
         {
           concurrency: 3,
         },
       );
-
-      const jobs: Omit<Job, 'id'>[] = linkedinJobs.map((job, index) => ({
-        url: job.jobUrl,
-        title: job.position,
-        company: job.company,
-        source: 'linkedin',
-        description: descriptions[index] || '',
-        createdAt: new Date(),
-      }));
 
       const insertResult = await this.jobRepository.upsert(jobs, {
         conflictPaths: ['url'],

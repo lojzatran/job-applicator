@@ -44,10 +44,10 @@ export class CoverLetterGraph {
 
         2) Job Title:
         {jobTitle}
-        
+
         3) Job Description:
         {jobDescription}
-        
+
         4) Company Name:
         {companyName}
 
@@ -55,7 +55,6 @@ export class CoverLetterGraph {
         - Detect the language of the job description and write the cover letter in the SAME language.
         - Match the tone and style of the job description (formal, casual, technical, etc.).
         - Always remain polite and professional (e.g., in Czech always use formal address, never informal "tykání").
-        - Keep it 200–300 words.
         - Focus only on the most relevant experience and skills for this job.
         - Do NOT repeat the CV verbatim — summarize and tailor.
         - Show clear alignment with the job requirements.
@@ -65,7 +64,7 @@ export class CoverLetterGraph {
         - Avoid clichés (e.g., "I am passionate", "team player", etc.).
         - If company name is provided, personalize the letter slightly.
         - If the job description language is unclear, default to English.
-        - Keep the length between 200 - 400 words.
+        - Keep the length between 200 - 300 words.
 
         OUTPUT:
         Write a complete cover letter with:

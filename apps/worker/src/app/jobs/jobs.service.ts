@@ -2,11 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { LinkedinService } from './linkedin/linkedin.service';
 import { StartupJobsService } from './startupjobs/startupjobs.service';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Job, JobApplication } from '@apps/shared';
+import { createLogger, Job, JobApplication } from '@apps/shared';
 import { In, Repository } from 'typeorm';
+import { JobsFetcher } from './jobs-fetcher.interface';
 
 @Injectable()
 export class JobsService {
+  private readonly logger = createLogger(JobsService.name);
+
   constructor(
     @InjectRepository(JobApplication)
     private readonly jobApplicationRepository: Repository<JobApplication>,
@@ -19,13 +22,30 @@ export class JobsService {
     startupJobsEnabled: boolean,
   ): Promise<Partial<Job>[]> {
     const [linkedInJobs, startupJobs] = await Promise.all([
-      linkedinEnabled ? this.linkedinService.fetchJobs() : Promise.resolve([]),
+      linkedinEnabled
+        ? this.fetchJobsSafely(this.linkedinService)
+        : Promise.resolve([]),
       startupJobsEnabled
-        ? this.startupjobsService.fetchJobs()
+        ? this.fetchJobsSafely(this.startupjobsService)
         : Promise.resolve([]),
     ]);
 
     return [...linkedInJobs, ...startupJobs];
+  }
+
+  private async fetchJobsSafely(
+    jobsFetcher: JobsFetcher,
+  ): Promise<Omit<Job, 'id'>[]> {
+    let jobs: Omit<Job, 'id'>[] = [];
+    try {
+      jobs = await jobsFetcher.fetchJobs();
+    } catch (e) {
+      this.logger.error(
+        { err: e, source: jobsFetcher.getSourceName() },
+        `Error while fetching jobs, returning 0 jobs`,
+      );
+    }
+    return jobs;
   }
 
   async filterOutJobsWithApplications(

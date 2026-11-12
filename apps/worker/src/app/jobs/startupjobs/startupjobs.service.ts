@@ -5,6 +5,7 @@ import { Job } from '@apps/shared';
 import { Repository } from 'typeorm';
 import { Between } from 'typeorm';
 import { createLogger } from '@apps/shared';
+import type { JobsFetcher } from '../jobs-fetcher.interface';
 
 type StartupJobsLocalizedValue = {
   cs: string | null;
@@ -143,7 +144,7 @@ export type StartupJobsSearchOffersResponse = {
 };
 
 @Injectable()
-export class StartupJobsService {
+export class StartupJobsService implements JobsFetcher {
   private readonly logger = createLogger('startupjobs-service');
 
   // This is fixed limit by startupjobs.cz
@@ -153,6 +154,10 @@ export class StartupJobsService {
     @InjectRepository(Job)
     private readonly jobRepository: Repository<Job>,
   ) {}
+
+  getSourceName() {
+    return 'startupjobs';
+  }
 
   async fetchJobs(): Promise<Omit<Job, 'id'>[]> {
     this.logger.info('Fetching jobs from startupjobs.cz...');
