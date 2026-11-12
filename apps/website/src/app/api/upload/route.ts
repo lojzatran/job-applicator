@@ -94,6 +94,13 @@ export const POST = withAuth(async (request, ctx) => {
     return NextResponse.json({ message: 'File is required.' }, { status: 400 });
   }
 
+  if (extname(fileEntry.name).toLowerCase() !== '.pdf') {
+    return NextResponse.json(
+      { message: 'Upload a PDF resume.' },
+      { status: 400 },
+    );
+  }
+
   await mkdir(env.STORAGE_DIR, { recursive: true });
 
   const storedName = createStoredFilename(fileEntry.name);

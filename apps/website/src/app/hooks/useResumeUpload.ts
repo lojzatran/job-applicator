@@ -4,13 +4,13 @@ import { ChangeEvent, DragEvent, FormEvent, useRef, useState } from 'react';
 import { UploadResponse } from '../types/upload';
 import { useJobProcessingRun } from './useJobProcessingRun';
 
-const acceptedExtensions = ['pdf', 'doc', 'docx'];
+const acceptedExtensions = ['pdf'];
 
 const validateFile = (file: File) => {
   const extension = file.name.split('.').pop()?.toLowerCase() ?? '';
 
   if (!acceptedExtensions.includes(extension)) {
-    return 'Upload a PDF, DOC, or DOCX resume.';
+    return 'Upload a PDF resume.';
   }
 
   return '';

@@ -58,7 +58,7 @@ export const ResumeDropzone = ({
       <input
         ref={fileInputRef}
         type="file"
-        accept=".pdf,.doc,.docx"
+        accept=".pdf"
         className="hidden"
         onChange={onFileChange}
       />
@@ -115,12 +115,6 @@ export const ResumeDropzone = ({
           <span>Accepted</span>
           <span className="rounded-full bg-slate-900 px-2.5 py-1 text-white dark:bg-slate-100 dark:text-slate-900">
             PDF
-          </span>
-          <span className="rounded-full bg-slate-200 px-2.5 py-1 text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-            DOC
-          </span>
-          <span className="rounded-full bg-slate-200 px-2.5 py-1 text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-            DOCX
           </span>
         </div>
 
