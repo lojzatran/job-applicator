@@ -2,6 +2,44 @@
 
 Job Applicator helps you discover jobs from multiple sources, evaluate how well your CV matches a role, and generate tailored cover letters.
 
+> [!TIP]
+>
+> ### 🚀 Try it out for yourself
+>
+> **[Open the live demo →](https://lamtestsrv.vps.webdock.cloud)**
+
+## Technology stack
+
+### ⚙️ Backend
+
+- **Language:** TypeScript
+- **Worker:** NestJS
+- **Database:** PostgreSQL with TypeORM
+- **Messaging:** RabbitMQ via `amqplib`
+- **Authentication:** Supabase Auth
+- **Testing:** Jest
+
+### 🎨 Frontend
+
+- **Language:** TypeScript
+- **Framework and UI:** Next.js (App Router) and React
+- **Styling:** Tailwind CSS
+- **Testing:** Jest and Playwright
+
+### 🛠️ Ops
+
+- **Monorepo and tooling:** Nx
+- **Logging:** Pino
+- **Infrastructure:** Docker and Docker Compose
+- **Monitoring:** OpenTelemetry and NewRelic
+
+### 🤖 AI
+
+- **Workflows:** LangChain and LangGraph
+- **Providers:** Ollama, Google Gemini, and Cohere
+- **Models**: nomic-embed-text-v2-moe, Gemma, OpenAI models, Jev
+- **Tracing and evaluation:** LangSmith
+
 ## Prerequisites
 
 - Node.js and npm installed locally.
