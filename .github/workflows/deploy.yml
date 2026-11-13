@@ -151,20 +151,22 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
-  
+
   deploy:
     runs-on: ubuntu-latest
     needs: [docker-build-and-push]
+    env:
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
     steps:
       - uses: actions/checkout@v6
 
-      - name: Copy compose files via SCP
+      - name: Copy deployment files via SCP
         uses: appleboy/scp-action@v1.0.0
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USERNAME }}
           key: ${{ secrets.DEPLOY_KEY }}
-          source: "deployment/docker-compose.yml,observability/otel-collector-config.base.yaml"
+          source: "deployment/docker-compose.yml,deployment/nginx.conf,observability/otel-collector-config.base.yaml"
           target: "~/job-applicator"
           overwrite: true
           strip_components: 1
@@ -175,10 +177,19 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USERNAME }}
           key: ${{ secrets.DEPLOY_KEY }}
+          envs: POSTGRES_PASSWORD
           script: |
+            set -eu
             cd ~/job-applicator
             docker compose --profile '*' pull
             docker compose up -d --remove-orphans --wait postgres
-            docker compose exec -T postgres psql -U postgres -c "ALTER USER postgres WITH PASSWORD 'postgres';"
+            docker compose exec -T postgres psql -U postgres -v ON_ERROR_STOP=1 <<'SQL'
+            \getenv postgres_password POSTGRES_PASSWORD
+            ALTER ROLE postgres WITH PASSWORD :'postgres_password';
+            SQL
             docker compose --profile infrastructure --profile tools-migrate up --abort-on-container-exit --exit-code-from db-migrate db-migrate
             docker compose --profile infrastructure --profile ai --profile observability --profile app up -d --remove-orphans --wait
+            curl --fail --silent --show-error --retry 10 --retry-connrefused --retry-delay 2 --max-time 10 http://127.0.0.1:3001/ > /dev/null
+            sudo -n install -m 0644 nginx.conf /etc/nginx/snippets/job-applicator.conf
+            sudo -n nginx -t
+            sudo -n systemctl reload nginx

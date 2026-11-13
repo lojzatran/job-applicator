@@ -2,8 +2,8 @@ services:
   rabbitmq:
     image: rabbitmq:4.2.3-management-alpine
     ports:
-      - '5672:5672'
-      - '15672:15672'
+      - '127.0.0.1:5672:5672'
+      - '127.0.0.1:15672:15672'
     environment:
       - RABBITMQ_ERLANG_COOKIE=a_very_long_secret_cookie_for_rabbitmq_4_0
     healthcheck:
@@ -17,14 +17,14 @@ services:
   postgres:
     image: pgvector/pgvector:pg18
     ports:
-      - 5432:5432
+      - '127.0.0.1:5432:5432'
     restart: always
     shm_size: 128mb
     volumes:
       - postgres_data:/var/lib/postgresql
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
       POSTGRES_DB: job_applicator
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U postgres -d job_applicator']
@@ -55,12 +55,24 @@ services:
     ports:
       - '3000:3000'
     environment:
-      NODE_ENV: production
-      OLLAMA_JOB_EVALUATOR_MODEL: gemma3:4b-cloud
-      OLLAMA_BASE_URL: https://ollama.com
-      COVER_LETTER_GENERATOR_MODEL: gemma3:4b-cloud
-      CV_PARSER_MODEL: gemma3:4b-cloud
-      CRITIQUE_MODEL: gemma3:4b-cloud
+      NODE_ENV: ${NODE_ENV:-production}
+      JOB_EVALUATOR_METHOD: ${JOB_EVALUATOR_METHOD:-embedding_llm}
+      # Optional values are inherited from .env when defined.
+      JOB_EVALUATOR_PROVIDER:
+      CV_PARSER_PROVIDER:
+      COVER_LETTER_GENERATOR_PROVIDER:
+      CRITIQUE_PROVIDER:
+      AI_GATEWAY_API_KEY:
+      AI_GATEWAY_JOB_EVALUATOR_MODEL:
+      AI_GATEWAY_COVER_LETTER_GENERATOR_MODEL:
+      AI_GATEWAY_CRITIQUE_MODEL:
+      AI_GATEWAY_CV_PARSER_MODEL:
+      AI_GATEWAY_DECISION_MODEL:
+      OLLAMA_JOB_EVALUATOR_MODEL: ${OLLAMA_JOB_EVALUATOR_MODEL:-gemma3:4b-cloud}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-https://ollama.com}
+      COVER_LETTER_GENERATOR_MODEL: ${COVER_LETTER_GENERATOR_MODEL:-gemma3:4b-cloud}
+      CV_PARSER_MODEL: ${CV_PARSER_MODEL:-gemma3:4b-cloud}
+      CRITIQUE_MODEL: ${CRITIQUE_MODEL:-gemma3:4b-cloud}
       COHERE_API_KEY: ${COHERE_API_KEY}
       COHERE_EMBEDDING_MODEL: ${COHERE_EMBEDDING_MODEL}
       OLLAMA_API_KEY: ${OLLAMA_API_KEY}
@@ -70,7 +82,7 @@ services:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
       POSTGRES_DB: job_applicator
       STORAGE_DIR: /app/uploads
       RABBITMQ_URL: amqp://rabbitmq:5672
@@ -99,7 +111,7 @@ services:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: '5432'
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
       POSTGRES_DB: job_applicator
       STORAGE_DIR: /app/uploads
       LOGS_DIR: /app/logs
@@ -119,7 +131,7 @@ services:
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
       - POSTGRES_DB=job_applicator
     depends_on:
       postgres:
@@ -133,7 +145,7 @@ services:
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
       - POSTGRES_DB=job_applicator
     depends_on:
       postgres:

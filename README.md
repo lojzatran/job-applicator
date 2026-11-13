@@ -23,7 +23,7 @@ Job Applicator helps you discover jobs from multiple sources, evaluate how well 
 - `POSTGRES_HOST` - PostgreSQL host, usually `localhost` for local development.
 - `POSTGRES_PORT` - PostgreSQL port, usually `5432`.
 - `POSTGRES_USER` - Database user.
-- `POSTGRES_PASSWORD` - Database password.
+- `POSTGRES_PASSWORD` - Required database password. Production deployments use the GitHub Actions secret of the same name.
 - `POSTGRES_DB` - Database name.
 
 ### Queue
@@ -438,6 +438,20 @@ The local collector tails the shared `logs/` volume, so Pino writes structured l
 
 After GitHub Actions builds and pushes the images, the deploy host should use the compose file directly:
 
+Set the repository secret `POSTGRES_PASSWORD` to a strong password. The deploy workflow passes it to Docker Compose for PostgreSQL, the website, the worker, and migration tools. It also updates the database role password when an existing data volume is reused. For manual Compose commands, provide the same value in your shell or `.env`.
+
+PostgreSQL (`5432`) and RabbitMQ (`5672`, management UI `15672`) are published on `127.0.0.1` only. Containers communicate over the Docker network; remote administration can use an SSH tunnel.
+
+GitHub Actions also copies `deployment/nginx.conf` to `~/job-applicator` on the deploy host. After the website responds at `http://127.0.0.1:3001`, it installs the file at `/etc/nginx/snippets/job-applicator.conf`, runs `nginx -t`, and reloads Nginx. The deploy user needs passwordless sudo for these commands.
+
+Configure the host once by replacing the default static routes and upload limit in its HTTPS `server` block with:
+
+```nginx
+include /etc/nginx/snippets/job-applicator.conf;
+```
+
+The host manages the domain, certificates, and ACME validation. Subsequent deployments only replace the included application configuration.
+
 To start the full stack with an empty database and profile intended for a fresh state, run:
 
 ```sh
@@ -493,12 +507,11 @@ docker run -d -p 3000:3000 job-applicator-website:latest
 Here are some useful commands for postgres in docker container:
 
 ```sh
-# you can change the db password using the following command
-docker exec -it job-applicator-postgres-1 psql -U postgres -d job_applicator -c "ALTER USER postgres WITH PASSWORD 'postgres';"
+# open a database shell
+docker compose -f deployment/docker-compose.yml exec postgres psql -U postgres -d job_applicator
 
-# retest that user is working with the new password
-
-docker run --rm -it --network job-applicator_default pgvector/pgvector:pg18 sh -lc 'PGPASSWORD=postgres psql -h postgres -U postgres -d job_applicator -c "select current_user, current_database();"'
+# verify TCP authentication with the configured password
+docker compose -f deployment/docker-compose.yml exec postgres sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" psql -h postgres -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "select current_user, current_database();"'
 
 # to execute a sql query
 docker exec -it job-applicator-postgres-1 psql -U postgres -d job_applicator -c "SELECT * FROM public.job_application;"
