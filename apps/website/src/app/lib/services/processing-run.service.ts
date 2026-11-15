@@ -25,6 +25,7 @@ async function fetchProcessingRunQuota(
     select: { createdAt: true },
     where: {
       userId,
+      status: In(['pending', 'in progress', 'completed', 'failed']),
       createdAt: MoreThan(new Date(now - RUN_LIMIT_WINDOW_MS)),
     },
     order: { createdAt: 'DESC' },

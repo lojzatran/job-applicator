@@ -21,8 +21,8 @@ export class JobApplication implements DatabaseEntity {
   @ManyToOne(() => Job)
   job!: Job;
 
-  @ManyToOne(() => Cv, (cv) => cv.jobApplications, { nullable: true })
-  cv?: Cv | null;
+  @ManyToOne(() => Cv, (cv) => cv.jobApplications, { nullable: false })
+  cv!: Cv;
 
   @Column({ nullable: true })
   coverLetter?: string;

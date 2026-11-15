@@ -16,7 +16,7 @@ export class JobApplicationProcessingRun implements DatabaseEntity {
   userId!: string;
 
   @Column()
-  status!: 'pending' | 'in progress' | 'completed' | 'failed';
+  status!: 'pending' | 'in progress' | 'completed' | 'failed' | 'skipped';
 
   @Column()
   totalJobs!: number;

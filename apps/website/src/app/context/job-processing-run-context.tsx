@@ -7,10 +7,12 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { useRouter } from 'next/navigation';
 import { JobApplicationProcessingRun } from '../types/job-processing-run';
 
 interface JobProcessingRunContextValue {
   jobProcessingRun: JobApplicationProcessingRun | null;
+  finishedStatus: 'completed' | 'skipped' | null;
   setJobProcessingRun: (
     jobProcessingRun: JobApplicationProcessingRun | null,
   ) => void;
@@ -24,8 +26,12 @@ export const JobProcessingRunProvider = ({
 }: {
   children: ReactNode;
 }) => {
+  const router = useRouter();
   const [jobProcessingRun, setJobProcessingRun] =
     useState<JobApplicationProcessingRun | null>(null);
+  const [finishedStatus, setFinishedStatus] = useState<
+    'completed' | 'skipped' | null
+  >(null);
 
   useEffect(() => {
     const fetchCurrentJobProcessingRunStateForCurrentUser = async () => {
@@ -66,8 +72,10 @@ export const JobProcessingRunProvider = ({
           if (!res.ok) throw new Error('Request failed');
 
           const json = await res.json();
-          if (json.status === 'completed') {
+          if (json.status === 'completed' || json.status === 'skipped') {
             setJobProcessingRun(null);
+            setFinishedStatus(json.status);
+            router.push('/applications');
           } else {
             setJobProcessingRun(json);
           }
@@ -86,13 +94,17 @@ export const JobProcessingRunProvider = ({
         controller.abort();
       }
     };
-  }, [jobProcessingRun]);
+  }, [jobProcessingRun, router]);
 
   return (
     <JobProcessingRunContext.Provider
       value={{
         jobProcessingRun,
-        setJobProcessingRun,
+        finishedStatus,
+        setJobProcessingRun: (run) => {
+          if (run) setFinishedStatus(null);
+          setJobProcessingRun(run);
+        },
       }}
     >
       {children}

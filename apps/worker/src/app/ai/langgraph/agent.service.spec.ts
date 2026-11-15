@@ -8,6 +8,8 @@ import {
   JobApplication,
   JobApplicationProcessingRun,
   JobEvaluationDecision,
+  Cv,
+  Job,
 } from '@apps/shared';
 import { Repository } from 'typeorm';
 
@@ -18,6 +20,8 @@ describe('AgentService', () => {
   let langgraphService: jest.Mocked<LanggraphService>;
   let processingRunRepo: jest.Mocked<Repository<JobApplicationProcessingRun>>;
   let applicationRepo: jest.Mocked<Repository<JobApplication>>;
+  let cvRepo: jest.Mocked<Repository<Cv>>;
+  let jobRepo: jest.Mocked<Repository<Job>>;
 
   const mockUserId = 'user-1';
   const mockThreadId = 'thread-1';
@@ -69,6 +73,14 @@ describe('AgentService', () => {
             save: jest.fn(),
           },
         },
+        {
+          provide: getRepositoryToken(Cv),
+          useValue: { existsBy: jest.fn() },
+        },
+        {
+          provide: getRepositoryToken(Job),
+          useValue: { findOneByOrFail: jest.fn() },
+        },
       ],
     }).compile();
 
@@ -80,6 +92,10 @@ describe('AgentService', () => {
       getRepositoryToken(JobApplicationProcessingRun),
     );
     applicationRepo = module.get(getRepositoryToken(JobApplication));
+    cvRepo = module.get(getRepositoryToken(Cv));
+    jobRepo = module.get(getRepositoryToken(Job));
+    cvRepo.existsBy.mockResolvedValue(false);
+    jobRepo.findOneByOrFail.mockImplementation(async (where) => where as Job);
   });
 
   it('should complete processing run and save applications', async () => {
@@ -104,6 +120,7 @@ describe('AgentService', () => {
       } as StreamChunk;
       yield {
         job_evaluator: {
+          cvEntityId: 100,
           evaluatedJobsCount: 1,
           uncertainJobsCount: 1,
           dismissedJobsCount: 0,
@@ -114,6 +131,7 @@ describe('AgentService', () => {
       } as StreamChunk;
       yield {
         cover_letter_generator: {
+          cvEntityId: 100,
           appliedJobsCount: 1,
           url: 'job1',
           coverLetters: { url: 'job1', coverLetter: 'cl1' },
@@ -128,6 +146,13 @@ describe('AgentService', () => {
 
     expect(pdfService.extractTextContent).toHaveBeenCalledWith(mockFilePath);
     expect(jobsService.fetchJobs).toHaveBeenCalledWith(true, true);
+    expect(mockAgent.stream).toHaveBeenCalledWith(
+      expect.objectContaining({ jobs: mockJobs }),
+      expect.anything(),
+    );
+    expect(applicationRepo.findOne).toHaveBeenCalledWith({
+      where: { job: { url: 'job1' }, cv: { id: 100 }, userId: mockUserId },
+    });
     expect(processingRunRepo.save).toHaveBeenCalled();
     expect(applicationRepo.update).toHaveBeenCalledWith(10, {
       evaluationResult: JobEvaluationDecision.UNCERTAIN,
@@ -144,7 +169,7 @@ describe('AgentService', () => {
     // Check job application creation
     expect(applicationRepo.save).toHaveBeenCalledWith(
       expect.objectContaining({
-        job: mockJobs[0],
+        job: { url: 'job1' },
         userId: mockUserId,
         status: 'processing',
         cv: { id: 100 },
@@ -203,9 +228,12 @@ describe('AgentService', () => {
     langgraphService.build.mockResolvedValue(mockAgent as any);
 
     async function* mockStream() {
-      yield { job_supplier: { job: mockJobs[0] } } as StreamChunk;
+      yield {
+        job_supplier: { job: mockJobs[0], cvEntityId: 100 },
+      } as StreamChunk;
       yield {
         job_evaluator: {
+          cvEntityId: 100,
           evaluatedJobsCount: 1,
           dismissedJobsCount: 1,
           isValidJob: false,
@@ -229,6 +257,26 @@ describe('AgentService', () => {
     expect(processingRunRepo.update).toHaveBeenCalledWith(
       { threadId: mockThreadId },
       { evaluatedJobApplications: 1, dismissedJobApplications: 1 },
+    );
+  });
+
+  it('skips fetching and evaluation when the CV hash already exists', async () => {
+    pdfService.extractTextContent.mockResolvedValue('cv text');
+    cvRepo.existsBy.mockResolvedValue(true);
+
+    await service.executeAgent(mockUserId, mockFilePath, mockOptions);
+
+    expect(cvRepo.existsBy).toHaveBeenCalledWith({
+      hash: 'e5200f3ea90c0b8c81e93a59ab9bbe81',
+    });
+    expect(jobsService.fetchJobs).not.toHaveBeenCalled();
+    expect(langgraphService.build).not.toHaveBeenCalled();
+    expect(applicationRepo.save).not.toHaveBeenCalled();
+    expect(processingRunRepo.findOneBy).not.toHaveBeenCalled();
+    expect(processingRunRepo.save).not.toHaveBeenCalled();
+    expect(processingRunRepo.update).toHaveBeenCalledWith(
+      { threadId: mockThreadId },
+      { status: 'skipped' },
     );
   });
 
@@ -275,10 +323,11 @@ describe('AgentService', () => {
 
     async function* mockStream() {
       yield {
-        job_evaluator: { dismissedJobsCount: 1, url: 'job1' },
+        job_evaluator: { cvEntityId: 100, dismissedJobsCount: 1, url: 'job1' },
       } as StreamChunk;
       yield {
         cover_letter_generator: {
+          cvEntityId: 100,
           appliedJobsCount: 1,
           url: 'job1',
           coverLetters: { url: 'job1', coverLetter: 'cl1' },

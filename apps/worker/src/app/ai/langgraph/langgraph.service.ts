@@ -139,6 +139,7 @@ export class LanggraphService {
       const isUncertainJob = verdict === JobEvaluationDecision.UNCERTAIN;
       return {
         isValidJob,
+        cvEntityId: state.cvEntityId,
         evaluationResult: verdict,
         url: state.job?.url,
         evaluatedJobsCount: state.evaluatedJobsCount + 1,
@@ -149,6 +150,7 @@ export class LanggraphService {
       this.logger.error(error, 'Failed to evaluate job');
       return {
         isValidJob: false,
+        cvEntityId: state.cvEntityId,
         url: state.job?.url,
         evaluatedJobsCount: state.evaluatedJobsCount + 1,
         dismissedJobsCount: state.dismissedJobsCount + 1,
@@ -172,6 +174,7 @@ export class LanggraphService {
     });
     this.logger.debug(`Applied jobs count: ${state.appliedJobsCount}`);
     return {
+      cvEntityId: state.cvEntityId,
       appliedJobsCount:
         state.appliedJobsCount +
         (state.evaluationResult === JobEvaluationDecision.APPLY ? 1 : 0),

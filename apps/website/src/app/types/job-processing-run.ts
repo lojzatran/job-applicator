@@ -2,7 +2,8 @@ export type JobProcessingRunStatus =
   | 'pending'
   | 'in progress'
   | 'completed'
-  | 'failed';
+  | 'failed'
+  | 'skipped';
 
 export interface JobApplicationProcessingRun {
   id: number;

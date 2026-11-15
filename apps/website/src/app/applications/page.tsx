@@ -5,6 +5,8 @@ import { BackgroundDecor } from '../components/BackgroundDecor';
 import { AuthMenu } from '../components/AuthMenu';
 import { JobProcessingRunBadge } from '../components/JobProcessingRunBadge';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { StatusMessage } from '../components/StatusMessage';
+import { useJobProcessingRunContext } from '../context/job-processing-run-context';
 import { useThemePreference } from '../hooks/useThemePreference';
 import { Job, JobApplication } from './types';
 import { ApplicationsHeader } from './components/ApplicationsHeader';
@@ -14,6 +16,7 @@ import { EmptyState } from './components/EmptyState';
 
 export default function ApplicationsPage() {
   const { isDarkMode, toggleDarkMode } = useThemePreference();
+  const { finishedStatus } = useJobProcessingRunContext();
   const [applications, setApplications] = useState<JobApplication[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -71,6 +74,19 @@ export default function ApplicationsPage() {
             appliedCount={applications.length}
             totalCount={jobs.length}
           />
+
+          {finishedStatus && (
+            <div className="mb-6">
+              <StatusMessage
+                tone="success"
+                message={
+                  finishedStatus === 'skipped'
+                    ? 'This CV has already been processed, so no new jobs were evaluated.'
+                    : 'Job processing completed.'
+                }
+              />
+            </div>
+          )}
 
           <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white/90 shadow-2xl shadow-stone-300/50 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/60 dark:shadow-none transition-all duration-700 animate-in fade-in slide-in-from-bottom-4">
             {isLoading ? (

@@ -1,6 +1,13 @@
 'use client';
 
-import { ChangeEvent, DragEvent, FormEvent, useRef, useState } from 'react';
+import {
+  ChangeEvent,
+  DragEvent,
+  FormEvent,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { UploadResponse } from '../types/upload';
 import { useJobProcessingRun } from './useJobProcessingRun';
 import { useProcessingRunQuota } from './useProcessingRunQuota';
@@ -23,8 +30,11 @@ const validateFile = (file: File) => {
 };
 
 export const useResumeUpload = () => {
-  const { setJobProcessingRun } = useJobProcessingRun();
+  const { jobProcessingRun, setJobProcessingRun } = useJobProcessingRun();
   const { quota, quotaError, refreshQuota } = useProcessingRunQuota();
+  useEffect(() => {
+    if (!jobProcessingRun) void refreshQuota();
+  }, [jobProcessingRun, refreshQuota]);
   const [linkedinEnabled, setLinkedinEnabled] = useState(false);
   const [startupJobsEnabled, setStartupJobsEnabled] = useState(false);
   const [maxJobs, setMaxJobs] = useState(5);

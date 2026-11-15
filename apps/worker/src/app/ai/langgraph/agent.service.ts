@@ -4,6 +4,7 @@ import { JobsService } from '../../jobs/jobs.service';
 import { PdfService } from '../../documents/pdf/pdf.service';
 import {
   createLogger,
+  Cv,
   Job,
   JobApplication,
   JobApplicationProcessingRun,
@@ -11,6 +12,7 @@ import {
 } from '@apps/shared';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { createHash } from 'node:crypto';
 
 export interface CoverLetterData {
   url: string;
@@ -20,9 +22,10 @@ export interface CoverLetterData {
 export interface StreamChunk {
   job_supplier?: {
     job: Job;
-    cvEntityId?: number;
+    cvEntityId: number;
   };
   job_evaluator?: {
+    cvEntityId: number;
     isValidJob?: boolean;
     evaluationResult?: JobEvaluationDecision;
     url: string;
@@ -31,6 +34,7 @@ export interface StreamChunk {
     dismissedJobsCount?: number;
   };
   cover_letter_generator?: {
+    cvEntityId: number;
     appliedJobsCount?: number;
     coverLetters?: CoverLetterData | CoverLetterData[];
     url: string;
@@ -49,6 +53,10 @@ export class AgentService {
     private readonly jobApplicationProcessingRunRepository: Repository<JobApplicationProcessingRun>,
     @InjectRepository(JobApplication)
     private readonly jobApplicationRepository: Repository<JobApplication>,
+    @InjectRepository(Cv)
+    private readonly cvRepository: Repository<Cv>,
+    @InjectRepository(Job)
+    private readonly jobRepository: Repository<Job>,
   ) {}
 
   private async initializeProcessingRun(
@@ -99,16 +107,21 @@ export class AgentService {
     },
   ) {
     try {
-      const [cvText, jobs] = await Promise.all([
-        this.pdfService.extractTextContent(filePath),
-        this.jobsService.fetchJobs(
-          options.linkedinEnabled,
-          options.startupJobsEnabled,
-        ),
-      ]);
+      const cvText = await this.pdfService.extractTextContent(filePath);
+      const hash = createHash('md5').update(cvText).digest('hex');
+      const existingCv = await this.cvRepository.existsBy({ hash });
+      if (existingCv) {
+        await this.jobApplicationProcessingRunRepository.update(
+          { threadId: options.threadId },
+          { status: 'skipped' },
+        );
+        return;
+      }
 
-      const jobsToProcess =
-        await this.jobsService.filterOutJobsWithApplications(userId, jobs);
+      const jobsToProcess = await this.jobsService.fetchJobs(
+        options.linkedinEnabled,
+        options.startupJobsEnabled,
+      );
 
       await this.initializeProcessingRun(
         userId,
@@ -180,10 +193,13 @@ export class AgentService {
           JSON.stringify(chunk.job_supplier.job.url),
       );
       const cvEntityId = chunk.job_supplier.cvEntityId;
+      const job = await this.jobRepository.findOneByOrFail({
+        url: chunk.job_supplier.job.url,
+      });
       await this.jobApplicationRepository.save({
         userId: options.userId,
-        cv: cvEntityId ? { id: cvEntityId } : undefined,
-        job: chunk.job_supplier.job,
+        cv: { id: cvEntityId },
+        job,
         status: 'processing',
       });
     } else if (chunk.job_evaluator !== undefined) {
@@ -217,6 +233,7 @@ export class AgentService {
     const applicationToApply = await this.jobApplicationRepository.findOne({
       where: {
         job: { url: chunk.cover_letter_generator!.url },
+        cv: { id: chunk.cover_letter_generator!.cvEntityId },
         userId: options.userId,
       },
     });
@@ -253,6 +270,7 @@ export class AgentService {
         const application = await this.jobApplicationRepository.findOne({
           where: {
             job: { url: chunk.job_evaluator.url },
+            cv: { id: chunk.job_evaluator.cvEntityId },
             userId: options.userId,
           },
         });
@@ -284,6 +302,7 @@ export class AgentService {
           await this.jobApplicationRepository.findOne({
             where: {
               job: { url: chunk.job_evaluator.url },
+              cv: { id: chunk.job_evaluator.cvEntityId },
               userId: options.userId,
             },
           });
