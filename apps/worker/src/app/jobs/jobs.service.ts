@@ -48,14 +48,16 @@ export class JobsService {
     return jobs;
   }
 
-  async filterOutJobsWithApplications(
+  async filterOutProcessedJobs(
     userId: string,
+    cvId: number,
     jobs: Partial<Job>[],
   ): Promise<Partial<Job>[]> {
     const jobUrls = jobs.map((job) => job.url);
     const jobApplications = await this.jobApplicationRepository.find({
       where: {
         userId: userId,
+        cv: { id: cvId },
         job: {
           url: In(jobUrls),
         },

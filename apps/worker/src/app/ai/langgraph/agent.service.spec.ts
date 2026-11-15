@@ -41,7 +41,7 @@ describe('AgentService', () => {
           provide: JobsService,
           useValue: {
             fetchJobs: jest.fn(),
-            filterOutJobsWithApplications: jest.fn(),
+            filterOutProcessedJobs: jest.fn(),
           },
         },
         {
@@ -69,13 +69,14 @@ describe('AgentService', () => {
           provide: getRepositoryToken(JobApplication),
           useValue: {
             findOne: jest.fn(),
+            countBy: jest.fn(),
             update: jest.fn(),
             save: jest.fn(),
           },
         },
         {
           provide: getRepositoryToken(Cv),
-          useValue: { existsBy: jest.fn() },
+          useValue: { findOneBy: jest.fn() },
         },
         {
           provide: getRepositoryToken(Job),
@@ -94,7 +95,7 @@ describe('AgentService', () => {
     applicationRepo = module.get(getRepositoryToken(JobApplication));
     cvRepo = module.get(getRepositoryToken(Cv));
     jobRepo = module.get(getRepositoryToken(Job));
-    cvRepo.existsBy.mockResolvedValue(false);
+    cvRepo.findOneBy.mockResolvedValue(null);
     jobRepo.findOneByOrFail.mockImplementation(async (where) => where as Job);
   });
 
@@ -105,7 +106,6 @@ describe('AgentService', () => {
     ] as any;
     pdfService.extractTextContent.mockResolvedValue('cv text');
     jobsService.fetchJobs.mockResolvedValue(mockJobs);
-    jobsService.filterOutJobsWithApplications.mockResolvedValue(mockJobs);
     processingRunRepo.findOneBy.mockResolvedValue(null);
     processingRunRepo.create.mockImplementation((dto) => dto as any);
 
@@ -198,7 +198,6 @@ describe('AgentService', () => {
     const mockJobs = [] as any;
     pdfService.extractTextContent.mockResolvedValue('cv text');
     jobsService.fetchJobs.mockResolvedValue(mockJobs);
-    jobsService.filterOutJobsWithApplications.mockResolvedValue(mockJobs);
     processingRunRepo.findOneBy.mockResolvedValue(null);
     processingRunRepo.create.mockImplementation((dto) => dto as any);
 
@@ -218,7 +217,6 @@ describe('AgentService', () => {
     const mockJobs = [{ id: 1, url: 'job1' }] as any;
     pdfService.extractTextContent.mockResolvedValue('cv text');
     jobsService.fetchJobs.mockResolvedValue(mockJobs);
-    jobsService.filterOutJobsWithApplications.mockResolvedValue(mockJobs);
     processingRunRepo.findOneBy.mockResolvedValue(null);
     processingRunRepo.create.mockImplementation((dto) => dto as any);
 
@@ -260,20 +258,88 @@ describe('AgentService', () => {
     );
   });
 
-  it('skips fetching and evaluation when the CV hash already exists', async () => {
+  it.each([5, 6])(
+    'skips when %i completed apply results already meet the target',
+    async (count) => {
+      pdfService.extractTextContent.mockResolvedValue('cv text');
+      cvRepo.findOneBy.mockResolvedValue({ id: 100 } as Cv);
+      applicationRepo.countBy.mockResolvedValue(count);
+
+      await service.executeAgent(mockUserId, mockFilePath, mockOptions);
+
+      expect(cvRepo.findOneBy).toHaveBeenCalledWith({
+        hash: 'e5200f3ea90c0b8c81e93a59ab9bbe81',
+      });
+      expect(applicationRepo.countBy).toHaveBeenCalledWith({
+        userId: mockUserId,
+        cv: { id: 100 },
+        evaluationResult: JobEvaluationDecision.APPLY,
+        status: 'applied',
+      });
+      expect(jobsService.fetchJobs).toHaveBeenCalledWith(true, true);
+      expect(jobsService.filterOutProcessedJobs).not.toHaveBeenCalled();
+      expect(langgraphService.build).not.toHaveBeenCalled();
+      expect(applicationRepo.save).not.toHaveBeenCalled();
+      expect(processingRunRepo.findOneBy).not.toHaveBeenCalled();
+      expect(processingRunRepo.save).not.toHaveBeenCalled();
+      expect(processingRunRepo.update).toHaveBeenCalledWith(
+        { threadId: mockThreadId },
+        { status: 'skipped' },
+      );
+    },
+  );
+
+  it.each([0, 1])(
+    'processes remaining jobs when there are %i previous apply results',
+    async (count) => {
+      const fetchedJobs = [{ url: 'old' }, { url: 'new' }];
+      const remainingJobs = [{ url: 'new' }];
+      pdfService.extractTextContent.mockResolvedValue('cv text');
+      cvRepo.findOneBy.mockResolvedValue({ id: 100 } as Cv);
+      applicationRepo.countBy.mockResolvedValue(count);
+      jobsService.fetchJobs.mockResolvedValue(fetchedJobs);
+      jobsService.filterOutProcessedJobs.mockResolvedValue(remainingJobs);
+      processingRunRepo.findOneBy.mockResolvedValue({
+        threadId: mockThreadId,
+      } as JobApplicationProcessingRun);
+      const agent = {
+        stream: jest.fn().mockResolvedValue(
+          (async function* () {
+            yield* [];
+          })(),
+        ),
+      };
+      langgraphService.build.mockResolvedValue(
+        agent as unknown as Awaited<ReturnType<LanggraphService['build']>>,
+      );
+
+      await service.executeAgent(mockUserId, mockFilePath, mockOptions);
+
+      expect(jobsService.filterOutProcessedJobs).toHaveBeenCalledWith(
+        mockUserId,
+        100,
+        fetchedJobs,
+      );
+      expect(agent.stream).toHaveBeenCalledWith(
+        expect.objectContaining({
+          jobs: remainingJobs,
+          maxAppliedJobs: 5 - count,
+        }),
+        expect.anything(),
+      );
+    },
+  );
+
+  it('skips when no fetched jobs remain after filtering', async () => {
     pdfService.extractTextContent.mockResolvedValue('cv text');
-    cvRepo.existsBy.mockResolvedValue(true);
+    cvRepo.findOneBy.mockResolvedValue({ id: 100 } as Cv);
+    applicationRepo.countBy.mockResolvedValue(1);
+    jobsService.fetchJobs.mockResolvedValue([{ url: 'old' }]);
+    jobsService.filterOutProcessedJobs.mockResolvedValue([]);
 
     await service.executeAgent(mockUserId, mockFilePath, mockOptions);
 
-    expect(cvRepo.existsBy).toHaveBeenCalledWith({
-      hash: 'e5200f3ea90c0b8c81e93a59ab9bbe81',
-    });
-    expect(jobsService.fetchJobs).not.toHaveBeenCalled();
     expect(langgraphService.build).not.toHaveBeenCalled();
-    expect(applicationRepo.save).not.toHaveBeenCalled();
-    expect(processingRunRepo.findOneBy).not.toHaveBeenCalled();
-    expect(processingRunRepo.save).not.toHaveBeenCalled();
     expect(processingRunRepo.update).toHaveBeenCalledWith(
       { threadId: mockThreadId },
       { status: 'skipped' },
@@ -284,7 +350,6 @@ describe('AgentService', () => {
     const mockJobs = [] as any;
     pdfService.extractTextContent.mockResolvedValue('cv text');
     jobsService.fetchJobs.mockResolvedValue(mockJobs);
-    jobsService.filterOutJobsWithApplications.mockResolvedValue(mockJobs);
 
     processingRunRepo.findOneBy.mockResolvedValue({
       threadId: mockThreadId,
@@ -312,7 +377,6 @@ describe('AgentService', () => {
     const mockJobs = [{ id: 1, url: 'job1' }] as any;
     pdfService.extractTextContent.mockResolvedValue('cv text');
     jobsService.fetchJobs.mockResolvedValue(mockJobs);
-    jobsService.filterOutJobsWithApplications.mockResolvedValue(mockJobs);
     processingRunRepo.findOneBy.mockResolvedValue(null);
     processingRunRepo.create.mockImplementation((dto) => dto as any);
 

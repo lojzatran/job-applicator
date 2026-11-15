@@ -123,14 +123,12 @@ describe('JobsService', () => {
 
       jobApplicationRepository.find.mockResolvedValue([]);
 
-      const result = await service.filterOutJobsWithApplications(
-        'user-1',
-        jobs,
-      );
+      const result = await service.filterOutProcessedJobs('user-1', 100, jobs);
 
       expect(jobApplicationRepository.find).toHaveBeenCalledWith({
         where: {
           userId: 'user-1',
+          cv: { id: 100 },
           job: {
             url: expect.any(Object),
           },
@@ -164,10 +162,7 @@ describe('JobsService', () => {
         processedApplications as JobApplication[],
       );
 
-      const result = await service.filterOutJobsWithApplications(
-        'user-1',
-        jobs,
-      );
+      const result = await service.filterOutProcessedJobs('user-1', 100, jobs);
 
       expect(result).toEqual([{ url: 'https://example.com/job2' }]);
     });
@@ -187,10 +182,7 @@ describe('JobsService', () => {
         processedApplications as JobApplication[],
       );
 
-      const result = await service.filterOutJobsWithApplications(
-        'user-1',
-        jobs,
-      );
+      const result = await service.filterOutProcessedJobs('user-1', 100, jobs);
 
       expect(result).toEqual([]);
     });

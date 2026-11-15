@@ -109,19 +109,40 @@ export class AgentService {
     try {
       const cvText = await this.pdfService.extractTextContent(filePath);
       const hash = createHash('md5').update(cvText).digest('hex');
-      const existingCv = await this.cvRepository.existsBy({ hash });
-      if (existingCv) {
-        await this.jobApplicationProcessingRunRepository.update(
-          { threadId: options.threadId },
-          { status: 'skipped' },
-        );
-        return;
-      }
-
-      const jobsToProcess = await this.jobsService.fetchJobs(
+      const existingCv = await this.cvRepository.findOneBy({ hash });
+      let maxAppliedJobs = options.maxJobs;
+      let jobsToProcess = await this.jobsService.fetchJobs(
         options.linkedinEnabled,
         options.startupJobsEnabled,
       );
+      if (existingCv) {
+        const appliedJobsCount = await this.jobApplicationRepository.countBy({
+          userId,
+          cv: { id: existingCv.id },
+          evaluationResult: JobEvaluationDecision.APPLY,
+          status: 'applied',
+        });
+        maxAppliedJobs -= appliedJobsCount;
+        if (maxAppliedJobs <= 0) {
+          await this.jobApplicationProcessingRunRepository.update(
+            { threadId: options.threadId },
+            { status: 'skipped' },
+          );
+          return;
+        }
+        jobsToProcess = await this.jobsService.filterOutProcessedJobs(
+          userId,
+          existingCv.id,
+          jobsToProcess,
+        );
+        if (jobsToProcess.length === 0) {
+          await this.jobApplicationProcessingRunRepository.update(
+            { threadId: options.threadId },
+            { status: 'skipped' },
+          );
+          return;
+        }
+      }
 
       await this.initializeProcessingRun(
         userId,
@@ -134,7 +155,7 @@ export class AgentService {
         await agent.stream(
           {
             cvText: cvText,
-            maxAppliedJobs: options.maxJobs,
+            maxAppliedJobs,
             jobs: jobsToProcess,
             userId: userId,
           },
