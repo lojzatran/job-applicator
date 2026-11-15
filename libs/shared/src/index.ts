@@ -4,6 +4,7 @@ export * from './lib/entities/job.entity';
 export * from './lib/entities/job-embeddings.entity';
 export * from './lib/entities/job-application-processing-run.entity';
 export * from './lib/entities/databaseEntity.interface';
+export * from './lib/types/job-evaluation-decision';
 export * from './lib/db/datasource.config';
 export * from './lib/utils/env-utils';
 export * from './lib/utils/env';

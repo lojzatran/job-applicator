@@ -5,6 +5,7 @@ import { MemorySaver } from '@langchain/langgraph';
 import { FakeBuiltModel } from '@langchain/core/testing';
 import { JobEmbeddingsService } from '../../jobs/job-embeddings.service';
 import { EmbeddingLlmJobEvaluator } from '../job-evaluator/embedding-llm.job-evaluator';
+import { JobEvaluationDecision } from '@apps/shared';
 
 describe('LanggraphService', () => {
   let service: LanggraphService;
@@ -259,7 +260,7 @@ describe('LanggraphService', () => {
     expect(result.dismissedJobsCount).toBe(1);
   });
 
-  it('should process multiple jobs and stop when maxAppliedJobs is reached', async () => {
+  it('should process uncertain jobs without consuming the apply limit', async () => {
     const coverLetterGeneratorLlm: FakeBuiltModel = fakeModel()
       .respond(new AIMessage({ content: 'cover letter 1' }))
       .respond(new AIMessage({ content: 'cover letter 1 rewritten' }))
@@ -281,12 +282,17 @@ describe('LanggraphService', () => {
     } as unknown as CvEmbeddingsService;
 
     const checkpointer = new MemorySaver();
+    const evaluator = new EmbeddingLlmJobEvaluator(
+      jobEvaluatorLlm,
+      cvEmbeddingsService,
+      jobEmbeddingsService,
+    );
+    jest.spyOn(evaluator, 'evaluate').mockResolvedValueOnce({
+      verdict: JobEvaluationDecision.UNCERTAIN,
+      score: 0.7,
+    });
     service = new LanggraphService(
-      new EmbeddingLlmJobEvaluator(
-        jobEvaluatorLlm,
-        cvEmbeddingsService,
-        jobEmbeddingsService,
-      ),
+      evaluator,
       coverLetterGeneratorLlm,
       critiqueLlm,
       checkpointer,
@@ -319,14 +325,16 @@ describe('LanggraphService', () => {
     const result = await graph.invoke(
       {
         cvText: 'cv text',
-        maxAppliedJobs: 2, // Only apply to 2 jobs, despite passing 3
+        maxAppliedJobs: 1,
         jobs,
         userId: 'user-id',
       },
       { configurable: { thread_id: '1' } },
     );
 
-    expect(result.appliedJobsCount).toBe(2);
+    expect(result.appliedJobsCount).toBe(1);
+    expect(result.evaluatedJobsCount).toBe(2);
+    expect(result.uncertainJobsCount).toBe(1);
     expect(result.coverLetters).toHaveLength(2);
     expect(result.coverLetters[0].coverLetter).toContain(
       'cover letter 1 rewritten',
@@ -334,7 +342,7 @@ describe('LanggraphService', () => {
     expect(result.coverLetters[1].coverLetter).toContain(
       'cover letter 2 rewritten',
     );
-    expect(jobEvaluatorSpy).toHaveBeenCalledTimes(2); // Never evaluated the 3rd job
+    expect(jobEvaluatorSpy).toHaveBeenCalledTimes(1); // The third job is not evaluated.
     expect(coverLetterGeneratorLlm.callCount).toBe(4); // 2 jobs * 2 iterations
   });
 

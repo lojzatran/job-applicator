@@ -4,7 +4,11 @@ import { JobsService } from '../../jobs/jobs.service';
 import { PdfService } from '../../documents/pdf/pdf.service';
 import { LanggraphService } from './langgraph.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { JobApplication, JobApplicationProcessingRun } from '@apps/shared';
+import {
+  JobApplication,
+  JobApplicationProcessingRun,
+  JobEvaluationDecision,
+} from '@apps/shared';
 import { Repository } from 'typeorm';
 
 describe('AgentService', () => {
@@ -99,7 +103,14 @@ describe('AgentService', () => {
         job_supplier: { job: mockJobs[0], cvEntityId: 100 },
       } as StreamChunk;
       yield {
-        job_evaluator: { evaluatedJobsCount: 1, url: 'job1' },
+        job_evaluator: {
+          evaluatedJobsCount: 1,
+          uncertainJobsCount: 1,
+          dismissedJobsCount: 0,
+          evaluationResult: JobEvaluationDecision.UNCERTAIN,
+          isValidJob: true,
+          url: 'job1',
+        },
       } as StreamChunk;
       yield {
         cover_letter_generator: {
@@ -118,6 +129,17 @@ describe('AgentService', () => {
     expect(pdfService.extractTextContent).toHaveBeenCalledWith(mockFilePath);
     expect(jobsService.fetchJobs).toHaveBeenCalledWith(true, true);
     expect(processingRunRepo.save).toHaveBeenCalled();
+    expect(applicationRepo.update).toHaveBeenCalledWith(10, {
+      evaluationResult: JobEvaluationDecision.UNCERTAIN,
+    });
+    expect(processingRunRepo.update).toHaveBeenCalledWith(
+      { threadId: mockThreadId },
+      {
+        evaluatedJobApplications: 1,
+        uncertainJobApplications: 1,
+        dismissedJobApplications: 0,
+      },
+    );
 
     // Check job application creation
     expect(applicationRepo.save).toHaveBeenCalledWith(
@@ -183,7 +205,13 @@ describe('AgentService', () => {
     async function* mockStream() {
       yield { job_supplier: { job: mockJobs[0] } } as StreamChunk;
       yield {
-        job_evaluator: { dismissedJobsCount: 1, url: 'job1' },
+        job_evaluator: {
+          evaluatedJobsCount: 1,
+          dismissedJobsCount: 1,
+          isValidJob: false,
+          evaluationResult: JobEvaluationDecision.DISMISS,
+          url: 'job1',
+        },
       } as StreamChunk;
     }
 
@@ -193,11 +221,14 @@ describe('AgentService', () => {
     await service.executeAgent(mockUserId, mockFilePath, mockOptions);
 
     expect(applicationRepo.update).toHaveBeenCalledWith(10, {
+      evaluationResult: JobEvaluationDecision.DISMISS,
+    });
+    expect(applicationRepo.update).toHaveBeenCalledWith(10, {
       status: 'dismissed',
     });
     expect(processingRunRepo.update).toHaveBeenCalledWith(
       { threadId: mockThreadId },
-      { dismissedJobApplications: 1 },
+      { evaluatedJobApplications: 1, dismissedJobApplications: 1 },
     );
   });
 

@@ -28,6 +28,9 @@ export class JobApplicationProcessingRun implements DatabaseEntity {
   dismissedJobApplications!: number;
 
   @Column()
+  uncertainJobApplications!: number;
+
+  @Column()
   appliedJobApplications!: number;
 
   @Column({ unique: true })

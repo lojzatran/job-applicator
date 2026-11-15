@@ -28,6 +28,11 @@ export const ApplicationRow = ({ application, job }: ApplicationRowProps) => {
         >
           {job.title}
         </Link>
+        {application?.evaluationResult === 'uncertain' && (
+          <span className="mt-2 block text-xs font-medium text-amber-700 dark:text-amber-400">
+            Match uncertain — review the requirements
+          </span>
+        )}
       </td>
       <td className="px-6 py-6 font-medium text-slate-600 dark:text-slate-400">
         <div className="flex flex-col gap-2 min-w-max">

@@ -93,6 +93,13 @@ export default function ApplicationDetailPage({
         <main className="mx-auto min-h-screen w-full max-w-4xl px-4 py-12 font-sans sm:px-6">
           <ApplicationDetailHeader application={application} />
 
+          {application.evaluationResult === 'uncertain' && (
+            <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+              The match for this job could not be determined with confidence.
+              Please review the requirements.
+            </p>
+          )}
+
           <div className="grid gap-8 lg:grid-cols-1 mt-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <JobDescriptionSection description={application.job.description} />
             <CoverLetterSection coverLetter={application.coverLetter} />

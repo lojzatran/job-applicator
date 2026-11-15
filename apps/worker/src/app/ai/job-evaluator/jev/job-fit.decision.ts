@@ -1,9 +1,9 @@
-import type { JobEvaluation } from '../job-evaluator';
 import {
   BLOCKERS,
   type JobFitAnswers,
   type ScoreValue,
 } from './job-fit.answers';
+import { JobEvaluationDecision } from '@apps/shared';
 
 /**
  * MAX_LEVEL corresponds to the number of choices (max index) we have in the score questions.
@@ -19,16 +19,10 @@ const DISMISS_FIT = 0.6;
 const SENIORITY_GAP = 0.6;
 const TWO_PEAKS_MASS = 0.35;
 
-/**
- * How an `uncertain` decision ends up. Open product decision:
- * `dismiss` keeps the evaluation strict, like the previous LLM prompt.
- */
-export const UNCERTAIN_VERDICT: JobEvaluation['verdict'] = 'apply';
-
 export type JobFitDecision =
-  | { kind: 'apply'; fit: number }
-  | { kind: 'dismiss'; fit: number; reason: string }
-  | { kind: 'uncertain'; fit: number; reason: string };
+  | { kind: JobEvaluationDecision.APPLY; fit: number }
+  | { kind: JobEvaluationDecision.DISMISS; fit: number; reason: string }
+  | { kind: JobEvaluationDecision.UNCERTAIN; fit: number; reason: string };
 
 export function decideJobFit(answers: JobFitAnswers): JobFitDecision {
   const fit = computeFit(answers);
@@ -37,43 +31,72 @@ export function decideJobFit(answers: JobFitAnswers): JobFitDecision {
     (b) => (answers.blockers[b] ?? 0) > YES,
   );
   if (isBlockerPresent)
-    return { kind: 'dismiss', fit, reason: isBlockerPresent };
+    return {
+      kind: JobEvaluationDecision.DISMISS,
+      fit,
+      reason: isBlockerPresent,
+    };
 
   // A two-peaked answer makes the average meaningless, so it must not trigger the threshold.
   const isRoleMatchSplit = isTwoPeaked(answers.roleMatch);
   const isCoreRequirementsSplit = isTwoPeaked(answers.coreRequirements);
   if (!isRoleMatchSplit && answers.roleMatch.score < MIN_LEVEL_SCORE) {
-    return { kind: 'dismiss', fit, reason: 'role_mismatch' };
+    return {
+      kind: JobEvaluationDecision.DISMISS,
+      fit,
+      reason: 'role_mismatch',
+    };
   }
   if (
     !isCoreRequirementsSplit &&
     answers.coreRequirements.score < MIN_LEVEL_SCORE
   ) {
-    return { kind: 'dismiss', fit, reason: 'missing_core_requirements' };
+    return {
+      kind: JobEvaluationDecision.DISMISS,
+      fit,
+      reason: 'missing_core_requirements',
+    };
   }
   if (seniorityTooHigh(answers)) {
-    return { kind: 'dismiss', fit, reason: 'seniority_gap' };
+    return {
+      kind: JobEvaluationDecision.DISMISS,
+      fit,
+      reason: 'seniority_gap',
+    };
   }
 
   // A refused blocker counts as unsettled, never as "no".
   const unsettled = BLOCKERS.find((b) => (answers.blockers[b] ?? NO) >= NO);
   if (unsettled) {
-    return { kind: 'uncertain', fit, reason: `unsettled_${unsettled}` };
+    return {
+      kind: JobEvaluationDecision.UNCERTAIN,
+      fit,
+      reason: `unsettled_${unsettled}`,
+    };
   }
   if (isRoleMatchSplit) {
-    return { kind: 'uncertain', fit, reason: 'role_match_split' };
+    return {
+      kind: JobEvaluationDecision.UNCERTAIN,
+      fit,
+      reason: 'role_match_split',
+    };
   }
   if (isCoreRequirementsSplit) {
-    return { kind: 'uncertain', fit, reason: 'core_requirements_split' };
+    return {
+      kind: JobEvaluationDecision.UNCERTAIN,
+      fit,
+      reason: 'core_requirements_split',
+    };
   }
 
-  if (fit >= APPLY_FIT) return { kind: 'apply', fit };
-  if (fit < DISMISS_FIT) return { kind: 'dismiss', fit, reason: 'low_fit' };
-  return { kind: 'uncertain', fit, reason: 'borderline_fit' };
-}
-
-export function toVerdict(decision: JobFitDecision): JobEvaluation['verdict'] {
-  return decision.kind === 'uncertain' ? UNCERTAIN_VERDICT : decision.kind;
+  if (fit >= APPLY_FIT) return { kind: JobEvaluationDecision.APPLY, fit };
+  if (fit < DISMISS_FIT)
+    return { kind: JobEvaluationDecision.DISMISS, fit, reason: 'low_fit' };
+  return {
+    kind: JobEvaluationDecision.UNCERTAIN,
+    fit,
+    reason: 'borderline_fit',
+  };
 }
 
 /** 0–1. Nice-to-have only adds to the fit; jobs without it are not penalized. */

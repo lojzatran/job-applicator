@@ -8,6 +8,7 @@ import {
 import { Job } from './job.entity';
 import { Cv } from './cv.entity';
 import { DatabaseEntity } from './databaseEntity.interface';
+import { JobEvaluationDecision } from '../types/job-evaluation-decision';
 
 @Entity('job_application')
 export class JobApplication implements DatabaseEntity {
@@ -26,8 +27,16 @@ export class JobApplication implements DatabaseEntity {
   @Column({ nullable: true })
   coverLetter?: string;
 
+  @Column({
+    type: 'enum',
+    enum: JobEvaluationDecision,
+    enumName: 'job_application_evaluation_result_enum',
+    nullable: true,
+  })
+  evaluationResult?: JobEvaluationDecision | null;
+
   @Column({ nullable: true })
-  status?: 'processing' | 'applied' | 'not-applied' | 'dismissed';
+  status?: 'processing' | 'applied' | 'not-applied' | 'dismissed' | 'error';
 
   @Column({ nullable: true })
   reason?: string;

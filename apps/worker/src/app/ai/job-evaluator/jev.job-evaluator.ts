@@ -7,7 +7,7 @@ import type { CvInput, JobEvaluation, JobEvaluator } from './job-evaluator';
 import { JOB_FIT_QUESTIONS } from './jev/job-fit.questions';
 import { buildJobFitState } from './jev/job-fit.state';
 import { toJobFitAnswers } from './jev/job-fit.answers';
-import { decideJobFit, toVerdict } from './jev/job-fit.decision';
+import { decideJobFit } from './jev/job-fit.decision';
 
 /**
  * Job evaluation with System One model (OpenAI Decisions API).
@@ -41,6 +41,6 @@ export class JevJobEvaluator implements JobEvaluator {
     const decision = decideJobFit(toJobFitAnswers(answers));
     this.logger.info({ decision }, `Jev decision for ${job.title}`);
 
-    return { verdict: toVerdict(decision), score: decision.fit };
+    return { verdict: decision.kind, score: decision.fit };
   }
 }

@@ -1,10 +1,5 @@
 import type { JobFitAnswers } from './job-fit.answers';
-import {
-  computeFit,
-  decideJobFit,
-  toVerdict,
-  UNCERTAIN_VERDICT,
-} from './job-fit.decision';
+import { computeFit, decideJobFit } from './job-fit.decision';
 
 function answers(overrides: Partial<JobFitAnswers> = {}): JobFitAnswers {
   return {
@@ -159,15 +154,6 @@ describe('decideJobFit', () => {
         }),
       ),
     ).toMatchObject({ kind: 'dismiss', reason: 'low_fit' });
-  });
-});
-
-describe('toVerdict', () => {
-  it('maps uncertain to the configured verdict', () => {
-    expect(toVerdict({ kind: 'uncertain', fit: 0.7, reason: 'x' })).toBe(
-      UNCERTAIN_VERDICT,
-    );
-    expect(toVerdict({ kind: 'apply', fit: 0.9 })).toBe('apply');
   });
 });
 

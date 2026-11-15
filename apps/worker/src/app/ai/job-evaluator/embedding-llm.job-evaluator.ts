@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { PromptTemplate } from '@langchain/core/prompts';
 import { z } from 'zod';
-import { createLogger } from '@apps/shared';
+import { createLogger, JobEvaluationDecision } from '@apps/shared';
 import { JOB_EVALUATOR_LLM } from '../ai.constants';
 import { CvEmbeddingsService } from '../../cv/embeddings/cv-summary-embeddings.service';
 import { JobEmbeddingsService } from '../../jobs/job-embeddings.service';
@@ -37,10 +37,15 @@ export class EmbeddingLlmJobEvaluator implements JobEvaluator {
 
     if (score > THRESHOLD) {
       const isValidJob = await this.evaluateByLlm(cv.text, job);
-      return { verdict: isValidJob ? 'apply' : 'dismiss', score };
+      return {
+        verdict: isValidJob
+          ? JobEvaluationDecision.APPLY
+          : JobEvaluationDecision.DISMISS,
+        score,
+      };
     }
 
-    return { verdict: 'dismiss', score };
+    return { verdict: JobEvaluationDecision.DISMISS, score };
   }
 
   private async loadJobEmbeddings(job: Job) {

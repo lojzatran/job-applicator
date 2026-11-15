@@ -12,5 +12,6 @@ export interface JobApplicationProcessingRun {
   totalJobs: number;
   evaluatedJobApplications: number;
   dismissedJobApplications: number;
+  uncertainJobApplications: number;
   appliedJobApplications: number;
 }

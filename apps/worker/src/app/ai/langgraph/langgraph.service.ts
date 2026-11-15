@@ -1,10 +1,10 @@
 import {
-  StateGraph,
-  END,
-  START,
-  CompiledStateGraph,
   Annotation,
   BaseCheckpointSaver,
+  CompiledStateGraph,
+  END,
+  START,
+  StateGraph,
 } from '@langchain/langgraph';
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { JobSchema } from '../../jobs/types';
@@ -17,7 +17,7 @@ import {
   CRITIQUE_LLM,
   JOB_EVALUATOR,
 } from '../ai.constants';
-import { createLogger } from '@apps/shared';
+import { createLogger, JobEvaluationDecision } from '@apps/shared';
 import type { JobEvaluator } from '../job-evaluator/job-evaluator';
 
 interface CoverLetterEntry {
@@ -26,6 +26,7 @@ interface CoverLetterEntry {
 
 const AgentStateAnnotation = Annotation.Root({
   isValidJob: Annotation<boolean | undefined>,
+  evaluationResult: Annotation<JobEvaluationDecision | undefined>,
   job: Annotation<z.infer<typeof JobSchema> | undefined>,
   maxAppliedJobs: Annotation<number>,
   appliedJobsCount: Annotation<number>({
@@ -34,6 +35,10 @@ const AgentStateAnnotation = Annotation.Root({
   }),
   url: Annotation<string | null>,
   evaluatedJobsCount: Annotation<number>({
+    reducer: (curr, next) => next,
+    default: () => 0,
+  }),
+  uncertainJobsCount: Annotation<number>({
     reducer: (curr, next) => next,
     default: () => 0,
   }),
@@ -127,11 +132,17 @@ export class LanggraphService {
       this.logger.info(
         `Job evaluation for ${state.job?.title}: ${verdict} (score ${score})`,
       );
-      const isValidJob = verdict === 'apply';
+      const isValidJob =
+        verdict === JobEvaluationDecision.APPLY ||
+        verdict === JobEvaluationDecision.UNCERTAIN;
+
+      const isUncertainJob = verdict === JobEvaluationDecision.UNCERTAIN;
       return {
         isValidJob,
-        url: isValidJob ? null : state.job?.url,
+        evaluationResult: verdict,
+        url: state.job?.url,
         evaluatedJobsCount: state.evaluatedJobsCount + 1,
+        uncertainJobsCount: state.uncertainJobsCount + (isUncertainJob ? 1 : 0),
         dismissedJobsCount: state.dismissedJobsCount + (isValidJob ? 0 : 1),
       };
     } catch (error) {
@@ -161,7 +172,9 @@ export class LanggraphService {
     });
     this.logger.debug(`Applied jobs count: ${state.appliedJobsCount}`);
     return {
-      appliedJobsCount: state.appliedJobsCount + 1,
+      appliedJobsCount:
+        state.appliedJobsCount +
+        (state.evaluationResult === JobEvaluationDecision.APPLY ? 1 : 0),
       url: state.job!.url,
       coverLetters: [
         {
@@ -175,6 +188,7 @@ export class LanggraphService {
     return {
       job: undefined,
       isValidJob: undefined,
+      evaluationResult: undefined,
     };
   }
 

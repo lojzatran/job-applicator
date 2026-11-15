@@ -7,6 +7,7 @@ import {
   Job,
   JobApplication,
   JobApplicationProcessingRun,
+  JobEvaluationDecision,
 } from '@apps/shared';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -23,8 +24,10 @@ export interface StreamChunk {
   };
   job_evaluator?: {
     isValidJob?: boolean;
+    evaluationResult?: JobEvaluationDecision;
     url: string;
     evaluatedJobsCount?: number;
+    uncertainJobsCount?: number;
     dismissedJobsCount?: number;
   };
   cover_letter_generator?: {
@@ -59,6 +62,7 @@ export class AgentService {
       totalJobs,
       evaluatedJobApplications: 0,
       dismissedJobApplications: 0,
+      uncertainJobApplications: 0,
       appliedJobApplications: 0,
     } as JobApplicationProcessingRun;
 
@@ -240,37 +244,62 @@ export class AgentService {
       userId: string;
     },
   ) {
+    const counters: Partial<JobApplicationProcessingRun> = {};
     if (chunk.job_evaluator?.evaluatedJobsCount !== undefined) {
+      if (
+        chunk.job_evaluator.url &&
+        chunk.job_evaluator.evaluationResult !== undefined
+      ) {
+        const application = await this.jobApplicationRepository.findOne({
+          where: {
+            job: { url: chunk.job_evaluator.url },
+            userId: options.userId,
+          },
+        });
+        if (application) {
+          await this.jobApplicationRepository.update(application.id, {
+            evaluationResult: chunk.job_evaluator.evaluationResult,
+          });
+        }
+      }
       this.logger.debug(
         'Evaluated Jobs Count: ' + chunk.job_evaluator.evaluatedJobsCount,
       );
-      await this.jobApplicationProcessingRunRepository.update(
-        { threadId: options.threadId },
-        {
-          evaluatedJobApplications: chunk.job_evaluator.evaluatedJobsCount,
-        },
+      counters.evaluatedJobApplications =
+        chunk.job_evaluator.evaluatedJobsCount;
+    }
+    if (chunk.job_evaluator?.uncertainJobsCount !== undefined) {
+      this.logger.debug(
+        'Uncertain Jobs Count: ' + chunk.job_evaluator.uncertainJobsCount,
       );
+      counters.uncertainJobApplications =
+        chunk.job_evaluator.uncertainJobsCount;
     }
     if (chunk.job_evaluator?.dismissedJobsCount !== undefined) {
       this.logger.debug(
         'Dismissed Jobs Count: ' + chunk.job_evaluator.dismissedJobsCount,
       );
-      const applicationToDismiss = await this.jobApplicationRepository.findOne({
-        where: {
-          job: { url: chunk.job_evaluator.url },
-          userId: options.userId,
-        },
-      });
-      if (applicationToDismiss) {
-        await this.jobApplicationRepository.update(applicationToDismiss.id, {
-          status: 'dismissed',
-        });
+      if (chunk.job_evaluator.isValidJob === false && chunk.job_evaluator.url) {
+        const applicationToDismiss =
+          await this.jobApplicationRepository.findOne({
+            where: {
+              job: { url: chunk.job_evaluator.url },
+              userId: options.userId,
+            },
+          });
+        if (applicationToDismiss) {
+          await this.jobApplicationRepository.update(applicationToDismiss.id, {
+            status: 'dismissed',
+          });
+        }
       }
+      counters.dismissedJobApplications =
+        chunk.job_evaluator.dismissedJobsCount;
+    }
+    if (Object.keys(counters).length > 0) {
       await this.jobApplicationProcessingRunRepository.update(
         { threadId: options.threadId },
-        {
-          dismissedJobApplications: chunk.job_evaluator.dismissedJobsCount,
-        },
+        counters,
       );
     }
   }

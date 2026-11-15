@@ -28,6 +28,7 @@ beforeEach(() => {
     totalJobs: 0,
     evaluatedJobApplications: 0,
     dismissedJobApplications: 0,
+    uncertainJobApplications: 0,
     appliedJobApplications: 0,
   };
   useProcessingRun.mockImplementation(() => ({

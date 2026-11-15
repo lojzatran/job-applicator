@@ -1,7 +1,10 @@
+import type { JobEvaluationDecision } from '@apps/shared';
+
 export interface JobApplication {
   id: number;
   job: Job;
   coverLetter?: string;
+  evaluationResult?: JobEvaluationDecision | null;
   createdAt: string;
   status?: 'processing' | 'applied' | 'not-applied' | 'dismissed';
 }

@@ -3,6 +3,7 @@ interface ProcessingMetricsProps {
     evaluatedJobApplications: number;
     appliedJobApplications: number;
     dismissedJobApplications: number;
+    uncertainJobApplications: number;
   };
 }
 
@@ -10,12 +11,19 @@ export const ProcessingMetrics = ({
   jobProcessingRun,
 }: ProcessingMetricsProps) => {
   return (
-    <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-4 duration-700">
+    <div className="flex flex-wrap justify-end items-center gap-2 animate-in fade-in slide-in-from-right-4 duration-700">
       {/* Evaluated */}
       <div className="flex items-center gap-1.5 rounded-xl bg-blue-50/50 px-3 py-1.5 text-[0.75rem] font-bold text-blue-700 border border-blue-100/50 dark:bg-blue-500/5 dark:text-blue-400 dark:border-blue-500/10">
         <span className="opacity-60 uppercase tracking-tight">Evaluated</span>
         <span className="bg-blue-100 dark:bg-blue-500/20 px-1.5 py-0.5 rounded-md min-w-[1.25rem] text-center">
           {jobProcessingRun.evaluatedJobApplications}
+        </span>
+      </div>
+
+      <div className="flex items-center gap-1.5 rounded-xl bg-amber-50/50 px-3 py-1.5 text-[0.75rem] font-bold text-amber-700 border border-amber-100/50 dark:bg-amber-500/5 dark:text-amber-400 dark:border-amber-500/10">
+        <span className="opacity-60 uppercase tracking-tight">Uncertain</span>
+        <span className="bg-amber-100 dark:bg-amber-500/20 px-1.5 py-0.5 rounded-md min-w-[1.25rem] text-center">
+          {jobProcessingRun.uncertainJobApplications}
         </span>
       </div>
 

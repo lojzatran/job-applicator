@@ -1,7 +1,8 @@
 import type { Job } from '../../jobs/types';
+import type { JobEvaluationDecision } from '@apps/shared';
 
 export interface JobEvaluation {
-  verdict: 'apply' | 'dismiss';
+  verdict: JobEvaluationDecision;
   /** Higher means a better match. Comparable only within one implementation. */
   score: number;
 }
