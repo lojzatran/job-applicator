@@ -4,7 +4,7 @@ import { CvEmbeddingsService } from '../../cv/embeddings/cv-summary-embeddings.s
 import { MemorySaver } from '@langchain/langgraph';
 import { FakeBuiltModel } from '@langchain/core/testing';
 import { JobEmbeddingsService } from '../../jobs/job-embeddings.service';
-import { EmbeddingLlmJobEvaluator } from '../job-evaluator/embedding-llm.job-evaluator';
+import { EmbeddingJobEvaluator } from '../job-evaluator/embedding-job.evaluator';
 import { JobEvaluationDecision } from '@apps/shared';
 
 describe('LanggraphService', () => {
@@ -25,9 +25,6 @@ describe('LanggraphService', () => {
     const critiqueLlm: FakeBuiltModel = fakeModel().respond(
       new AIMessage({ content: 'critique content 1' }),
     );
-    const jobEvaluatorLlm: FakeBuiltModel = fakeModel().structuredResponse({
-      isValidJob: true,
-    });
     const cvEmbeddingsService: CvEmbeddingsService = {
       ensureCvAndEmbeddings: jest.fn(() => 'cv-id'),
       createEmbeddingsForJobDescription: jest.fn(async () => [
@@ -41,11 +38,7 @@ describe('LanggraphService', () => {
 
     const checkpointer = new MemorySaver();
     service = new LanggraphService(
-      new EmbeddingLlmJobEvaluator(
-        jobEvaluatorLlm,
-        cvEmbeddingsService,
-        jobEmbeddingsService,
-      ),
+      new EmbeddingJobEvaluator(cvEmbeddingsService, jobEmbeddingsService),
       coverLetterGeneratorLlm,
       critiqueLlm,
       checkpointer,
@@ -57,7 +50,6 @@ describe('LanggraphService', () => {
       description: 'Software Engineer',
       companyName: 'Company',
     };
-    const jobEvaluatorSpy = jest.spyOn(jobEvaluatorLlm, 'withStructuredOutput');
     const graph = await service.build();
     const result = await graph.invoke(
       {
@@ -74,7 +66,6 @@ describe('LanggraphService', () => {
     expect(result.coverLetters[0].coverLetter).toBe('cover letter content 2');
     expect(critiqueLlm.callCount).toBe(1);
     expect(coverLetterGeneratorLlm.callCount).toBe(2);
-    expect(jobEvaluatorSpy).toHaveBeenCalledTimes(1);
     expect(jobEmbeddingsService.ensureJobEmbeddings).toHaveBeenCalledWith(job);
     expect(jobEmbeddingsService.getJobEmbeddings).toHaveBeenCalledWith(job);
     expect(
@@ -82,16 +73,13 @@ describe('LanggraphService', () => {
     ).not.toHaveBeenCalled();
   });
 
-  it('should skip llm calls for the first job if it is not passing embedding matching', async () => {
+  it('should dismiss the first job when its embedding score is below the threshold', async () => {
     const coverLetterGeneratorLlm: FakeBuiltModel = fakeModel()
       .respond(new AIMessage({ content: 'cover letter content 1' }))
       .respond(new AIMessage({ content: 'cover letter content 2' }));
     const critiqueLlm: FakeBuiltModel = fakeModel().respond(
       new AIMessage({ content: 'critique content 1' }),
     );
-    const jobEvaluatorLlm: FakeBuiltModel = fakeModel().structuredResponse({
-      isValidJob: true,
-    });
     const cvEmbeddingsService: CvEmbeddingsService = {
       ensureCvAndEmbeddings: jest.fn(() => 'cv-id'),
       createEmbeddingsForJobDescription: jest.fn(async () => []),
@@ -104,11 +92,7 @@ describe('LanggraphService', () => {
 
     const checkpointer = new MemorySaver();
     service = new LanggraphService(
-      new EmbeddingLlmJobEvaluator(
-        jobEvaluatorLlm,
-        cvEmbeddingsService,
-        jobEmbeddingsService,
-      ),
+      new EmbeddingJobEvaluator(cvEmbeddingsService, jobEmbeddingsService),
       coverLetterGeneratorLlm,
       critiqueLlm,
       checkpointer,
@@ -128,7 +112,6 @@ describe('LanggraphService', () => {
         companyName: 'Company',
       },
     ];
-    const jobEvaluatorSpy = jest.spyOn(jobEvaluatorLlm, 'withStructuredOutput');
     const graph = await service.build();
     const result = await graph.invoke(
       {
@@ -145,7 +128,7 @@ describe('LanggraphService', () => {
     expect(result.coverLetters[0].coverLetter).toBe('cover letter content 2');
     expect(critiqueLlm.callCount).toBe(1);
     expect(coverLetterGeneratorLlm.callCount).toBe(2);
-    expect(jobEvaluatorSpy).toHaveBeenCalledTimes(1);
+    expect(result.dismissedJobsCount).toBe(1);
     expect(
       cvEmbeddingsService.createEmbeddingsForJobDescription,
     ).not.toHaveBeenCalled();
@@ -153,27 +136,19 @@ describe('LanggraphService', () => {
     expect(jobEmbeddingsService.getJobEmbeddings).toHaveBeenCalledTimes(2);
   });
 
-  it('should skip cover letter generation if LLM evaluates job as invalid', async () => {
+  it('should skip cover letter generation at the embedding threshold', async () => {
     const coverLetterGeneratorLlm: FakeBuiltModel = fakeModel();
     const critiqueLlm: FakeBuiltModel = fakeModel();
-
-    const jobEvaluatorLlm: FakeBuiltModel = fakeModel().structuredResponse({
-      isValidJob: false, // LLM rejects the job
-    });
 
     const cvEmbeddingsService: CvEmbeddingsService = {
       ensureCvAndEmbeddings: jest.fn(() => 'cv-id'),
       createEmbeddingsForJobDescription: jest.fn(async () => []),
-      getJobAndCvMatchingScore: jest.fn(async () => 1), // Passing score
+      getJobAndCvMatchingScore: jest.fn(async () => 0.9),
     } as unknown as CvEmbeddingsService;
 
     const checkpointer = new MemorySaver();
     service = new LanggraphService(
-      new EmbeddingLlmJobEvaluator(
-        jobEvaluatorLlm,
-        cvEmbeddingsService,
-        jobEmbeddingsService,
-      ),
+      new EmbeddingJobEvaluator(cvEmbeddingsService, jobEmbeddingsService),
       coverLetterGeneratorLlm,
       critiqueLlm,
       checkpointer,
@@ -186,7 +161,6 @@ describe('LanggraphService', () => {
       companyName: 'Company',
     };
 
-    const jobEvaluatorSpy = jest.spyOn(jobEvaluatorLlm, 'withStructuredOutput');
     const graph = await service.build();
 
     const result = await graph.invoke(
@@ -201,35 +175,24 @@ describe('LanggraphService', () => {
 
     expect(result.coverLetters).toBeDefined();
     expect(result.coverLetters).toHaveLength(0); // No cover letters generated
-    expect(jobEvaluatorSpy).toHaveBeenCalledTimes(1);
     expect(coverLetterGeneratorLlm.callCount).toBe(0);
   });
 
-  it('should handle LLM evaluation error gracefully and skip the job', async () => {
+  it('should handle an embedding evaluation error and skip the job', async () => {
     const coverLetterGeneratorLlm: FakeBuiltModel = fakeModel();
     const critiqueLlm: FakeBuiltModel = fakeModel();
-
-    // Mock the job evaluator to throw an error
-    const jobEvaluatorLlm: FakeBuiltModel = fakeModel();
-    const jobEvaluatorSpy = jest
-      .spyOn(jobEvaluatorLlm, 'withStructuredOutput')
-      .mockReturnValue({
-        invoke: jest.fn().mockRejectedValue(new Error('LLM Error')),
-      } as any);
 
     const cvEmbeddingsService: CvEmbeddingsService = {
       ensureCvAndEmbeddings: jest.fn(() => 'cv-id'),
       createEmbeddingsForJobDescription: jest.fn(async () => []),
-      getJobAndCvMatchingScore: jest.fn(async () => 1),
+      getJobAndCvMatchingScore: jest
+        .fn()
+        .mockRejectedValue(new Error('Embedding score error')),
     } as unknown as CvEmbeddingsService;
 
     const checkpointer = new MemorySaver();
     service = new LanggraphService(
-      new EmbeddingLlmJobEvaluator(
-        jobEvaluatorLlm,
-        cvEmbeddingsService,
-        jobEmbeddingsService,
-      ),
+      new EmbeddingJobEvaluator(cvEmbeddingsService, jobEmbeddingsService),
       coverLetterGeneratorLlm,
       critiqueLlm,
       checkpointer,
@@ -255,7 +218,9 @@ describe('LanggraphService', () => {
     );
 
     expect(result.coverLetters).toHaveLength(0);
-    expect(jobEvaluatorSpy).toHaveBeenCalledTimes(1);
+    expect(cvEmbeddingsService.getJobAndCvMatchingScore).toHaveBeenCalledTimes(
+      1,
+    );
     expect(coverLetterGeneratorLlm.callCount).toBe(0);
     expect(result.dismissedJobsCount).toBe(1);
   });
@@ -271,10 +236,6 @@ describe('LanggraphService', () => {
       .respond(new AIMessage({ content: 'critique 1' }))
       .respond(new AIMessage({ content: 'critique 2' }));
 
-    const jobEvaluatorLlm: FakeBuiltModel = fakeModel().structuredResponse({
-      isValidJob: true,
-    });
-
     const cvEmbeddingsService: CvEmbeddingsService = {
       ensureCvAndEmbeddings: jest.fn(() => 'cv-id'),
       createEmbeddingsForJobDescription: jest.fn(async () => []),
@@ -282,8 +243,7 @@ describe('LanggraphService', () => {
     } as unknown as CvEmbeddingsService;
 
     const checkpointer = new MemorySaver();
-    const evaluator = new EmbeddingLlmJobEvaluator(
-      jobEvaluatorLlm,
+    const evaluator = new EmbeddingJobEvaluator(
       cvEmbeddingsService,
       jobEmbeddingsService,
     );
@@ -319,7 +279,6 @@ describe('LanggraphService', () => {
       },
     ];
 
-    const jobEvaluatorSpy = jest.spyOn(jobEvaluatorLlm, 'withStructuredOutput');
     const graph = await service.build();
 
     const result = await graph.invoke(
@@ -342,7 +301,9 @@ describe('LanggraphService', () => {
     expect(result.coverLetters[1].coverLetter).toContain(
       'cover letter 2 rewritten',
     );
-    expect(jobEvaluatorSpy).toHaveBeenCalledTimes(1); // The third job is not evaluated.
+    expect(cvEmbeddingsService.getJobAndCvMatchingScore).toHaveBeenCalledTimes(
+      1,
+    );
     expect(coverLetterGeneratorLlm.callCount).toBe(4); // 2 jobs * 2 iterations
   });
 
@@ -356,10 +317,6 @@ describe('LanggraphService', () => {
       new AIMessage({ content: 'critique content 1' }),
     );
 
-    const jobEvaluatorLlm: FakeBuiltModel = fakeModel().structuredResponse({
-      isValidJob: true,
-    });
-
     const cvEmbeddingsService: CvEmbeddingsService = {
       ensureCvAndEmbeddings: jest.fn(() => 'cv-id'),
       createEmbeddingsForJobDescription: jest.fn(async () => []),
@@ -368,11 +325,7 @@ describe('LanggraphService', () => {
 
     const checkpointer = new MemorySaver();
     service = new LanggraphService(
-      new EmbeddingLlmJobEvaluator(
-        jobEvaluatorLlm,
-        cvEmbeddingsService,
-        jobEmbeddingsService,
-      ),
+      new EmbeddingJobEvaluator(cvEmbeddingsService, jobEmbeddingsService),
       coverLetterGeneratorLlm,
       critiqueLlm,
       checkpointer,
@@ -416,10 +369,6 @@ describe('LanggraphService', () => {
       .respond(new Error('LLM Error during critique')) // 1st critique attempt throws error
       .respond(new AIMessage({ content: 'critique content 1' })); // Retry works
 
-    const jobEvaluatorLlm: FakeBuiltModel = fakeModel().structuredResponse({
-      isValidJob: true,
-    });
-
     const cvEmbeddingsService: CvEmbeddingsService = {
       ensureCvAndEmbeddings: jest.fn(() => 'cv-id'),
       createEmbeddingsForJobDescription: jest.fn(async () => []),
@@ -428,11 +377,7 @@ describe('LanggraphService', () => {
 
     const checkpointer = new MemorySaver();
     service = new LanggraphService(
-      new EmbeddingLlmJobEvaluator(
-        jobEvaluatorLlm,
-        cvEmbeddingsService,
-        jobEmbeddingsService,
-      ),
+      new EmbeddingJobEvaluator(cvEmbeddingsService, jobEmbeddingsService),
       coverLetterGeneratorLlm,
       critiqueLlm,
       checkpointer,

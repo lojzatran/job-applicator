@@ -1,4 +1,3 @@
-import { ChatOllama } from '@langchain/ollama';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import {
   COVER_LETTER_GENERATOR_LLM,
@@ -9,18 +8,14 @@ import {
 import { env } from '../../../utils/env';
 import { ChatOpenAI } from '@langchain/openai';
 
-function createOllamaHeaders(): Record<string, string> {
-  return env.OLLAMA_API_KEY
-    ? { Authorization: `Bearer ${env.OLLAMA_API_KEY}` }
-    : {};
-}
-
-function createOllamaLlm(model: string, temperature: number): ChatOllama {
-  return new ChatOllama({
+function createOllamaLlm(model: string, temperature: number): ChatOpenAI {
+  return new ChatOpenAI({
     model,
-    baseUrl: env.OLLAMA_BASE_URL,
-    headers: createOllamaHeaders(),
     temperature,
+    apiKey: env.OLLAMA_API_KEY || 'ollama',
+    configuration: {
+      baseURL: env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434/v1',
+    },
   });
 }
 

@@ -16,8 +16,10 @@ import { createLogger } from '@apps/shared';
 import type { z } from 'zod';
 import { CvService } from '../cv.service';
 
+type ParsedCv = z.infer<typeof CvSchema>;
+
 interface CvEmbeddingResult {
-  parsedCv: z.infer<typeof CvSchema>;
+  parsedCv: ParsedCv;
   embeddings: WeightedEmbedding[];
 }
 
@@ -43,12 +45,17 @@ export class CvEmbeddingsService {
   }
 
   async createWeightedEmbeddingsForCv(
-    cvText: string,
+    cvEntity: Cv,
   ): Promise<CvEmbeddingResult> {
-    const parsedCv = await this.cvService.parseCv(cvText);
+    const parsedCv =
+      this.getStoredParsedCv(cvEntity) ??
+      (await this.cvService.parseCv(cvEntity.rawText));
     return {
       parsedCv,
-      embeddings: await this.createWeightedEmbeddings(parsedCv, cvText),
+      embeddings: await this.createWeightedEmbeddings(
+        parsedCv,
+        cvEntity.rawText,
+      ),
     };
   }
 
@@ -214,10 +221,10 @@ export class CvEmbeddingsService {
     );
   }
 
-  private async ensureCvEmbeddings(
+  async ensureCvEmbeddings(
     manager: EntityManager,
     cvEntity: Cv,
-    modelName: string = this.embeddingModel.modelName,
+    modelName: string,
   ): Promise<void> {
     const existingEmbeddings =
       await this.cvEmbeddingsRepository.fetchCvEmbeddings(
@@ -231,9 +238,11 @@ export class CvEmbeddingsService {
     }
 
     const { embeddings: cvEmbedding, parsedCv } =
-      await this.createWeightedEmbeddingsForCv(cvEntity.rawText);
+      await this.createWeightedEmbeddingsForCv(cvEntity);
 
-    await manager.update(Cv, cvEntity.id, parsedCv);
+    if (!cvEntity.skills) {
+      await manager.update(Cv, cvEntity.id, parsedCv);
+    }
 
     const embeddings = cvEmbedding.map((embedding) => {
       return {
@@ -246,6 +255,21 @@ export class CvEmbeddingsService {
     });
 
     await this.cvEmbeddingsRepository.insertCvEmbeddings(embeddings, manager);
+  }
+
+  private getStoredParsedCv(cvEntity: Cv): ParsedCv | undefined {
+    if (!cvEntity.skills) {
+      return undefined;
+    }
+
+    return {
+      summary: cvEntity.summary ?? '',
+      skills: cvEntity.skills,
+      experience: cvEntity.experience ?? [],
+      projects: cvEntity.projects ?? [],
+      education: cvEntity.education ?? [],
+      other: cvEntity.other ?? [],
+    };
   }
 
   async ensureCvAndEmbeddings(

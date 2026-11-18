@@ -13,11 +13,14 @@ describe('CvEmbeddingsService', () => {
     jest.restoreAllMocks();
   });
 
-  it('persists parsed CV fields and embeddings in the same transaction', async () => {
+  it.each([
+    { source: 'raw text', stored: false },
+    { source: 'stored sections', stored: true },
+  ])('persists CV embeddings from $source', async ({ stored }) => {
     const cvText = 'TypeScript developer';
     const parsedCv = {
-      summary: cvText,
-      skills: ['TypeScript'],
+      summary: 'Developer profile',
+      skills: [],
       experience: ['Acme - Developer: Built APIs.'],
       projects: [],
       education: [],
@@ -35,7 +38,11 @@ describe('CvEmbeddingsService', () => {
     } as unknown as EmbeddingsWrapper;
     const manager = {
       getRepository: jest.fn().mockReturnValue({
-        findOne: jest.fn().mockResolvedValue({ id: 1, rawText: cvText }),
+        findOne: jest.fn().mockResolvedValue({
+          id: 1,
+          rawText: cvText,
+          ...(stored ? parsedCv : { skills: null }),
+        }),
       }),
       update: jest.fn().mockResolvedValue({ affected: 1 }),
     };
@@ -53,8 +60,15 @@ describe('CvEmbeddingsService', () => {
 
     await expect(service.ensureCvAndEmbeddings(cvText)).resolves.toBe(1);
 
-    expect(parseCv).toHaveBeenCalledTimes(1);
-    expect(manager.update).toHaveBeenCalledWith(Cv, 1, parsedCv);
+    expect(parseCv).toHaveBeenCalledTimes(stored ? 0 : 1);
+    if (stored) {
+      expect(manager.update).not.toHaveBeenCalled();
+    } else {
+      expect(manager.update).toHaveBeenCalledWith(Cv, 1, parsedCv);
+    }
+    expect(embeddingModel.embedDocuments).toHaveBeenCalledWith([
+      'summary: Developer profile',
+    ]);
     expect(repository.insertCvEmbeddings).toHaveBeenCalledWith(
       expect.arrayContaining([
         expect.objectContaining({

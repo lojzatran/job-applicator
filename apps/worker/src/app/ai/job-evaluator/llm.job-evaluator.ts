@@ -1,56 +1,41 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { PromptTemplate } from '@langchain/core/prompts';
+import { DataSource } from 'typeorm';
 import { z } from 'zod';
 import { createLogger, JobEvaluationDecision } from '@apps/shared';
 import { JOB_EVALUATOR_LLM } from '../ai.constants';
-import { CvEmbeddingsService } from '../../cv/embeddings/cv-summary-embeddings.service';
-import { JobEmbeddingsService } from '../../jobs/job-embeddings.service';
+import { CvService } from '../../cv/cv.service';
 import type { Job } from '../../jobs/types';
 import type { CvInput, JobEvaluation, JobEvaluator } from './job-evaluator';
 
-const THRESHOLD = 0.9;
-
 @Injectable()
-export class EmbeddingLlmJobEvaluator implements JobEvaluator {
-  private readonly logger = createLogger(EmbeddingLlmJobEvaluator.name);
+export class LlmJobEvaluator implements JobEvaluator {
+  private readonly logger = createLogger(LlmJobEvaluator.name);
 
   constructor(
     @Inject(JOB_EVALUATOR_LLM)
     private readonly jobEvaluatorLlm: BaseChatModel,
-    private readonly cvEmbeddingsService: CvEmbeddingsService,
-    private readonly jobEmbeddingsService: JobEmbeddingsService,
+    private readonly cvService: CvService,
+    private readonly dataSource: DataSource,
   ) {}
 
-  prepareCv(cvText: string): Promise<number> {
-    return this.cvEmbeddingsService.ensureCvAndEmbeddings(cvText);
+  async prepareCv(cvText: string): Promise<number> {
+    const { id } = await this.cvService.ensureCvEntity(
+      this.dataSource.manager,
+      cvText,
+    );
+    return id;
   }
 
   async evaluate(cv: CvInput, job: Job): Promise<JobEvaluation> {
-    const jobDescriptionEmbedding = await this.loadJobEmbeddings(job);
-    const score = await this.cvEmbeddingsService.getJobAndCvMatchingScore(
-      cv.entityId,
-      jobDescriptionEmbedding,
-    );
-
-    this.logger.info(`Job score for ${job.title}: ${score}`);
-
-    if (score > THRESHOLD) {
-      const isValidJob = await this.evaluateByLlm(cv.text, job);
-      return {
-        verdict: isValidJob
-          ? JobEvaluationDecision.APPLY
-          : JobEvaluationDecision.DISMISS,
-        score,
-      };
-    }
-
-    return { verdict: JobEvaluationDecision.DISMISS, score };
-  }
-
-  private async loadJobEmbeddings(job: Job) {
-    await this.jobEmbeddingsService.ensureJobEmbeddings(job);
-    return this.jobEmbeddingsService.getJobEmbeddings(job);
+    const isValidJob = await this.evaluateByLlm(cv.text, job);
+    return {
+      verdict: isValidJob
+        ? JobEvaluationDecision.APPLY
+        : JobEvaluationDecision.DISMISS,
+      score: isValidJob ? 1 : 0,
+    };
   }
 
   private async evaluateByLlm(cvText: string, job: Job): Promise<boolean> {

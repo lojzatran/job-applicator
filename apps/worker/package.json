@@ -80,13 +80,10 @@
   "dependencies": {
     "@apps/shared": "*",
     "@langchain/classic": "^1.0.25",
-    "@langchain/cohere": "^1.0.4",
-    "@langchain/community": "^1.1.25",
     "@langchain/core": "^1.1.44",
     "@langchain/google-genai": "^2.1.26",
     "@langchain/langgraph": "^1.3.0",
     "@langchain/langgraph-checkpoint-postgres": "^1.0.1",
-    "@langchain/ollama": "^1.2.6",
     "@langchain/openai": "^1.8.2",
     "@langchain/textsplitters": "^1.0.1",
     "@nestjs/common": "^11.0.0",
