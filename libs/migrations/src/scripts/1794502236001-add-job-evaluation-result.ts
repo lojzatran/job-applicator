@@ -3,7 +3,13 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 export class AddJobEvaluationResult1794502236001 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `CREATE TYPE "job_application_evaluation_result_enum" AS ENUM ('apply', 'uncertain', 'dismiss')`,
+      `DO $$
+      BEGIN
+        IF to_regtype('public.job_application_evaluation_result_enum') IS NULL THEN
+          CREATE TYPE "job_application_evaluation_result_enum" AS ENUM ('apply', 'uncertain', 'dismiss');
+        END IF;
+      END
+      $$`,
     );
     await queryRunner.query(
       `ALTER TABLE "job_application" ADD COLUMN "evaluationResult" "job_application_evaluation_result_enum"`,
