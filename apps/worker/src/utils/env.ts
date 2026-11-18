@@ -12,6 +12,12 @@ const appEnvSchema = z.object({
   JOB_EVALUATOR_METHOD: z
     .enum(['embedding_llm', 'jev'])
     .default('embedding_llm'),
+  JOB_EVALUATOR_EMBEDDING_THRESHOLD: z
+    .string()
+    .trim()
+    .min(1)
+    .default('0.9')
+    .pipe(z.coerce.number().finite()),
   JOB_EVALUATOR_PROVIDER: z.enum(['gemini', 'ollama', 'ai_gateway']).optional(),
   CV_PARSER_PROVIDER: z.enum(['gemini', 'ollama', 'ai_gateway']).optional(),
   COVER_LETTER_GENERATOR_PROVIDER: z.enum(['ollama', 'ai_gateway']).optional(),
@@ -24,6 +30,11 @@ const appEnvSchema = z.object({
   AI_GATEWAY_CV_PARSER_MODEL: z.string().optional(),
   AI_GATEWAY_DECISION_MODEL: z.string().optional(),
   AI_GATEWAY_EMBEDDING_MODEL: z.string().optional(),
+  AI_GATEWAY_EMBEDDING_DIMENSIONS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .optional(),
   GEMINI_API_KEY: z.string().optional(),
   OLLAMA_BASE_URL: z.string().optional(),
   OLLAMA_API_KEY: z.string().optional(),

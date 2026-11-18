@@ -30,6 +30,7 @@ export function createJobEvaluator(
       return new EmbeddingJobEvaluator(
         cvEmbeddingsService,
         jobEmbeddingsService,
+        env.JOB_EVALUATOR_EMBEDDING_THRESHOLD,
       );
   }
 }

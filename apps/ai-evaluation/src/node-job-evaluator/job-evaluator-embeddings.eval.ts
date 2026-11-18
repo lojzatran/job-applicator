@@ -1,20 +1,24 @@
+import { env } from '../utils/env';
 import { evaluate } from 'langsmith/evaluation';
+import { FakeListChatModel } from '@langchain/core/utils/testing';
 import type { Job } from '@apps/worker/src/app/jobs/types';
-import { DATASET_NAME, EXPERIMENT_PREFIX } from './constants';
+import { embeddingModelProvider } from '@apps/worker/src/app/ai/providers/embedding.provider';
+import type { EmbeddingsWrapper } from '@apps/worker/src/app/ai/providers/embedding.types';
+import { DATASET_NAME, EMBEDDING_EXPERIMENT_PREFIX } from './constants';
 import {
-  createOllamaAgentRuntime,
+  createEmbeddingAgentRuntime,
   parsedCvToText,
   type ParsedCv,
 } from '../utils/agent-utils';
 import { createLogger } from '@apps/shared';
-import { env } from '../utils/env';
 import { summaryEval } from './summary-eval';
 
-const logger = createLogger('job-evaluator-gemma4-e4b-eval');
+const logger = createLogger('job-evaluator-embedding-eval');
 
-// The graph needs a chat model at construction. This eval uses pre-parsed CVs.
-const LLM_MODEL = 'gemma4:e4b';
-const EMBEDDING_MODEL = env.EMBEDDING_MODEL;
+interface EvalInput {
+  parsedCv: ParsedCv;
+  job: Job;
+}
 
 async function correctnessEvaluator({
   outputs,
@@ -24,19 +28,25 @@ async function correctnessEvaluator({
   example: Record<string, any>;
 }) {
   const response = outputs.response;
+  const score = outputs.score;
   const reference = example.outputs.isValidJob;
 
-  return { key: 'correctness', score: response === reference ? 1 : 0 };
+  return [
+    { key: 'correctness', score: response === reference ? 1 : 0 },
+    { key: 'score', score }
+  ];
 }
 
-async function runNode(inputs: {
-  parsedCv: ParsedCv;
-  job: Job;
-}): Promise<{ response: boolean }> {
+async function runNode(
+  inputs: EvalInput,
+  embeddingModel: EmbeddingsWrapper,
+): Promise<{ response: boolean; score?: number }> {
   const { parsedCv, job } = inputs;
   const cvText = parsedCvToText(parsedCv);
+  // The graph constructor needs a chat model. This eval uses pre-parsed CVs.
+  const chatModel = new FakeListChatModel({ responses: [] });
   const { cvEntityId, graph, prepareJobs, cleanup } =
-    await createOllamaAgentRuntime(LLM_MODEL, EMBEDDING_MODEL, {
+    await createEmbeddingAgentRuntime(chatModel, embeddingModel, {
       cvText,
       parsedCv,
     });
@@ -49,24 +59,28 @@ async function runNode(inputs: {
       cvText,
       job,
     });
-    return { response: response.isValidJob };
+    return { response: response.isValidJob, score: response.score };
   } finally {
     await cleanup();
   }
 }
 
 async function main() {
-  const results = await evaluate(runNode, {
-    data: DATASET_NAME,
-    evaluators: [correctnessEvaluator],
-    summaryEvaluators: [summaryEval],
-    experimentPrefix: EXPERIMENT_PREFIX,
-    maxConcurrency: 2,
-    metadata: {
-      models: [EMBEDDING_MODEL],
-      evaluator: 'embedding',
+  const embeddingModel = embeddingModelProvider.useFactory();
+  const results = await evaluate(
+    (inputs: EvalInput) => runNode(inputs, embeddingModel),
+    {
+      data: env.DATASET_NAME ?? DATASET_NAME,
+      evaluators: [correctnessEvaluator],
+      summaryEvaluators: [summaryEval],
+      experimentPrefix: EMBEDDING_EXPERIMENT_PREFIX,
+      maxConcurrency: 2,
+      metadata: {
+        models: [embeddingModel.modelName],
+        evaluator: 'embedding',
+      },
     },
-  });
+  );
 
   logger.info(results);
 }

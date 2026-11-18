@@ -14,13 +14,22 @@ export const embeddingModelProvider = {
         );
       }
 
-      return new OpenAIEmbeddings({
+      const dimensions = env.AI_GATEWAY_EMBEDDING_DIMENSIONS;
+      const embeddingModel = new OpenAIEmbeddings({
         model: env.AI_GATEWAY_EMBEDDING_MODEL,
+        dimensions,
         apiKey: env.AI_GATEWAY_API_KEY,
         configuration: { baseURL: 'https://ai-gateway.vercel.sh/v1' },
         stripNewLines: false,
         encodingFormat: 'float',
       });
+
+      if (dimensions !== undefined) {
+        // CV and job embedding caches use model as part of their key.
+        embeddingModel.model = `${embeddingModel.model}:dimensions=${dimensions}`;
+      }
+
+      return embeddingModel;
     }
 
     const baseURL = env.OLLAMA_EMBEDDING_BASE_URL ?? env.OLLAMA_BASE_URL;

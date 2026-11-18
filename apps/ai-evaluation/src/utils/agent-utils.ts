@@ -1,6 +1,7 @@
+import { env } from './env';
 import { LanggraphService } from '@apps/worker/src/app/ai/langgraph/langgraph.service';
 import { ChatOpenAI, OpenAIEmbeddings } from '@langchain/openai';
-import { env } from './env';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { CvEmbeddingsService } from '@apps/worker/src/app/cv/embeddings/cv-summary-embeddings.service';
 import { CvService } from '@apps/worker/src/app/cv/cv.service';
 import { CvEmbeddingsRepository } from '@apps/worker/src/app/cv/embeddings/cv-embeddings.repository';
@@ -18,6 +19,8 @@ import { EmbeddingJobEvaluator } from '@apps/worker/src/app/ai/job-evaluator/emb
 import type { JobEvaluator } from '@apps/worker/src/app/ai/job-evaluator/job-evaluator';
 import { JevJobEvaluator } from '@apps/worker/src/app/ai/job-evaluator/jev.job-evaluator';
 import { decisionProvider } from '@apps/worker/src/app/ai/providers/decision.provider';
+import type { EmbeddingsWrapper } from '@apps/worker/src/app/ai/providers/embedding.types';
+import { env as workerEnv } from '@apps/worker/src/utils/env';
 import * as crypto from 'crypto';
 
 const ollamaBaseURL = env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434/v1';
@@ -37,34 +40,21 @@ interface ParsedCvInput {
   parsedCv: ParsedCv;
 }
 
-interface OllamaAgentGraphContext {
+interface AgentGraphContext {
   graph: Awaited<ReturnType<InstanceType<typeof LanggraphService>['build']>>;
   prepareJobs: (jobs: Job[]) => Promise<void>;
   cleanup: () => Promise<void>;
 }
 
-export interface OllamaAgentRuntimeContext extends OllamaAgentGraphContext {
+interface AgentRuntimeContext extends AgentGraphContext {
   jobEvaluator: JobEvaluator;
 }
 
-export async function createOllamaAgentRuntime(
-  llmModelName: string,
-  embeddingModelName: string = env.EMBEDDING_MODEL,
+export async function createEmbeddingAgentRuntime(
+  llm: BaseChatModel,
+  embeddingModel: EmbeddingsWrapper,
   cv?: ParsedCvInput,
-): Promise<OllamaAgentRuntimeContext & { cvEntityId: number | undefined }> {
-  const llm = new ChatOpenAI({
-    model: llmModelName,
-    apiKey: 'ollama',
-    configuration: { baseURL: ollamaBaseURL },
-  });
-  const embeddingModel = new OpenAIEmbeddings({
-    model: embeddingModelName,
-    apiKey: 'ollama',
-    configuration: { baseURL: ollamaBaseURL },
-    stripNewLines: false,
-    encodingFormat: 'float',
-  });
-
+): Promise<AgentRuntimeContext & { cvEntityId: number | undefined }> {
   const cvEmbeddingsRepository = new CvEmbeddingsRepository();
   const dataSource = new DataSource(dataSourceOptions);
   await dataSource.initialize();
@@ -72,11 +62,11 @@ export async function createOllamaAgentRuntime(
   const checkpointer = new MemorySaver();
 
   try {
-    const cvService = new CvService(llm as any, dataSource);
+    const cvService = new CvService(llm, dataSource);
     const cvEmbeddingsService = new CvEmbeddingsService(
       cvService,
       embeddingModel,
-      cvEmbeddingsRepository as any,
+      cvEmbeddingsRepository,
       dataSource,
     );
 
@@ -89,11 +79,12 @@ export async function createOllamaAgentRuntime(
     const jobEvaluator = new EmbeddingJobEvaluator(
       cvEmbeddingsService,
       jobEmbeddingsService,
+      workerEnv.JOB_EVALUATOR_EMBEDDING_THRESHOLD,
     );
     const langgraphService = new LanggraphService(
       jobEvaluator,
-      llm as any,
-      llm as any,
+      llm,
+      llm,
       checkpointer as any,
     );
 
@@ -103,7 +94,7 @@ export async function createOllamaAgentRuntime(
           dataSource,
           cvService,
           cvEmbeddingsService,
-          embeddingModelName,
+          embeddingModel.modelName,
           cv,
         )
       : undefined;
@@ -161,12 +152,25 @@ function prepareCvEmbeddings(
 
 export async function createOllamaAgentGraph(
   llmModelName: string,
-  embeddingModelName: string = env.EMBEDDING_MODEL,
-): Promise<OllamaAgentGraphContext> {
-  const runtime = await createOllamaAgentRuntime(
-    llmModelName,
-    embeddingModelName,
-  );
+  embeddingModelName = env.EMBEDDING_MODEL,
+): Promise<AgentGraphContext> {
+  if (!embeddingModelName) {
+    throw new Error('EMBEDDING_MODEL must be set to evaluate the full graph');
+  }
+
+  const llm = new ChatOpenAI({
+    model: llmModelName,
+    apiKey: 'ollama',
+    configuration: { baseURL: ollamaBaseURL },
+  });
+  const embeddingModel = new OpenAIEmbeddings({
+    model: embeddingModelName,
+    apiKey: 'ollama',
+    configuration: { baseURL: ollamaBaseURL },
+    stripNewLines: false,
+    encodingFormat: 'float',
+  });
+  const runtime = await createEmbeddingAgentRuntime(llm, embeddingModel);
 
   return {
     graph: runtime.graph,
@@ -176,13 +180,13 @@ export async function createOllamaAgentGraph(
 }
 
 /**
- * Same runtime as `createOllamaAgentRuntime`, but jobs are evaluated by Jev.
+ * Creates a graph with the Jev job evaluator.
  * The Ollama model only parses the CV. The decisions model and API key come
  * from AI_GATEWAY_DECISION_MODEL and AI_GATEWAY_API_KEY in the root `.env`.
  */
 export async function createJevAgentRuntime(
   llmModelName: string,
-): Promise<OllamaAgentRuntimeContext> {
+): Promise<AgentRuntimeContext> {
   const decisions = decisionProvider.useFactory();
   if (!decisions) {
     throw new Error('AI_GATEWAY_DECISION_MODEL must be set to evaluate Jev');

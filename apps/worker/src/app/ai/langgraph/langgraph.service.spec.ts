@@ -9,6 +9,7 @@ import { JobEvaluationDecision } from '@apps/shared';
 
 describe('LanggraphService', () => {
   let service: LanggraphService;
+  const embeddingThreshold = 0.75;
   const jobEmbeddingsService = {
     ensureJobEmbeddings: jest.fn(async () => undefined),
     getJobEmbeddings: jest.fn(async () => []),
@@ -38,7 +39,11 @@ describe('LanggraphService', () => {
 
     const checkpointer = new MemorySaver();
     service = new LanggraphService(
-      new EmbeddingJobEvaluator(cvEmbeddingsService, jobEmbeddingsService),
+      new EmbeddingJobEvaluator(
+        cvEmbeddingsService,
+        jobEmbeddingsService,
+        embeddingThreshold,
+      ),
       coverLetterGeneratorLlm,
       critiqueLlm,
       checkpointer,
@@ -87,12 +92,16 @@ describe('LanggraphService', () => {
         .fn()
         // first job has low embedding matching score
         .mockImplementationOnce(() => 0.5)
-        .mockImplementationOnce(() => 1),
+        .mockImplementationOnce(() => 0.85),
     } as unknown as CvEmbeddingsService;
 
     const checkpointer = new MemorySaver();
     service = new LanggraphService(
-      new EmbeddingJobEvaluator(cvEmbeddingsService, jobEmbeddingsService),
+      new EmbeddingJobEvaluator(
+        cvEmbeddingsService,
+        jobEmbeddingsService,
+        embeddingThreshold,
+      ),
       coverLetterGeneratorLlm,
       critiqueLlm,
       checkpointer,
@@ -143,12 +152,16 @@ describe('LanggraphService', () => {
     const cvEmbeddingsService: CvEmbeddingsService = {
       ensureCvAndEmbeddings: jest.fn(() => 'cv-id'),
       createEmbeddingsForJobDescription: jest.fn(async () => []),
-      getJobAndCvMatchingScore: jest.fn(async () => 0.9),
+      getJobAndCvMatchingScore: jest.fn(async () => embeddingThreshold),
     } as unknown as CvEmbeddingsService;
 
     const checkpointer = new MemorySaver();
     service = new LanggraphService(
-      new EmbeddingJobEvaluator(cvEmbeddingsService, jobEmbeddingsService),
+      new EmbeddingJobEvaluator(
+        cvEmbeddingsService,
+        jobEmbeddingsService,
+        embeddingThreshold,
+      ),
       coverLetterGeneratorLlm,
       critiqueLlm,
       checkpointer,
@@ -192,7 +205,11 @@ describe('LanggraphService', () => {
 
     const checkpointer = new MemorySaver();
     service = new LanggraphService(
-      new EmbeddingJobEvaluator(cvEmbeddingsService, jobEmbeddingsService),
+      new EmbeddingJobEvaluator(
+        cvEmbeddingsService,
+        jobEmbeddingsService,
+        embeddingThreshold,
+      ),
       coverLetterGeneratorLlm,
       critiqueLlm,
       checkpointer,
@@ -246,6 +263,7 @@ describe('LanggraphService', () => {
     const evaluator = new EmbeddingJobEvaluator(
       cvEmbeddingsService,
       jobEmbeddingsService,
+      embeddingThreshold,
     );
     jest.spyOn(evaluator, 'evaluate').mockResolvedValueOnce({
       verdict: JobEvaluationDecision.UNCERTAIN,
@@ -325,7 +343,11 @@ describe('LanggraphService', () => {
 
     const checkpointer = new MemorySaver();
     service = new LanggraphService(
-      new EmbeddingJobEvaluator(cvEmbeddingsService, jobEmbeddingsService),
+      new EmbeddingJobEvaluator(
+        cvEmbeddingsService,
+        jobEmbeddingsService,
+        embeddingThreshold,
+      ),
       coverLetterGeneratorLlm,
       critiqueLlm,
       checkpointer,
@@ -377,7 +399,11 @@ describe('LanggraphService', () => {
 
     const checkpointer = new MemorySaver();
     service = new LanggraphService(
-      new EmbeddingJobEvaluator(cvEmbeddingsService, jobEmbeddingsService),
+      new EmbeddingJobEvaluator(
+        cvEmbeddingsService,
+        jobEmbeddingsService,
+        embeddingThreshold,
+      ),
       coverLetterGeneratorLlm,
       critiqueLlm,
       checkpointer,

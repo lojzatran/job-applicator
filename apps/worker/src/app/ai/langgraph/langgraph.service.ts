@@ -141,6 +141,7 @@ export class LanggraphService {
         isValidJob,
         cvEntityId: state.cvEntityId,
         evaluationResult: verdict,
+        score,
         url: state.job?.url,
         evaluatedJobsCount: state.evaluatedJobsCount + 1,
         uncertainJobsCount: state.uncertainJobsCount + (isUncertainJob ? 1 : 0),

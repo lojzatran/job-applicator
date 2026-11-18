@@ -1,3 +1,4 @@
+import { env } from '../utils/env';
 import { Client } from 'langsmith';
 import { DATASET_NAME } from './constants';
 import { ensureDataset } from '../utils/langsmith-utils';
@@ -5,7 +6,6 @@ import { createLogger } from '@apps/shared';
 import { cvs } from './data/cvs';
 import { jobs } from './data/jobs';
 import { cases } from './data/cases';
-import '../utils/env';
 
 const logger = createLogger('job-evaluator-dataset');
 
@@ -13,7 +13,7 @@ async function main() {
   const client = new Client();
 
   await ensureDataset(client, {
-    name: DATASET_NAME,
+    name: env.DATASET_NAME ?? DATASET_NAME,
     description: 'Dataset for testing job-evaluator node.',
     examples: cases.map((evaluationCase) => ({
       key: `${evaluationCase.cvId}:${jobs[evaluationCase.jobId].id}`,

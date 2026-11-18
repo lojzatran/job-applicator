@@ -1,19 +1,16 @@
-import { Injectable } from '@nestjs/common';
 import { createLogger, JobEvaluationDecision } from '@apps/shared';
-import { CvEmbeddingsService } from '../../cv/embeddings/cv-summary-embeddings.service';
-import { JobEmbeddingsService } from '../../jobs/job-embeddings.service';
+import type { CvEmbeddingsService } from '../../cv/embeddings/cv-summary-embeddings.service';
+import type { JobEmbeddingsService } from '../../jobs/job-embeddings.service';
 import type { Job } from '../../jobs/types';
 import type { CvInput, JobEvaluation, JobEvaluator } from './job-evaluator';
 
-const THRESHOLD = 0.9;
-
-@Injectable()
 export class EmbeddingJobEvaluator implements JobEvaluator {
   private readonly logger = createLogger(EmbeddingJobEvaluator.name);
 
   constructor(
     private readonly cvEmbeddingsService: CvEmbeddingsService,
     private readonly jobEmbeddingsService: JobEmbeddingsService,
+    private readonly threshold: number,
   ) {}
 
   prepareCv(cvText: string): Promise<number> {
@@ -31,7 +28,7 @@ export class EmbeddingJobEvaluator implements JobEvaluator {
 
     return {
       verdict:
-        score > THRESHOLD
+        score > this.threshold
           ? JobEvaluationDecision.APPLY
           : JobEvaluationDecision.DISMISS,
       score,

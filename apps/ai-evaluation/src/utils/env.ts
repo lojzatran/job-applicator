@@ -15,7 +15,7 @@ const appEnvSchema = z.object({
   DATASET_NAME: z.string().optional(),
   OLLAMA_BASE_URL: z.string().optional(),
   LLM_MODEL: z.string().default('gemma4:e4b'),
-  EMBEDDING_MODEL: z.string(),
+  EMBEDDING_MODEL: z.string().optional(),
 });
 
 export const env = createEnv({
