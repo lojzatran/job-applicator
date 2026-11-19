@@ -56,7 +56,7 @@ services:
       - '3000:3000'
     environment:
       NODE_ENV: ${NODE_ENV:-production}
-      JOB_EVALUATOR_METHOD: ${JOB_EVALUATOR_METHOD:-embedding_llm}
+      JOB_EVALUATOR_METHOD: ${JOB_EVALUATOR_METHOD:-embedding}
       # Optional values are inherited from .env when defined.
       JOB_EVALUATOR_EMBEDDING_THRESHOLD:
       JOB_EVALUATOR_PROVIDER:

@@ -1,4 +1,7 @@
+import { env } from '../utils/env';
 import { evaluate } from 'langsmith/evaluation';
+import type { OpenAIDecisions } from '@langchain/openai';
+import { decisionProvider } from '@apps/worker/src/app/ai/providers/decision.provider';
 import type { Job } from '@apps/worker/src/app/jobs/types';
 import { DATASET_NAME, JEV_EXPERIMENT_PREFIX } from './constants';
 import {
@@ -8,7 +11,6 @@ import {
   type ParsedCv,
 } from '../utils/agent-utils';
 import { createLogger } from '@apps/shared';
-import { env } from '@apps/worker/src/utils/env';
 import { summaryEval } from './summary-eval';
 
 const logger = createLogger('job-evaluator-jev-eval');
@@ -16,6 +18,11 @@ const logger = createLogger('job-evaluator-jev-eval');
 // Not called: the CV is already parsed and the job is evaluated by Jev.
 // createJevAgentRuntime still needs it to build the graph.
 const LLM_MODEL = 'gemma4:e4b';
+
+interface EvalInput {
+  parsedCv: ParsedCv;
+  job: Job;
+}
 
 async function correctnessEvaluator({
   outputs,
@@ -30,12 +37,11 @@ async function correctnessEvaluator({
   return { key: 'correctness', score: response === reference ? 1 : 0 };
 }
 
-async function runNode(inputs: {
-  parsedCv: ParsedCv;
-  job: Job;
-}): Promise<{ response: boolean }> {
-  const { parsedCv, job } = inputs;
-  const runtime = await createJevAgentRuntime(LLM_MODEL);
+async function runNode(
+  { parsedCv, job }: EvalInput,
+  decisions: OpenAIDecisions,
+): Promise<{ response: boolean }> {
+  const runtime = await createJevAgentRuntime(LLM_MODEL, decisions);
 
   try {
     const cvText = parsedCvToText(parsedCv);
@@ -55,19 +61,25 @@ async function runNode(inputs: {
 }
 
 async function main() {
-  const results = await evaluate(runNode, {
-    data: DATASET_NAME,
-    evaluators: [correctnessEvaluator],
-    summaryEvaluators: [summaryEval],
-    experimentPrefix: JEV_EXPERIMENT_PREFIX,
-    maxConcurrency: 2,
-    metadata: {
-      models: env.AI_GATEWAY_DECISION_MODEL
-        ? [env.AI_GATEWAY_DECISION_MODEL]
-        : [],
-      evaluator: 'jev',
+  const decisions = decisionProvider.useFactory();
+  if (!decisions) {
+    throw new Error('AI_GATEWAY_DECISION_MODEL must be set to evaluate Jev');
+  }
+
+  const results = await evaluate(
+    (inputs: EvalInput) => runNode(inputs, decisions),
+    {
+      data: env.DATASET_NAME ?? DATASET_NAME,
+      evaluators: [correctnessEvaluator],
+      summaryEvaluators: [summaryEval],
+      experimentPrefix: JEV_EXPERIMENT_PREFIX,
+      maxConcurrency: 2,
+      metadata: {
+        models: [decisions.model],
+        evaluator: 'jev',
+      },
     },
-  });
+  );
 
   logger.info(results);
 }

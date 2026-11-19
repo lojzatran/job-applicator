@@ -50,7 +50,7 @@ function createJobEvaluatorLlm() {
   }
 
   throw new Error(
-    'Missing job evaluator configuration. Configure job evalutor API credentials before starting the API.',
+    'Missing LLM job evaluator configuration. Check JOB_EVALUATOR_PROVIDER and its model and credentials.',
   );
 }
 
@@ -132,7 +132,8 @@ function createCvParserLlm() {
 
 export const jobEvaluatorLlmProvider = {
   provide: JOB_EVALUATOR_LLM,
-  useFactory: createJobEvaluatorLlm,
+  useFactory: () =>
+    env.JOB_EVALUATOR_METHOD === 'llm' ? createJobEvaluatorLlm() : null,
 };
 
 export const coverLetterGeneratorLlmProvider = {

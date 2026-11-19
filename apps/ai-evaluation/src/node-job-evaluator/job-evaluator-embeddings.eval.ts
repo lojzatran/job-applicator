@@ -33,14 +33,14 @@ async function correctnessEvaluator({
 
   return [
     { key: 'correctness', score: response === reference ? 1 : 0 },
-    { key: 'score', score }
+    { key: 'score', score },
   ];
 }
 
 async function runNode(
   inputs: EvalInput,
   embeddingModel: EmbeddingsWrapper,
-): Promise<{ response: boolean; score?: number }> {
+): Promise<{ response: boolean; score: number }> {
   const { parsedCv, job } = inputs;
   const cvText = parsedCvToText(parsedCv);
   // The graph constructor needs a chat model. This eval uses pre-parsed CVs.
@@ -59,7 +59,11 @@ async function runNode(
       cvText,
       job,
     });
-    return { response: response.isValidJob, score: response.score };
+    const score = response.score;
+    if (typeof score !== 'number' || !Number.isFinite(score)) {
+      throw new Error('Job evaluation did not return a finite score');
+    }
+    return { response: response.isValidJob, score };
   } finally {
     await cleanup();
   }

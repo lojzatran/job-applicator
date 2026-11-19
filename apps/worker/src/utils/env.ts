@@ -10,8 +10,8 @@ const workspaceEnvPath = resolve(process.cwd(), '.env');
 
 const appEnvSchema = z.object({
   JOB_EVALUATOR_METHOD: z
-    .enum(['embedding_llm', 'jev'])
-    .default('embedding_llm'),
+    .enum(['embedding', 'jev', 'llm'])
+    .default('embedding'),
   JOB_EVALUATOR_EMBEDDING_THRESHOLD: z
     .string()
     .trim()

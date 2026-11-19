@@ -82,6 +82,8 @@ For the website, `NEXT_PUBLIC_SUPABASE_URL` must be available when the Docker im
 
 ### AI & Models
 
+- `JOB_EVALUATOR_METHOD` - Evaluates jobs using embeddings (`embedding`, the default), JEV (`jev`), or a chat model (`llm`).
+- `JOB_EVALUATOR_PROVIDER` - Optional chat model provider for `JOB_EVALUATOR_METHOD=llm`. Select `gemini`, `ollama`, or `ai_gateway`.
 - `JOB_EVALUATOR_EMBEDDING_THRESHOLD` - Weighted embedding score must exceed this value for the embedding job evaluator to return `apply`. Defaults to `0.9`.
 - `EMBEDDING_PROVIDER` - Embedding provider. Defaults to `ollama`. Use `ai_gateway` with `AI_GATEWAY_EMBEDDING_MODEL` and `AI_GATEWAY_API_KEY`.
 - `AI_GATEWAY_EMBEDDING_DIMENSIONS` - (Optional) Positive integer for models that support custom embedding dimensions. The worker and embedding job eval use the model's default when this setting is omitted.
@@ -224,6 +226,7 @@ Run them from the workspace root:
 
 ```sh
 npm run ai-eval:node-job-evaluator:embedding
+npm run ai-eval:node-job-evaluator:llm
 npm run ai-eval:graph
 ```
 
@@ -232,6 +235,8 @@ Each command seeds its dataset if needed and then runs the matching `eval.ts` fi
 The eval app is a standalone test module with credentials separate from the application. It reads its own config from `apps/ai-evaluation/.env` (see `apps/ai-evaluation/.env.example`), which overrides values from the workspace root `.env` loaded through the shared env loader.
 
 The embedding job evaluator uses the worker's `EMBEDDING_PROVIDER` setting. For `ai_gateway`, set `AI_GATEWAY_EMBEDDING_MODEL` and `AI_GATEWAY_API_KEY`. For `ollama`, which is the default, use `OLLAMA_EMBEDDING_MODEL` and `OLLAMA_EMBEDDING_BASE_URL` as in the worker. The full graph eval uses `EMBEDDING_MODEL`.
+
+The LLM job eval runs the LLM evaluator regardless of the worker's `JOB_EVALUATOR_METHOD`. It uses the worker's `JOB_EVALUATOR_PROVIDER` and model settings. For `ollama`, set `OLLAMA_JOB_EVALUATOR_MODEL` and `OLLAMA_BASE_URL`. For `gemini`, set `GEMINI_API_KEY` and optionally `GEMINI_JOB_EVALUATOR_MODEL`. For `ai_gateway`, set `AI_GATEWAY_JOB_EVALUATOR_MODEL` and `AI_GATEWAY_API_KEY`.
 
 Required for the eval app:
 

@@ -1,6 +1,10 @@
 import { env } from './env';
 import { LanggraphService } from '@apps/worker/src/app/ai/langgraph/langgraph.service';
-import { ChatOpenAI, OpenAIEmbeddings } from '@langchain/openai';
+import {
+  ChatOpenAI,
+  OpenAIEmbeddings,
+  type OpenAIDecisions,
+} from '@langchain/openai';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { CvEmbeddingsService } from '@apps/worker/src/app/cv/embeddings/cv-summary-embeddings.service';
 import { CvService } from '@apps/worker/src/app/cv/cv.service';
@@ -18,7 +22,6 @@ import { MemorySaver } from '@langchain/langgraph';
 import { EmbeddingJobEvaluator } from '@apps/worker/src/app/ai/job-evaluator/embedding-job.evaluator';
 import type { JobEvaluator } from '@apps/worker/src/app/ai/job-evaluator/job-evaluator';
 import { JevJobEvaluator } from '@apps/worker/src/app/ai/job-evaluator/jev.job-evaluator';
-import { decisionProvider } from '@apps/worker/src/app/ai/providers/decision.provider';
 import type { EmbeddingsWrapper } from '@apps/worker/src/app/ai/providers/embedding.types';
 import { env as workerEnv } from '@apps/worker/src/utils/env';
 import * as crypto from 'crypto';
@@ -179,19 +182,11 @@ export async function createOllamaAgentGraph(
   };
 }
 
-/**
- * Creates a graph with the Jev job evaluator.
- * The Ollama model only parses the CV. The decisions model and API key come
- * from AI_GATEWAY_DECISION_MODEL and AI_GATEWAY_API_KEY in the root `.env`.
- */
+/** Creates a graph with the Jev job evaluator and an Ollama CV parser. */
 export async function createJevAgentRuntime(
   llmModelName: string,
+  decisions: OpenAIDecisions,
 ): Promise<AgentRuntimeContext> {
-  const decisions = decisionProvider.useFactory();
-  if (!decisions) {
-    throw new Error('AI_GATEWAY_DECISION_MODEL must be set to evaluate Jev');
-  }
-
   const llm = new ChatOpenAI({
     model: llmModelName,
     apiKey: 'ollama',

@@ -1,8 +1,13 @@
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { OpenAIDecisions } from '@langchain/openai';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import type { Repository } from 'typeorm';
+import { getDataSourceToken, getRepositoryToken } from '@nestjs/typeorm';
+import type { DataSource, Repository } from 'typeorm';
 import { Cv } from '@apps/shared';
-import { DECISION_MODEL, JOB_EVALUATOR } from '../ai.constants';
+import {
+  DECISION_MODEL,
+  JOB_EVALUATOR,
+  JOB_EVALUATOR_LLM,
+} from '../ai.constants';
 import { env } from '../../../utils/env';
 import { CvEmbeddingsService } from '../../cv/embeddings/cv-summary-embeddings.service';
 import { CvService } from '../../cv/cv.service';
@@ -10,6 +15,7 @@ import { JobEmbeddingsService } from '../../jobs/job-embeddings.service';
 import type { JobEvaluator } from '../job-evaluator/job-evaluator';
 import { EmbeddingJobEvaluator } from '../job-evaluator/embedding-job.evaluator';
 import { JevJobEvaluator } from '../job-evaluator/jev.job-evaluator';
+import { LlmJobEvaluator } from '../job-evaluator/llm.job-evaluator';
 
 export function createJobEvaluator(
   cvEmbeddingsService: CvEmbeddingsService,
@@ -17,6 +23,8 @@ export function createJobEvaluator(
   decisions: OpenAIDecisions | null,
   cvRepository: Repository<Cv>,
   cvService: CvService,
+  jobEvaluatorLlm: BaseChatModel | null,
+  dataSource: DataSource,
 ): JobEvaluator {
   switch (env.JOB_EVALUATOR_METHOD) {
     case 'jev':
@@ -26,12 +34,19 @@ export function createJobEvaluator(
         );
       }
       return new JevJobEvaluator(decisions, cvService, cvRepository);
-    case 'embedding_llm':
+    case 'embedding':
       return new EmbeddingJobEvaluator(
         cvEmbeddingsService,
         jobEmbeddingsService,
         env.JOB_EVALUATOR_EMBEDDING_THRESHOLD,
       );
+    case 'llm':
+      if (!jobEvaluatorLlm) {
+        throw new Error(
+          'A chat model must be configured for JOB_EVALUATOR_METHOD=llm',
+        );
+      }
+      return new LlmJobEvaluator(jobEvaluatorLlm, cvService, dataSource);
   }
 }
 
@@ -44,5 +59,7 @@ export const jobEvaluatorProvider = {
     DECISION_MODEL,
     getRepositoryToken(Cv),
     CvService,
+    JOB_EVALUATOR_LLM,
+    getDataSourceToken(),
   ],
 };
