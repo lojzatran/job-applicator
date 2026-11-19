@@ -193,3 +193,4 @@ jobs:
             sudo -n install -m 0644 nginx.conf /etc/nginx/snippets/job-applicator.conf
             sudo -n nginx -t
             sudo -n systemctl reload nginx
+            docker image prune -f
