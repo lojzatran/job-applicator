@@ -9,8 +9,8 @@ import { LanggraphService } from './ai/langgraph/langgraph.service';
 import {
   coverLetterGeneratorLlmProvider,
   cvParserLlmProvider,
-  jobEvaluatorLlmProvider,
   critiqueLlmProvider,
+  jobEvaluatorLlmProvider,
 } from './ai/providers/llm.provider';
 import { embeddingModelProvider } from './ai/providers/embedding.provider';
 import { PdfService } from './documents/pdf/pdf.service';
@@ -50,7 +50,6 @@ import { decisionProvider } from './ai/providers/decision.provider';
     StartupJobsService,
     AgentService,
     LanggraphService,
-    jobEvaluatorLlmProvider,
     coverLetterGeneratorLlmProvider,
     critiqueLlmProvider,
     cvParserLlmProvider,
@@ -61,6 +60,7 @@ import { decisionProvider } from './ai/providers/decision.provider';
     CvService,
     checkpointerProvider,
     decisionProvider,
+    jobEvaluatorLlmProvider,
     jobEvaluatorProvider,
   ],
 })

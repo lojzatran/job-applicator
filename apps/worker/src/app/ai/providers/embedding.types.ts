@@ -1,5 +1,6 @@
-import { Embeddings } from '@langchain/core/embeddings';
+import type { Embeddings } from '@langchain/core/embeddings';
 
-export interface EmbeddingsWrapper extends Embeddings {
+export interface EmbeddingsWrapper
+  extends Pick<Embeddings, 'embedDocuments' | 'embedQuery'> {
   modelName: string;
 }

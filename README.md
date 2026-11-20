@@ -36,7 +36,7 @@ Job Applicator helps you discover jobs from multiple sources, evaluate how well 
 ### 🤖 AI
 
 - **Workflows:** LangChain and LangGraph
-- **Providers:** Ollama, Google Gemini, and Cohere
+- **Providers:** Ollama, Google Gemini, and Vercel AI Gateway
 - **Models**: nomic-embed-text-v2-moe, Gemma, OpenAI models, Jev
 - **Tracing and evaluation:** LangSmith
 
@@ -51,7 +51,7 @@ Job Applicator helps you discover jobs from multiple sources, evaluate how well 
 1. Fill in `.env` file. Use `.env.example` as the starting point for the workspace `.env` file. This single file configures the whole application (website, worker, migrations, docker compose). Only the test modules (`apps/ai-evaluation`, `apps/website-e2e`) have their own `.env` files, see below.
 1. Run `npm i` on root folder of the project.
 1. Run `docker compose -f deployment/docker-compose.yml -f deployment/docker-compose.dev.yml --env-file .env --profile infrastructure --profile tools-reset up -d`. This will start all the necessary infrastructure and also recreates the database.
-1. (Optional) Run `docker compose -f deployment/docker-compose.yml -f deployment/docker-compose.dev.yml --env-file .env --profile ai up -d` if you want to use nomic-embed-text-v2-moe Ollama model for embeddings.
+1. For embedding-based evaluation with Ollama, run `docker compose -f deployment/docker-compose.yml -f deployment/docker-compose.dev.yml --env-file .env --profile ai up -d` or point `OLLAMA_EMBEDDING_BASE_URL` to a running Ollama instance with the configured embedding model. To use AI Gateway, set `EMBEDDING_PROVIDER=ai_gateway`, `AI_GATEWAY_EMBEDDING_MODEL`, and `AI_GATEWAY_API_KEY`.
 1. Run `npm run dev-all` to start the website and worker.
 
 ## Required env vars
@@ -82,13 +82,18 @@ For the website, `NEXT_PUBLIC_SUPABASE_URL` must be available when the Docker im
 
 ### AI & Models
 
+- `JOB_EVALUATOR_METHOD` - Evaluates jobs using embeddings (`embedding`, the default), JEV (`jev`), or a chat model (`llm`).
+- `JOB_EVALUATOR_PROVIDER` - Optional chat model provider for `JOB_EVALUATOR_METHOD=llm`. Select `gemini`, `ollama`, or `ai_gateway`.
+- `JOB_EVALUATOR_EMBEDDING_THRESHOLD` - Weighted embedding score must exceed this value for the embedding job evaluator to return `apply`. Defaults to `0.9`.
+- `EMBEDDING_PROVIDER` - Embedding provider. Defaults to `ollama`. Use `ai_gateway` with `AI_GATEWAY_EMBEDDING_MODEL` and `AI_GATEWAY_API_KEY`.
+- `AI_GATEWAY_EMBEDDING_DIMENSIONS` - (Optional) Positive integer for models that support custom embedding dimensions. The worker and embedding job eval use the model's default when this setting is omitted.
 - `OLLAMA_EMBEDDING_MODEL` - (Default) Model name for generating embeddings with Ollama (e.g., `nomic-embed-text-v2-moe:latest`).
-- `OLLAMA_EMBEDDING_BASE_URL` - (Optional) Base URL for the Ollama embedding API.
+- `OLLAMA_EMBEDDING_BASE_URL` - (Optional) Base URL for the Ollama OpenAI-compatible embedding API, including `/v1`. Production Docker Compose defaults to `http://ollama:11434/v1`.
 - `OLLAMA_JOB_EVALUATOR_MODEL` - Ollama model name used to evaluate whether a job matches the CV.
 - `CV_PARSER_MODEL` - Ollama model name used to parse the CV.
 - `COVER_LETTER_GENERATOR_MODEL` - Ollama model name used to generate the cover letter.
 - `CRITIQUE_MODEL` - Ollama model name used to critique and rewrite the cover letter.
-- `OLLAMA_BASE_URL` - Base URL for the Ollama API (e.g., `http://localhost:11434`).
+- `OLLAMA_BASE_URL` - Base URL for the Ollama OpenAI-compatible API, including `/v1` (e.g., `http://localhost:11434/v1`).
 - `OLLAMA_API_KEY` - (Optional) API key for Ollama if running behind an authenticated proxy.
 
 ### Storage
@@ -100,13 +105,6 @@ For the website, `NEXT_PUBLIC_SUPABASE_URL` must be available when the Docker im
 - `ENABLE_QUERY_LOG` - Set to `true` to enable TypeORM query logging (default: `false`).
 
 ## Optional but supported
-
-### Cohere Configuration
-
-If `COHERE_API_KEY` is set, the app can use Cohere models instead of Ollama for generating embeddings.
-
-- `COHERE_API_KEY` - Cohere API key.
-- `COHERE_EMBEDDING_MODEL` - (Optional) Model name for generating embeddings with Cohere (default: `embed-v4.0`).
 
 ### Gemini Configuration
 
@@ -192,7 +190,7 @@ This runs the Nx Jest target for `apps/worker` and picks up the `*.integration.s
 
 The current worker integration test coverage is the CV embedding integration spec, so make sure local Ollama is running and these models/configurations are available:
 
-- `OLLAMA_BASE_URL` - should point to your local Ollama server, usually `http://localhost:11434`.
+- `OLLAMA_BASE_URL` - should point to your local Ollama API, usually `http://localhost:11434/v1`.
 - `OLLAMA_EMBEDDING_MODEL` - embedding model (default `nomic-embed-text-v2-moe:latest`).
 - Either `GEMINI_API_KEY` or a local Ollama model configured in `CV_PARSER_MODEL` (e.g., `gemma3:4b-cloud`) for CV parsing.
 
@@ -227,13 +225,18 @@ The `apps/ai-evaluation/` app contains LangSmith-based evaluation scripts for th
 Run them from the workspace root:
 
 ```sh
-npm run ai-eval:node-job-evaluator
+npm run ai-eval:node-job-evaluator:embedding
+npm run ai-eval:node-job-evaluator:llm
 npm run ai-eval:graph
 ```
 
 Each command seeds its dataset if needed and then runs the matching `eval.ts` file.
 
 The eval app is a standalone test module with credentials separate from the application. It reads its own config from `apps/ai-evaluation/.env` (see `apps/ai-evaluation/.env.example`), which overrides values from the workspace root `.env` loaded through the shared env loader.
+
+The embedding job evaluator uses the worker's `EMBEDDING_PROVIDER` setting. For `ai_gateway`, set `AI_GATEWAY_EMBEDDING_MODEL` and `AI_GATEWAY_API_KEY`. For `ollama`, which is the default, use `OLLAMA_EMBEDDING_MODEL` and `OLLAMA_EMBEDDING_BASE_URL` as in the worker. The full graph eval uses `EMBEDDING_MODEL`.
+
+The LLM job eval runs the LLM evaluator regardless of the worker's `JOB_EVALUATOR_METHOD`. It uses the worker's `JOB_EVALUATOR_PROVIDER` and model settings. For `ollama`, set `OLLAMA_JOB_EVALUATOR_MODEL` and `OLLAMA_BASE_URL`. For `gemini`, set `GEMINI_API_KEY` and optionally `GEMINI_JOB_EVALUATOR_MODEL`. For `ai_gateway`, set `AI_GATEWAY_JOB_EVALUATOR_MODEL` and `AI_GATEWAY_API_KEY`.
 
 Required for the eval app:
 
@@ -242,7 +245,7 @@ Required for the eval app:
 Optional for the eval app:
 
 - `GEMINI_API_KEY` - required when the grader model is a Gemini model.
-- `OLLAMA_BASE_URL` - required when the evaluator graph uses Ollama.
+- `OLLAMA_BASE_URL` - base URL for the Ollama OpenAI-compatible API. The evaluator graph defaults to `http://127.0.0.1:11434/v1`.
 - `SKIP_ENV_VALIDATION=true` - bypasses env validation for local scripting.
 
 ## Database Migrations

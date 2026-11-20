@@ -7,7 +7,7 @@ import { CvService } from '../../cv.service';
 import { CvEmbeddingsRepository } from '../cv-embeddings.repository';
 import { cvParserLlmProvider } from '../../../ai/providers/llm.provider';
 import { embeddingModelProvider } from '../../../ai/providers/embedding.provider';
-import { dataSourceOptions } from '@apps/shared';
+import { Cv, dataSourceOptions } from '@apps/shared';
 
 describe('Cv Embeddings Service integration', () => {
   const databaseUrl = new URL(
@@ -38,10 +38,6 @@ describe('Cv Embeddings Service integration', () => {
     pool = new Pool({
       connectionString: databaseUrl.toString(),
     });
-
-    await pool.query(`
-      DROP INDEX IF EXISTS "IDX_cv_embedding_embedding_cosine_hnsw_cohere"
-    `);
 
     await pool.query(`
       DROP INDEX IF EXISTS "IDX_cv_embedding_embedding_cosine_hnsw_nomic"
@@ -120,9 +116,11 @@ describe('Cv Embeddings Service integration', () => {
       'parses $name and returns embedding vectors from the local Ollama models',
       async ({ text }) => {
         const service = moduleRef.get(CvEmbeddingsService);
+        const cvEntity = new Cv();
+        cvEntity.rawText = text;
 
         const { embeddings: result } =
-          await service.createWeightedEmbeddingsForCv(text);
+          await service.createWeightedEmbeddingsForCv(cvEntity);
 
         expect(Array.isArray(result)).toBe(true);
         expect(result.length).toBeGreaterThan(0);
