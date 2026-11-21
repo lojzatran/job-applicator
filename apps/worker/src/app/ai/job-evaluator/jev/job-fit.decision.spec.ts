@@ -1,6 +1,8 @@
 import type { JobFitAnswers } from './job-fit.answers';
 import { computeFit, decideJobFit } from './job-fit.decision';
 
+const weakRoleMatch = { score: 0.4, levels: [0.6, 0.4, 0, 0] };
+
 function answers(overrides: Partial<JobFitAnswers> = {}): JobFitAnswers {
   return {
     roleMatch: { score: 3, levels: [0, 0, 0, 1] },
@@ -33,16 +35,36 @@ describe('decideJobFit', () => {
 
   it('dismisses when a blocker is clearly present', () => {
     expect(
-      decideJobFit(withBlocker('spoken_language_missing', 0.9)),
+      decideJobFit({
+        ...withBlocker('spoken_language_missing', 0.9),
+        roleMatch: weakRoleMatch,
+      }),
     ).toMatchObject({ kind: 'dismiss', reason: 'spoken_language_missing' });
   });
 
-  it('dismisses a different profession', () => {
+  it('dismisses a role mismatch when the core match probability is below 75%', () => {
     expect(
       decideJobFit(
-        answers({ roleMatch: { score: 0.4, levels: [0.6, 0.4, 0, 0] } }),
+        answers({
+          roleMatch: weakRoleMatch,
+          coreRequirements: { score: 2, levels: [0, 0.26, 0.48, 0.26] },
+        }),
       ),
     ).toMatchObject({ kind: 'dismiss', reason: 'role_mismatch' });
+  });
+
+  it('marks a role mismatch as uncertain when most or all core requirements have 75% probability', () => {
+    expect(
+      decideJobFit(
+        answers({
+          roleMatch: weakRoleMatch,
+          coreRequirements: { score: 2, levels: [0, 0.25, 0.5, 0.25] },
+        }),
+      ),
+    ).toMatchObject({
+      kind: 'uncertain',
+      reason: 'role_mismatch_with_strong_core_match',
+    });
   });
 
   it('dismisses when most core requirements are missing', () => {
@@ -56,7 +78,11 @@ describe('decideJobFit', () => {
   it('dismisses a stated seniority clearly above the candidate', () => {
     expect(
       decideJobFit(
-        answers({ seniorityStated: 0.9, jobExpectsMoreSeniority: 0.8 }),
+        answers({
+          roleMatch: weakRoleMatch,
+          seniorityStated: 0.9,
+          jobExpectsMoreSeniority: 0.8,
+        }),
       ),
     ).toMatchObject({ kind: 'dismiss', reason: 'seniority_gap' });
   });
