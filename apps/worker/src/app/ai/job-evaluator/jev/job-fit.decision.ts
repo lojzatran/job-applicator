@@ -14,6 +14,7 @@ const MAX_LEVEL = 3;
 const YES = 0.7;
 const NO = 0.3;
 const MIN_LEVEL_SCORE = 1.5;
+const STRONG_CORE_MATCH_PROBABILITY = 0.75;
 const APPLY_FIT = 0.75;
 const DISMISS_FIT = 0.6;
 const SENIORITY_GAP = 0.6;
@@ -40,7 +41,18 @@ export function decideJobFit(answers: JobFitAnswers): JobFitDecision {
   // A two-peaked answer makes the average meaningless, so it must not trigger the threshold.
   const isRoleMatchSplit = isTwoPeaked(answers.roleMatch);
   const isCoreRequirementsSplit = isTwoPeaked(answers.coreRequirements);
-  if (!isRoleMatchSplit && answers.roleMatch.score < MIN_LEVEL_SCORE) {
+  const isRoleMismatch =
+    !isRoleMatchSplit && answers.roleMatch.score < MIN_LEVEL_SCORE;
+  const [
+    ,
+    ,
+    mostCoreRequirementsProbability = 0,
+    allCoreRequirementsProbability = 0,
+  ] = answers.coreRequirements.levels;
+  const hasStrongCoreMatch =
+    mostCoreRequirementsProbability + allCoreRequirementsProbability >=
+    STRONG_CORE_MATCH_PROBABILITY;
+  if (isRoleMismatch && !hasStrongCoreMatch) {
     return {
       kind: JobEvaluationDecision.DISMISS,
       fit,
@@ -62,6 +74,15 @@ export function decideJobFit(answers: JobFitAnswers): JobFitDecision {
       kind: JobEvaluationDecision.DISMISS,
       fit,
       reason: 'seniority_gap',
+    };
+  }
+  if (isRoleMismatch) {
+    // the person never worked in this kind of role before,
+    // but has most or all the required skills
+    return {
+      kind: JobEvaluationDecision.UNCERTAIN,
+      fit,
+      reason: 'role_mismatch_with_strong_core_match',
     };
   }
 
