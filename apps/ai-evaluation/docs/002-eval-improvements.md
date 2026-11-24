@@ -10,7 +10,7 @@ After [the first evaluation](001-eval.md) I got a baseline and candidate models 
 
 ## Improving baseten/elephant-1
 
-### 1
+### Step 1
 
 First session: https://eu.smith.langchain.com/public/49fd7e0a-d6fa-4632-9c6e-e5807134f594/d/compare?selectedSessions=3f4d28b8-7459-4faf-b447-216d24c91f54
 
@@ -202,6 +202,26 @@ Now it is taken into account the fact that role does not match the CV, but the m
 
 #### Result
 
-The run after I made those changes in code: https://eu.smith.langchain.com/o/e1f0d51d-9997-4ad6-b085-334de8a17776/a/-/datasets/0d8f759d-74f9-42b6-ac92-018c3124b30f/compare?selectedSessions=b247cd0b-c0fe-47cc-8b38-2ee3cd16b96e
+The run after I made those changes in code: https://eu.smith.langchain.com/public/49fd7e0a-d6fa-4632-9c6e-e5807134f594/d/compare?selectedSessions=b247cd0b-c0fe-47cc-8b38-2ee3cd16b96e
 
-**Accuracy changed from 0.82 to 0.9. Recall changed from 0.31 to 0.62 while Precision stays the same 1.00.**
+**4 wrong evaluations were fixed by this change. Accuracy changed from 0.82 to 0.9. Recall changed from 0.31 to 0.62 while Precision stays the same 1.00.**
+
+### Step 2
+
+Second session: https://eu.smith.langchain.com/public/49fd7e0a-d6fa-4632-9c6e-e5807134f594/d/compare?selectedSessions=b247cd0b-c0fe-47cc-8b38-2ee3cd16b96e
+
+Now I have already 90% accuracy. That is very high and the jobs that were wrongly evaluated are actually uncertain even for human. However, in such cases it is better if the job is chosen and applied. Therefore, my next goal is to increase recall even for the price of decreasing precision a bit.
+
+Currently, the recall is 0.62. To analyze this, I had a look at the 5 jobs that were wrongly evaluated. 3 of them has no real blocker, the candidates have required skills and the job are open to juniors as well. The only problem is that the core match was not as high I set in the previous step with 75%. If I set it to 48%, those 3 would pass.
+
+The other 2 jobs were not passed because the blockers were not fulfilled. [One](../src/node-job-evaluator/data/cases.ts#250) specifically requires Czech (`Výborně komunikuješ česky`) language and the CV doesn't mention anything (note: I know the person, and she doesn't speak Czech at all, but I will not take this into consideration here). [The other](../src/node-job-evaluator/data/cases.ts#L194) requires `1–3 years of experience in operations, PMO, project coordination, reporting or sales/revenue operations, ideally in a B2B SaaS or professional services environment.` and the candidate doesn't have these experiences specified in the CV. I will try to address these issues in the next step.
+
+
+#### Change
+I tried to decrease STRONG_CORE_MATCH_PROBABILITY to 48%. From the previous check, it was the lowest number I need to decrease in order to make the right jobs to pass.
+
+#### Result
+
+The run after I decrease the probability: https://eu.smith.langchain.com/public/49fd7e0a-d6fa-4632-9c6e-e5807134f594/d/compare?selectedSessions=f8e17af4-7303-495b-9883-642dbab957e4
+
+As expected, the 3 jobs are now correctly evaluated. However, I also got 3 new wrong evaluations. This happens because they were correctly evaluated as dismiss, and now since I lower STRONG_CORE_MATCH_PROBABILITY, they are evaluated as uncertain. This is a trade-off I have to do if I want to have higher recall, but I will try tackle this in the next steps.  Accuracy remains the same at 90%.

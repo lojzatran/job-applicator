@@ -194,7 +194,7 @@ export const cases: JobEvaluationCase[] = [
     cvId: 'business-intelligence-analyst-v1',
     jobId: 'ai-operations-project-manager',
     isValidJob: true,
-    decision: 'apply',
+    decision: 'uncertain',
     confidence: 80,
   },
   {

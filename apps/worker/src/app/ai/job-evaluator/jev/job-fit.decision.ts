@@ -14,7 +14,7 @@ const MAX_LEVEL = 3;
 const YES = 0.7;
 const NO = 0.3;
 const MIN_LEVEL_SCORE = 1.5;
-const STRONG_CORE_MATCH_PROBABILITY = 0.75;
+const STRONG_CORE_MATCH_PROBABILITY = 0.48;
 const APPLY_FIT = 0.75;
 const DISMISS_FIT = 0.6;
 const SENIORITY_GAP = 0.6;
@@ -28,14 +28,14 @@ export type JobFitDecision =
 export function decideJobFit(answers: JobFitAnswers): JobFitDecision {
   const fit = computeFit(answers);
 
-  const isBlockerPresent = BLOCKERS.find(
-    (b) => (answers.blockers[b] ?? 0) > YES,
+  const confirmedBlocker = BLOCKERS.find(
+    (blocker) => (answers.blockers[blocker]?.doesNotMeet ?? 0) > YES,
   );
-  if (isBlockerPresent)
+  if (confirmedBlocker)
     return {
       kind: JobEvaluationDecision.DISMISS,
       fit,
-      reason: isBlockerPresent,
+      reason: confirmedBlocker,
     };
 
   // A two-peaked answer makes the average meaningless, so it must not trigger the threshold.
@@ -86,15 +86,6 @@ export function decideJobFit(answers: JobFitAnswers): JobFitDecision {
     };
   }
 
-  // A refused blocker counts as unsettled, never as "no".
-  const unsettled = BLOCKERS.find((b) => (answers.blockers[b] ?? NO) >= NO);
-  if (unsettled) {
-    return {
-      kind: JobEvaluationDecision.UNCERTAIN,
-      fit,
-      reason: `unsettled_${unsettled}`,
-    };
-  }
   if (isRoleMatchSplit) {
     return {
       kind: JobEvaluationDecision.UNCERTAIN,
@@ -110,9 +101,25 @@ export function decideJobFit(answers: JobFitAnswers): JobFitDecision {
     };
   }
 
-  if (fit >= APPLY_FIT) return { kind: JobEvaluationDecision.APPLY, fit };
   if (fit < DISMISS_FIT)
     return { kind: JobEvaluationDecision.DISMISS, fit, reason: 'low_fit' };
+
+  const unsettled = BLOCKERS.find((blocker) => {
+    const assessment = answers.blockers[blocker];
+    return (
+      (assessment?.doesNotMeet ?? NO) >= NO ||
+      (assessment?.unverified ?? NO) >= NO
+    );
+  });
+  if (unsettled) {
+    return {
+      kind: JobEvaluationDecision.UNCERTAIN,
+      fit,
+      reason: `unsettled_${unsettled}`,
+    };
+  }
+
+  if (fit >= APPLY_FIT) return { kind: JobEvaluationDecision.APPLY, fit };
   return {
     kind: JobEvaluationDecision.UNCERTAIN,
     fit,
