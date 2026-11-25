@@ -18,6 +18,10 @@ const holdoutCasesByDatasetName = new Map([
 ]);
 
 async function main() {
+  if (process.argv.includes('--llm') && !env.LANGSMITH_UPLOAD_RUNS) {
+    return;
+  }
+
   const client = new Client();
   const datasetName = env.DATASET_NAME ?? DATASET_NAME;
   const evaluationCases = holdoutCasesByDatasetName.get(datasetName) ?? cases;

@@ -13,6 +13,10 @@ const appEnvSchema = z.object({
   GEMINI_API_KEY: z.string().optional(),
   GRADER_LLM_MODEL: z.string(),
   DATASET_NAME: z.string().optional(),
+  LANGSMITH_UPLOAD_RUNS: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((value) => value === 'true'),
   OLLAMA_BASE_URL: z.string().optional(),
   LLM_MODEL: z.string().default('gemma4:e4b'),
   EMBEDDING_MODEL: z.string().optional(),

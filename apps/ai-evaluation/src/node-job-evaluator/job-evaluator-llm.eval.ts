@@ -67,8 +67,11 @@ async function main() {
       return { response: result.isValidJob };
     }
 
+    const datasetName = env.DATASET_NAME ?? DATASET_NAME;
+    const uploadRuns = env.LANGSMITH_UPLOAD_RUNS;
     const results = await evaluate(runNode, {
-      data: env.DATASET_NAME ?? DATASET_NAME,
+      data: datasetName,
+      uploadRuns,
       evaluators: [correctnessEvaluator],
       summaryEvaluators: [summaryEval],
       experimentPrefix: LLM_EXPERIMENT_PREFIX,
@@ -79,7 +82,18 @@ async function main() {
       },
     });
 
-    logger.info(results);
+    if (uploadRuns) {
+      logger.info(results);
+    } else {
+      logger.info(
+        {
+          datasetName,
+          totalPairs: results.length,
+          metrics: results.summaryResults.results,
+        },
+        'LLM evaluation finished without uploading runs',
+      );
+    }
   } finally {
     await dataSource.destroy();
   }
