@@ -13,9 +13,9 @@ function answers(overrides: Partial<JobFitAnswers> = {}): JobFitAnswers {
     seniorityStated: 0.1,
     jobExpectsMoreSeniority: 0.1,
     blockers: {
-      spoken_language_missing: noBlocker,
-      domain_experience_missing: noBlocker,
-      formal_qualification_missing: noBlocker,
+      spoken_language: noBlocker,
+      domain_experience: noBlocker,
+      formal_qualification: noBlocker,
     },
     ...overrides,
   };
@@ -30,20 +30,22 @@ function withBlocker(
 }
 
 describe('decideJobFit', () => {
-  it('applies when the role and core requirements match', () => {
-    expect(decideJobFit(answers())).toMatchObject({ kind: 'apply' });
+  it('applies without a reason when the role and core requirements match', () => {
+    const decision = decideJobFit(answers());
+    expect(decision.kind).toBe('apply');
+    expect(decision).not.toHaveProperty('reason');
   });
 
   it('dismisses when a blocker is clearly present', () => {
     expect(
       decideJobFit({
-        ...withBlocker('spoken_language_missing', {
+        ...withBlocker('spoken_language', {
           doesNotMeet: 0.9,
           unverified: 0.05,
         }),
         roleMatch: weakRoleMatch,
       }),
-    ).toMatchObject({ kind: 'dismiss', reason: 'spoken_language_missing' });
+    ).toMatchObject({ kind: 'dismiss', reason: 'spoken_language_not_met' });
   });
 
   it('dismisses a role mismatch when the core match probability is below 48%', () => {
@@ -104,17 +106,17 @@ describe('decideJobFit', () => {
     { doesNotMeet: 0.05, unverified: 0.4 },
   ])('marks an unsettled blocker as uncertain', (assessment) => {
     expect(
-      decideJobFit(withBlocker('domain_experience_missing', assessment)),
+      decideJobFit(withBlocker('domain_experience', assessment)),
     ).toMatchObject({
       kind: 'uncertain',
-      reason: 'unsettled_domain_experience_missing',
+      reason: 'domain_experience_unverified',
     });
   });
 
   it('evaluates the two blocker probabilities separately', () => {
     expect(
       decideJobFit(
-        withBlocker('domain_experience_missing', {
+        withBlocker('domain_experience', {
           doesNotMeet: 0.18,
           unverified: 0.16,
         }),
@@ -125,28 +127,28 @@ describe('decideJobFit', () => {
   it('marks an otherwise suitable job with an unverified language as uncertain', () => {
     expect(
       decideJobFit(
-        withBlocker('spoken_language_missing', {
+        withBlocker('spoken_language', {
           doesNotMeet: 0.05,
           unverified: 0.9,
         }),
       ),
     ).toMatchObject({
       kind: 'uncertain',
-      reason: 'unsettled_spoken_language_missing',
+      reason: 'spoken_language_unverified',
     });
   });
 
   it('treats a refused blocker as unsettled, not as "no"', () => {
     expect(
       decideJobFit(
-        withBlocker('formal_qualification_missing', {
+        withBlocker('formal_qualification', {
           doesNotMeet: null,
           unverified: 0.05,
         }),
       ),
     ).toMatchObject({
       kind: 'uncertain',
-      reason: 'unsettled_formal_qualification_missing',
+      reason: 'formal_qualification_unverified',
     });
   });
 
@@ -211,7 +213,7 @@ describe('decideJobFit', () => {
   it('dismisses a low fit even when a requirement needs verification', () => {
     expect(
       decideJobFit({
-        ...withBlocker('spoken_language_missing', {
+        ...withBlocker('spoken_language', {
           doesNotMeet: 0.05,
           unverified: 0.9,
         }),

@@ -10,7 +10,11 @@ import {
   seedParsedCv,
   type ParsedCv,
 } from '../utils/agent-utils';
-import { createLogger } from '@apps/shared';
+import {
+  createLogger,
+  type JobEvaluationDecision,
+  type JobEvaluationReason,
+} from '@apps/shared';
 import { summaryEval } from './summary-eval';
 
 const logger = createLogger('job-evaluator-jev-eval');
@@ -22,6 +26,12 @@ const LLM_MODEL = 'gemma4:e4b';
 interface EvalInput {
   parsedCv: ParsedCv;
   job: Job;
+}
+
+interface EvalOutput {
+  response: boolean;
+  verdict: JobEvaluationDecision | null;
+  reason: JobEvaluationReason | null;
 }
 
 async function correctnessEvaluator({
@@ -40,7 +50,7 @@ async function correctnessEvaluator({
 async function runNode(
   { parsedCv, job }: EvalInput,
   decisions: OpenAIDecisions,
-): Promise<{ response: boolean }> {
+): Promise<EvalOutput> {
   const runtime = await createJevAgentRuntime(LLM_MODEL, decisions);
 
   try {
@@ -54,7 +64,11 @@ async function runNode(
       cvText,
       job,
     });
-    return { response: response.isValidJob };
+    return {
+      response: response.isValidJob,
+      verdict: response.evaluationResult ?? null,
+      reason: response.evaluationReason ?? null,
+    };
   } finally {
     await runtime.cleanup();
   }

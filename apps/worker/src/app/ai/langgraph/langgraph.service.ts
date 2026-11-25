@@ -17,7 +17,11 @@ import {
   CRITIQUE_LLM,
   JOB_EVALUATOR,
 } from '../ai.constants';
-import { createLogger, JobEvaluationDecision } from '@apps/shared';
+import {
+  createLogger,
+  JobEvaluationDecision,
+  type JobEvaluationReason,
+} from '@apps/shared';
 import type { JobEvaluator } from '../job-evaluator/job-evaluator';
 
 interface CoverLetterEntry {
@@ -27,6 +31,7 @@ interface CoverLetterEntry {
 const AgentStateAnnotation = Annotation.Root({
   isValidJob: Annotation<boolean | undefined>,
   evaluationResult: Annotation<JobEvaluationDecision | undefined>,
+  evaluationReason: Annotation<JobEvaluationReason | undefined>,
   job: Annotation<z.infer<typeof JobSchema> | undefined>,
   maxAppliedJobs: Annotation<number>,
   appliedJobsCount: Annotation<number>({
@@ -125,7 +130,7 @@ export class LanggraphService {
     this.logger.info(`Evaluating job: ${JSON.stringify(state.job?.title)}`);
 
     try {
-      const { verdict, score } = await this.jobEvaluator.evaluate(
+      const { verdict, score, reason } = await this.jobEvaluator.evaluate(
         { entityId: state.cvEntityId, text: state.cvText },
         state.job!,
       );
@@ -141,6 +146,7 @@ export class LanggraphService {
         isValidJob,
         cvEntityId: state.cvEntityId,
         evaluationResult: verdict,
+        evaluationReason: reason,
         score,
         url: state.job?.url,
         evaluatedJobsCount: state.evaluatedJobsCount + 1,
@@ -193,6 +199,7 @@ export class LanggraphService {
       job: undefined,
       isValidJob: undefined,
       evaluationResult: undefined,
+      evaluationReason: undefined,
     };
   }
 

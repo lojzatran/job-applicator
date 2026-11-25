@@ -38,8 +38,8 @@ export class JobApplication implements DatabaseEntity {
   @Column({ nullable: true })
   status?: 'processing' | 'applied' | 'not-applied' | 'dismissed' | 'error';
 
-  @Column({ nullable: true })
-  reason?: string;
+  @Column({ type: 'varchar', nullable: true })
+  reason?: string | null;
 
   @CreateDateColumn()
   createdAt?: Date;

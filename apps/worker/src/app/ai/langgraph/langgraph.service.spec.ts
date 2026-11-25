@@ -5,6 +5,7 @@ import { MemorySaver } from '@langchain/langgraph';
 import { FakeBuiltModel } from '@langchain/core/testing';
 import { JobEmbeddingsService } from '../../jobs/job-embeddings.service';
 import { EmbeddingJobEvaluator } from '../job-evaluator/embedding-job.evaluator';
+import type { JobEvaluator } from '../job-evaluator/job-evaluator';
 import { JobEvaluationDecision } from '@apps/shared';
 
 describe('LanggraphService', () => {
@@ -323,6 +324,35 @@ describe('LanggraphService', () => {
       1,
     );
     expect(coverLetterGeneratorLlm.callCount).toBe(4); // 2 jobs * 2 iterations
+  });
+
+  it('should expose the evaluation reason alongside the binary response', async () => {
+    const evaluator: JobEvaluator = {
+      prepareCv: jest.fn(),
+      evaluate: jest.fn(async () => ({
+        verdict: JobEvaluationDecision.UNCERTAIN,
+        score: 0.7,
+        reason: 'borderline_fit',
+      })),
+    };
+    service = new LanggraphService(
+      evaluator,
+      fakeModel(),
+      fakeModel(),
+      new MemorySaver(),
+    );
+    const graph = await service.build();
+    const result = await graph.nodes['job_evaluator'].invoke({
+      cvEntityId: 100,
+      cvText: 'cv text',
+      job: { url: 'job1' },
+    });
+
+    expect(result).toMatchObject({
+      isValidJob: true,
+      evaluationResult: JobEvaluationDecision.UNCERTAIN,
+      evaluationReason: 'borderline_fit',
+    });
   });
 
   it('should retry cover letter generation if LLM for cover letter generation fails initially', async () => {

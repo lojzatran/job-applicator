@@ -2,9 +2,9 @@ import type { Answer, Answers } from '@langchain/openai';
 import type { JobFitQuestions } from './job-fit.questions';
 
 export const BLOCKERS = [
-  'spoken_language_missing',
-  'domain_experience_missing',
-  'formal_qualification_missing',
+  'spoken_language',
+  'domain_experience',
+  'formal_qualification',
 ] as const;
 
 export type Blocker = (typeof BLOCKERS)[number];
@@ -49,15 +49,15 @@ export function toJobFitAnswers(answers: ModelAnswers): JobFitAnswers {
       'job_expects_more_seniority',
     ),
     blockers: {
-      spoken_language_missing: toBlockerAssessment(
+      spoken_language: toBlockerAssessment(
         answers.spoken_language_missing,
         answers.spoken_language_not_met,
       ),
-      domain_experience_missing: toBlockerAssessment(
+      domain_experience: toBlockerAssessment(
         answers.domain_experience_missing,
         answers.domain_experience_not_met,
       ),
-      formal_qualification_missing: toBlockerAssessment(
+      formal_qualification: toBlockerAssessment(
         answers.formal_qualification_missing,
         answers.formal_qualification_not_met,
       ),
@@ -66,8 +66,8 @@ export function toJobFitAnswers(answers: ModelAnswers): JobFitAnswers {
 }
 
 function toBlockerAssessment(
-  missing: ModelAnswers[Blocker],
-  notMet: ModelAnswers[Blocker],
+  missing: ModelAnswers[`${Blocker}_missing`],
+  notMet: ModelAnswers[`${Blocker}_not_met`],
 ): BlockerAssessment {
   return {
     doesNotMeet: toProbability(notMet),

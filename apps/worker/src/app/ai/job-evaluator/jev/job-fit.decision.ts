@@ -3,7 +3,7 @@ import {
   type JobFitAnswers,
   type ScoreValue,
 } from './job-fit.answers';
-import { JobEvaluationDecision } from '@apps/shared';
+import { JobEvaluationDecision, type JobEvaluationReason } from '@apps/shared';
 
 /**
  * MAX_LEVEL corresponds to the number of choices (max index) we have in the score questions.
@@ -22,8 +22,11 @@ const TWO_PEAKS_MASS = 0.35;
 
 export type JobFitDecision =
   | { kind: JobEvaluationDecision.APPLY; fit: number }
-  | { kind: JobEvaluationDecision.DISMISS; fit: number; reason: string }
-  | { kind: JobEvaluationDecision.UNCERTAIN; fit: number; reason: string };
+  | {
+      kind: JobEvaluationDecision.DISMISS | JobEvaluationDecision.UNCERTAIN;
+      fit: number;
+      reason: JobEvaluationReason;
+    };
 
 export function decideJobFit(answers: JobFitAnswers): JobFitDecision {
   const fit = computeFit(answers);
@@ -35,7 +38,7 @@ export function decideJobFit(answers: JobFitAnswers): JobFitDecision {
     return {
       kind: JobEvaluationDecision.DISMISS,
       fit,
-      reason: confirmedBlocker,
+      reason: `${confirmedBlocker}_not_met`,
     };
 
   // A two-peaked answer makes the average meaningless, so it must not trigger the threshold.
@@ -115,7 +118,7 @@ export function decideJobFit(answers: JobFitAnswers): JobFitDecision {
     return {
       kind: JobEvaluationDecision.UNCERTAIN,
       fit,
-      reason: `unsettled_${unsettled}`,
+      reason: `${unsettled}_unverified`,
     };
   }
 
