@@ -9,7 +9,6 @@ import {
   JobApplication,
   JobApplicationProcessingRun,
   JobEvaluationDecision,
-  type JobEvaluationReason,
 } from '@apps/shared';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -29,7 +28,7 @@ export interface StreamChunk {
     cvEntityId: number;
     isValidJob?: boolean;
     evaluationResult?: JobEvaluationDecision;
-    evaluationReason?: JobEvaluationReason;
+    evaluationReason?: string;
     url: string;
     evaluatedJobsCount?: number;
     uncertainJobsCount?: number;

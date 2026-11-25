@@ -1,11 +1,11 @@
 import type { Job } from '../../jobs/types';
-import type { JobEvaluationDecision, JobEvaluationReason } from '@apps/shared';
+import type { JobEvaluationDecision } from '@apps/shared';
 
 export interface JobEvaluation {
   verdict: JobEvaluationDecision;
   /** Higher means a better match. Comparable only within one implementation. */
   score: number;
-  reason?: JobEvaluationReason;
+  reason?: string;
 }
 
 export interface CvInput {

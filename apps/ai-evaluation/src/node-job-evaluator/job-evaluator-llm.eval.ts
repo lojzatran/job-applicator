@@ -64,7 +64,14 @@ async function main() {
       if (result.evaluationResult === undefined) {
         throw new Error(`LLM job evaluation failed for ${job.url}`);
       }
-      return { response: result.isValidJob };
+      if (result.isValidJob) {
+        return { response: true };
+      }
+      return {
+        response: false,
+        score: result.score,
+        reason: result.evaluationReason,
+      };
     }
 
     const datasetName = env.DATASET_NAME ?? DATASET_NAME;

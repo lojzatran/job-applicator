@@ -17,11 +17,7 @@ import {
   CRITIQUE_LLM,
   JOB_EVALUATOR,
 } from '../ai.constants';
-import {
-  createLogger,
-  JobEvaluationDecision,
-  type JobEvaluationReason,
-} from '@apps/shared';
+import { createLogger, JobEvaluationDecision } from '@apps/shared';
 import type { JobEvaluator } from '../job-evaluator/job-evaluator';
 
 interface CoverLetterEntry {
@@ -31,7 +27,7 @@ interface CoverLetterEntry {
 const AgentStateAnnotation = Annotation.Root({
   isValidJob: Annotation<boolean | undefined>,
   evaluationResult: Annotation<JobEvaluationDecision | undefined>,
-  evaluationReason: Annotation<JobEvaluationReason | undefined>,
+  evaluationReason: Annotation<string | undefined>,
   job: Annotation<z.infer<typeof JobSchema> | undefined>,
   maxAppliedJobs: Annotation<number>,
   appliedJobsCount: Annotation<number>({

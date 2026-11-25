@@ -225,3 +225,36 @@ I tried to decrease STRONG_CORE_MATCH_PROBABILITY to 48%. From the previous chec
 The run after I decrease the probability: https://eu.smith.langchain.com/public/49fd7e0a-d6fa-4632-9c6e-e5807134f594/d/compare?selectedSessions=f8e17af4-7303-495b-9883-642dbab957e4
 
 As expected, the 3 jobs are now correctly evaluated. However, I also got 3 new wrong evaluations. This happens because they were correctly evaluated as dismiss, and now since I lower STRONG_CORE_MATCH_PROBABILITY, they are evaluated as uncertain. This is a trade-off I have to do if I want to have higher recall, but I will try tackle this in the next steps.  Accuracy remains the same at 90%.
+
+### Step 3
+
+I decided that Decision model is already well tuned and further tuning might not bring so much value. In this step I focus on tuning LLM. 
+
+This is the baseline for LLM: https://eu.smith.langchain.com/public/49fd7e0a-d6fa-4632-9c6e-e5807134f594/d/compare?selectedSessions=7442b280-6f82-4878-90f2-83f666231687
+
+The accuracy is already high at 90%. However, the recall is quite low and I would like to improve that. 
+![llm-run-1.png](images/llm-run-1.png)
+
+The main focus is on the prompt as the original prompt was just created by another LLM and was not really tuned. To tune it, I need the LLM to return rationale why it considers the particular CV/job match as apply or dismiss, as right now it returns only true/false depending on if the candidate should apply or not.
+
+For those wrongly evaluated jobs, LLM was assuming that the candidates were overqualified, or the salary expected by the candidate might be higher than the job (though it was only assumed by the roles, not the numbers). And also there was the language mismatch, the same problem that appeared in Jev evaluation. The job explicitly requires a spoken language, but that language is not stated in the CV.
+
+#### Change
+
+I added the following rules to the prompt:
+```
+- Count experience or seniority above the required level as meeting that requirement.
+- Do not infer salary expectations, lack of interest, boredom, or risk of early departure from the candidate's experience, qualifications, or seniority.
+- If the posting offers an alternative to prior experience, evaluate that route on its own terms. Use concrete accomplishments in related work as evidence. A different title or career path is insufficient grounds for rejection.
+- When the employer requires hands-on experience in a specific activity, look for evidence of doing that work at the required level. A tool in the skills list or years in an adjacent profession alone cannot establish that experience.
+- When the CV demonstrates the main work at the required level and the only gap is one supporting tool or method, return true.
+- Assess only the languages the employer explicitly requires. The language of the posting, the customer market and the location of the role do not establish an additional language requirement.
+```
+
+#### Result
+
+After adding the missing rules, the recall jumps from 62% to 92%. Also, accuracy was improved from 90% to 98%. 
+https://eu.smith.langchain.com/public/49fd7e0a-d6fa-4632-9c6e-e5807134f594/d/compare?selectedSessions=148c5538-c190-4a49-9e8e-28621629abd0
+
+![llm-run-2.png](images/llm-run-2.png)
+
