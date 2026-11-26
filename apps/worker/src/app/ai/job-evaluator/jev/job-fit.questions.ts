@@ -112,7 +112,13 @@ export const JOB_FIT_QUESTIONS = {
   spoken_language_missing: {
     type: 'predicate',
     instructions:
-      'Does `job.description` require a spoken language, such as fluent German, that does not appear anywhere in `candidate`? Programming languages such as Java or Python are not spoken languages.',
+      'Does `job.description` require a spoken language that the CV in `candidate` leaves unverified? Treat a CV written in the required language as evidence of fluency even if the CV does not explicitly list that language. If the job specifies a proficiency level, count a language listed without a level as unverified unless the CV itself provides enough evidence of the required level. Programming languages such as Java or Python are not spoken languages.',
+  },
+
+  spoken_language_not_met: {
+    type: 'predicate',
+    instructions:
+      'Does the CV in `candidate` explicitly state that the candidate cannot speak a language required in `job.description` or show proficiency below the required level? Answer yes only when the CV provides direct evidence of a shortfall.',
   },
 
   domain_experience_missing: {
@@ -121,10 +127,22 @@ export const JOB_FIT_QUESTIONS = {
       "Does `job.description` require experience in a specific business domain, such as banking, healthcare or e-commerce, that the candidate's employers and projects in `candidate` do not show? A job that only describes the company's own industry does not require experience in it.",
   },
 
+  domain_experience_not_met: {
+    type: 'predicate',
+    instructions:
+      'Does the CV in `candidate` explicitly state that the candidate lacks experience in a business domain required in `job.description` or show less experience than an explicit minimum? Answer yes only when the CV provides direct evidence of a shortfall.',
+  },
+
   formal_qualification_missing: {
     type: 'predicate',
     instructions:
       'Does `job.description` require a formal qualification, such as a specific university degree, a certification or a security clearance, that does not appear in `candidate`? A qualification listed only as preferred is not required.',
+  },
+
+  formal_qualification_not_met: {
+    type: 'predicate',
+    instructions:
+      'Does the CV in `candidate` explicitly show that the candidate lacks a formal qualification required in `job.description` or that the required qualification has expired? Answer yes only when the CV provides direct evidence of a shortfall.',
   },
 } as const satisfies Questions;
 

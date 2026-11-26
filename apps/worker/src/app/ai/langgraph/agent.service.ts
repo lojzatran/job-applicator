@@ -28,6 +28,7 @@ export interface StreamChunk {
     cvEntityId: number;
     isValidJob?: boolean;
     evaluationResult?: JobEvaluationDecision;
+    evaluationReason?: string;
     url: string;
     evaluatedJobsCount?: number;
     uncertainJobsCount?: number;
@@ -298,6 +299,7 @@ export class AgentService {
         if (application) {
           await this.jobApplicationRepository.update(application.id, {
             evaluationResult: chunk.job_evaluator.evaluationResult,
+            reason: chunk.job_evaluator.evaluationReason ?? null,
           });
         }
       }

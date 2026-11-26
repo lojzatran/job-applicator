@@ -5,6 +5,7 @@ export interface JobEvaluation {
   verdict: JobEvaluationDecision;
   /** Higher means a better match. Comparable only within one implementation. */
   score: number;
+  reason?: string;
 }
 
 export interface CvInput {

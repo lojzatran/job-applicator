@@ -1,7 +1,7 @@
 import amqplib from 'amqplib';
+import { randomUUID } from 'node:crypto';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { extname, join } from 'node:path';
-import { v4 as uuidv4 } from 'uuid';
 import { failPendingJobApplicationProcessingRun } from '../../lib/db/processing-run.repository';
 import {
   ProcessingRunLimitError,
@@ -105,7 +105,7 @@ export const POST = withAuth(async (request, ctx) => {
     );
   }
 
-  const threadId = uuidv4();
+  const threadId = randomUUID();
   let jobProcessingRun: JobApplicationProcessingRun;
 
   try {

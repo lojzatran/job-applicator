@@ -41,6 +41,10 @@ export class JevJobEvaluator implements JobEvaluator {
     const decision = decideJobFit(toJobFitAnswers(answers));
     this.logger.info({ decision }, `Jev decision for ${job.title}`);
 
-    return { verdict: decision.kind, score: decision.fit };
+    return {
+      verdict: decision.kind,
+      score: decision.fit,
+      reason: 'reason' in decision ? decision.reason : undefined,
+    };
   }
 }

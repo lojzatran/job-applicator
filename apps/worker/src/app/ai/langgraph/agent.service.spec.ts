@@ -125,6 +125,7 @@ describe('AgentService', () => {
           uncertainJobsCount: 1,
           dismissedJobsCount: 0,
           evaluationResult: JobEvaluationDecision.UNCERTAIN,
+          evaluationReason: 'borderline_fit',
           isValidJob: true,
           url: 'job1',
         },
@@ -156,6 +157,7 @@ describe('AgentService', () => {
     expect(processingRunRepo.save).toHaveBeenCalled();
     expect(applicationRepo.update).toHaveBeenCalledWith(10, {
       evaluationResult: JobEvaluationDecision.UNCERTAIN,
+      reason: 'borderline_fit',
     });
     expect(processingRunRepo.update).toHaveBeenCalledWith(
       { threadId: mockThreadId },
@@ -248,6 +250,7 @@ describe('AgentService', () => {
 
     expect(applicationRepo.update).toHaveBeenCalledWith(10, {
       evaluationResult: JobEvaluationDecision.DISMISS,
+      reason: null,
     });
     expect(applicationRepo.update).toHaveBeenCalledWith(10, {
       status: 'dismissed',

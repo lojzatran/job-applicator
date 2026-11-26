@@ -2,12 +2,19 @@ import type { Answer, Answers } from '@langchain/openai';
 import type { JobFitQuestions } from './job-fit.questions';
 
 export const BLOCKERS = [
-  'spoken_language_missing',
-  'domain_experience_missing',
-  'formal_qualification_missing',
+  'spoken_language',
+  'domain_experience',
+  'formal_qualification',
 ] as const;
 
 export type Blocker = (typeof BLOCKERS)[number];
+
+type ModelAnswers = Answers<JobFitQuestions>;
+
+interface BlockerAssessment {
+  doesNotMeet: number | null;
+  unverified: number | null;
+}
 
 export interface ScoreValue {
   /** Probability-weighted average of the zero-based level indices. */
@@ -24,12 +31,10 @@ export interface JobFitAnswers {
   niceToHaveCoverage: ScoreValue | null;
   seniorityStated: number | null;
   jobExpectsMoreSeniority: number | null;
-  blockers: Record<Blocker, number | null>;
+  blockers: Record<Blocker, BlockerAssessment | null>;
 }
 
-export function toJobFitAnswers(
-  answers: Answers<JobFitQuestions>,
-): JobFitAnswers {
+export function toJobFitAnswers(answers: ModelAnswers): JobFitAnswers {
   return {
     roleMatch: requireScore(answers.role_match, 'role_match'),
     coreRequirements: requireScore(
@@ -44,14 +49,29 @@ export function toJobFitAnswers(
       'job_expects_more_seniority',
     ),
     blockers: {
-      spoken_language_missing: toProbability(answers.spoken_language_missing),
-      domain_experience_missing: toProbability(
-        answers.domain_experience_missing,
+      spoken_language: toBlockerAssessment(
+        answers.spoken_language_missing,
+        answers.spoken_language_not_met,
       ),
-      formal_qualification_missing: toProbability(
+      domain_experience: toBlockerAssessment(
+        answers.domain_experience_missing,
+        answers.domain_experience_not_met,
+      ),
+      formal_qualification: toBlockerAssessment(
         answers.formal_qualification_missing,
+        answers.formal_qualification_not_met,
       ),
     },
+  };
+}
+
+function toBlockerAssessment(
+  missing: ModelAnswers[`${Blocker}_missing`],
+  notMet: ModelAnswers[`${Blocker}_not_met`],
+): BlockerAssessment {
+  return {
+    doesNotMeet: toProbability(notMet),
+    unverified: toProbability(missing),
   };
 }
 
