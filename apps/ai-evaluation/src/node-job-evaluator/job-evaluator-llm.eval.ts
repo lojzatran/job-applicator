@@ -40,7 +40,7 @@ async function main() {
   const llm = jobEvaluatorLlmProvider.useFactory();
   if (!llm) {
     throw new Error(
-      'JOB_EVALUATOR_METHOD must be set to llm to run the LLM job evaluation',
+      'Missing LLM job evaluator configuration. Check JOB_EVALUATOR_PROVIDER and its model and credentials.',
     );
   }
   const dataSource = await new DataSource(dataSourceOptions).initialize();

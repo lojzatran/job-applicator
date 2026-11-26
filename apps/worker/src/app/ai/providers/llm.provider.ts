@@ -49,9 +49,7 @@ function createJobEvaluatorLlm() {
     return createAIGatewayLlm(env.AI_GATEWAY_JOB_EVALUATOR_MODEL);
   }
 
-  throw new Error(
-    'Missing LLM job evaluator configuration. Check JOB_EVALUATOR_PROVIDER and its model and credentials.',
-  );
+  return null;
 }
 
 function createCoverLetterGeneratorLlm() {
@@ -132,8 +130,7 @@ function createCvParserLlm() {
 
 export const jobEvaluatorLlmProvider = {
   provide: JOB_EVALUATOR_LLM,
-  useFactory: () =>
-    env.JOB_EVALUATOR_METHOD === 'llm' ? createJobEvaluatorLlm() : null,
+  useFactory: createJobEvaluatorLlm,
 };
 
 export const coverLetterGeneratorLlmProvider = {

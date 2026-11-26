@@ -14,6 +14,7 @@ import { CvService } from '../../cv/cv.service';
 import { JobEmbeddingsService } from '../../jobs/job-embeddings.service';
 import type { JobEvaluator } from '../job-evaluator/job-evaluator';
 import { EmbeddingJobEvaluator } from '../job-evaluator/embedding-job.evaluator';
+import { JevLlmJobEvaluator } from '../job-evaluator/jev-llm.job-evaluator';
 import { JevJobEvaluator } from '../job-evaluator/jev.job-evaluator';
 import { LlmJobEvaluator } from '../job-evaluator/llm.job-evaluator';
 
@@ -47,6 +48,16 @@ export function createJobEvaluator(
         );
       }
       return new LlmJobEvaluator(jobEvaluatorLlm, cvService, dataSource);
+    case 'jev_llm':
+      if (!decisions || !jobEvaluatorLlm) {
+        throw new Error(
+          'A decision model and a chat model must be configured for JOB_EVALUATOR_METHOD=jev_llm. Check AI_GATEWAY_DECISION_MODEL and the chat model settings for JOB_EVALUATOR_PROVIDER.',
+        );
+      }
+      return new JevLlmJobEvaluator(
+        new JevJobEvaluator(decisions, cvService, cvRepository),
+        new LlmJobEvaluator(jobEvaluatorLlm, cvService, dataSource),
+      );
   }
 }
 
