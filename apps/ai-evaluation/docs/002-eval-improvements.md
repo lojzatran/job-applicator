@@ -216,23 +216,23 @@ Currently, the recall is 0.62. To analyze this, I had a look at the 5 jobs that 
 
 The other 2 jobs were not passed because the blockers were not fulfilled. [One](../src/node-job-evaluator/data/cases.ts#250) specifically requires Czech (`Výborně komunikuješ česky`) language and the CV doesn't mention anything (note: I know the person, and she doesn't speak Czech at all, but I will not take this into consideration here). [The other](../src/node-job-evaluator/data/cases.ts#L194) requires `1–3 years of experience in operations, PMO, project coordination, reporting or sales/revenue operations, ideally in a B2B SaaS or professional services environment.` and the candidate doesn't have these experiences specified in the CV. I will try to address these issues in the next step.
 
-
 #### Change
+
 I tried to decrease STRONG_CORE_MATCH_PROBABILITY to 48%. From the previous check, it was the lowest number I need to decrease in order to make the right jobs to pass.
 
 #### Result
 
 The run after I decrease the probability: https://eu.smith.langchain.com/public/49fd7e0a-d6fa-4632-9c6e-e5807134f594/d/compare?selectedSessions=f8e17af4-7303-495b-9883-642dbab957e4
 
-As expected, the 3 jobs are now correctly evaluated. However, I also got 3 new wrong evaluations. This happens because they were correctly evaluated as dismiss, and now since I lower STRONG_CORE_MATCH_PROBABILITY, they are evaluated as uncertain. This is a trade-off I have to do if I want to have higher recall, but I will try tackle this in the next steps.  Accuracy remains the same at 90%.
+As expected, the 3 jobs are now correctly evaluated. However, I also got 3 new wrong evaluations. This happens because they were correctly evaluated as dismiss, and now since I lower STRONG_CORE_MATCH_PROBABILITY, they are evaluated as uncertain. This is a trade-off I have to do if I want to have higher recall, but I will try tackle this in the next steps. Accuracy remains the same at 90%.
 
 ### Step 3
 
-I decided that Decision model is already well tuned and further tuning might not bring so much value. In this step I focus on tuning LLM. 
+I decided that Decision model is already well tuned and further tuning might not bring so much value. In this step I focus on tuning LLM.
 
 This is the baseline for LLM: https://eu.smith.langchain.com/public/49fd7e0a-d6fa-4632-9c6e-e5807134f594/d/compare?selectedSessions=7442b280-6f82-4878-90f2-83f666231687
 
-The accuracy is already high at 90%. However, the recall is quite low and I would like to improve that. 
+The accuracy is already high at 90%. However, the recall is quite low and I would like to improve that.
 ![llm-run-1.png](images/llm-run-1.png)
 
 The main focus is on the prompt as the original prompt was just created by another LLM and was not really tuned. To tune it, I need the LLM to return rationale why it considers the particular CV/job match as apply or dismiss, as right now it returns only true/false depending on if the candidate should apply or not.
@@ -242,6 +242,7 @@ For those wrongly evaluated jobs, LLM was assuming that the candidates were over
 #### Change
 
 I added the following rules to the prompt:
+
 ```
 - Count experience or seniority above the required level as meeting that requirement.
 - Do not infer salary expectations, lack of interest, boredom, or risk of early departure from the candidate's experience, qualifications, or seniority.
@@ -253,8 +254,7 @@ I added the following rules to the prompt:
 
 #### Result
 
-After adding the missing rules, the recall jumps from 62% to 92%. Also, accuracy was improved from 90% to 98%. 
+After adding the missing rules, the recall jumps from 62% to 92%. Also, accuracy was improved from 90% to 98%.
 https://eu.smith.langchain.com/public/49fd7e0a-d6fa-4632-9c6e-e5807134f594/d/compare?selectedSessions=148c5538-c190-4a49-9e8e-28621629abd0
 
 ![llm-run-2.png](images/llm-run-2.png)
-

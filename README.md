@@ -8,6 +8,13 @@ Job Applicator helps you discover jobs from multiple sources, evaluate how well 
 >
 > **[Open the live demo →](https://lamtestsrv.vps.webdock.cloud)**
 
+## Evaluation
+
+> [!NOTE]
+> See how I benchmark CV–job matching, compare models, and improve the evaluator.
+>
+> **[Explore the evaluation docs →](apps/ai-evaluation/docs)**
+
 ## Technology stack
 
 ### ⚙️ Backend

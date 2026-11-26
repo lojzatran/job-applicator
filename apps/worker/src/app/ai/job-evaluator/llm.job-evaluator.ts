@@ -96,11 +96,7 @@ export class LlmJobEvaluator implements JobEvaluator {
       .withStructuredOutput(
         z.object({
           isValidJob: z.boolean(),
-          score: z
-            .number()
-            .min(0)
-            .max(1)
-            .nullish(),
+          score: z.number().min(0).max(1).nullish(),
           reason: z.string().nullish(),
         }),
       )
