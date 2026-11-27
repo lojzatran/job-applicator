@@ -10,7 +10,7 @@ import { CvService } from '@apps/worker/src/app/cv/cv.service';
 import type { Job } from '@apps/worker/src/app/jobs/types';
 import { DATASET_NAME, LLM_EXPERIMENT_PREFIX } from './constants';
 import { parsedCvToText, type ParsedCv } from '../utils/agent-utils';
-import { summaryEval } from './summary-eval';
+import { createSummaryEval } from './summary-eval';
 
 const logger = createLogger('job-evaluator-llm-eval');
 
@@ -40,7 +40,7 @@ async function main() {
   const llm = jobEvaluatorLlmProvider.useFactory();
   if (!llm) {
     throw new Error(
-      'JOB_EVALUATOR_METHOD must be set to llm to run the LLM job evaluation',
+      'Missing LLM job evaluator configuration. Check JOB_EVALUATOR_PROVIDER and its model and credentials.',
     );
   }
   const dataSource = await new DataSource(dataSourceOptions).initialize();
@@ -80,7 +80,7 @@ async function main() {
       data: datasetName,
       uploadRuns,
       evaluators: [correctnessEvaluator],
-      summaryEvaluators: [summaryEval],
+      summaryEvaluators: [createSummaryEval()],
       experimentPrefix: LLM_EXPERIMENT_PREFIX,
       maxConcurrency: 2,
       metadata: {

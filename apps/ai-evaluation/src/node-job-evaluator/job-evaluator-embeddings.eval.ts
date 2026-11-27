@@ -11,7 +11,7 @@ import {
   type ParsedCv,
 } from '../utils/agent-utils';
 import { createLogger } from '@apps/shared';
-import { summaryEval } from './summary-eval';
+import { createSummaryEval } from './summary-eval';
 
 const logger = createLogger('job-evaluator-embedding-eval');
 
@@ -76,7 +76,7 @@ async function main() {
     {
       data: env.DATASET_NAME ?? DATASET_NAME,
       evaluators: [correctnessEvaluator],
-      summaryEvaluators: [summaryEval],
+      summaryEvaluators: [createSummaryEval()],
       experimentPrefix: EMBEDDING_EXPERIMENT_PREFIX,
       maxConcurrency: 2,
       metadata: {

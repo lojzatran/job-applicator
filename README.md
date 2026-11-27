@@ -89,8 +89,9 @@ For the website, `NEXT_PUBLIC_SUPABASE_URL` must be available when the Docker im
 
 ### AI & Models
 
-- `JOB_EVALUATOR_METHOD` - Evaluates jobs using embeddings (`embedding`, the default), JEV (`jev`), or a chat model (`llm`).
-- `JOB_EVALUATOR_PROVIDER` - Optional chat model provider for `JOB_EVALUATOR_METHOD=llm`. Select `gemini`, `ollama`, or `ai_gateway`.
+- `JOB_EVALUATOR_METHOD` - Selects embeddings (`embedding`, the default), Jev (`jev`), a chat model (`llm`), or Jev with a chat model fallback (`jev_llm`).
+- `AI_GATEWAY_DECISION_MODEL` - Decision model for `jev` and `jev_llm`.
+- `JOB_EVALUATOR_PROVIDER` - Optional chat model provider for `llm` and `jev_llm`. Select `gemini`, `ollama`, or `ai_gateway`.
 - `JOB_EVALUATOR_EMBEDDING_THRESHOLD` - Weighted embedding score must exceed this value for the embedding job evaluator to return `apply`. Defaults to `0.9`.
 - `EMBEDDING_PROVIDER` - Embedding provider. Defaults to `ollama`. Use `ai_gateway` with `AI_GATEWAY_EMBEDDING_MODEL` and `AI_GATEWAY_API_KEY`.
 - `AI_GATEWAY_EMBEDDING_DIMENSIONS` - (Optional) Positive integer for models that support custom embedding dimensions. The worker and embedding job eval use the model's default when this setting is omitted.
@@ -102,6 +103,8 @@ For the website, `NEXT_PUBLIC_SUPABASE_URL` must be available when the Docker im
 - `CRITIQUE_MODEL` - Ollama model name used to critique and rewrite the cover letter.
 - `OLLAMA_BASE_URL` - Base URL for the Ollama OpenAI-compatible API, including `/v1` (e.g., `http://localhost:11434/v1`).
 - `OLLAMA_API_KEY` - (Optional) API key for Ollama if running behind an authenticated proxy.
+
+In `jev_llm` mode, Jev runs first and a chat model reviews every `uncertain` verdict. The chat model's rejection becomes the final verdict. A positive result or a failed fallback keeps the original `uncertain` verdict.
 
 ### Storage
 
@@ -233,6 +236,7 @@ Run them from the workspace root:
 
 ```sh
 npm run ai-eval:node-job-evaluator:embedding
+npm run ai-eval:node-job-evaluator:jev
 npm run ai-eval:node-job-evaluator:llm
 npm run ai-eval:graph
 ```
@@ -244,6 +248,8 @@ The eval app is a standalone test module with credentials separate from the appl
 The embedding job evaluator uses the worker's `EMBEDDING_PROVIDER` setting. For `ai_gateway`, set `AI_GATEWAY_EMBEDDING_MODEL` and `AI_GATEWAY_API_KEY`. For `ollama`, which is the default, use `OLLAMA_EMBEDDING_MODEL` and `OLLAMA_EMBEDDING_BASE_URL` as in the worker. The full graph eval uses `EMBEDDING_MODEL`.
 
 The LLM job eval runs the LLM evaluator regardless of the worker's `JOB_EVALUATOR_METHOD`. It uses the worker's `JOB_EVALUATOR_PROVIDER` and model settings. For `ollama`, set `OLLAMA_JOB_EVALUATOR_MODEL` and `OLLAMA_BASE_URL`. For `gemini`, set `GEMINI_API_KEY` and optionally `GEMINI_JOB_EVALUATOR_MODEL`. For `ai_gateway`, set `AI_GATEWAY_JOB_EVALUATOR_MODEL` and `AI_GATEWAY_API_KEY`.
+
+Use `DATASET_NAME` to compare job evaluator runs on the same dataset. For the LLM eval, `LANGSMITH_UPLOAD_RUNS=false` reads an existing LangSmith dataset and reports metrics locally.
 
 Required for the eval app:
 

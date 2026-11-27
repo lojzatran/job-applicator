@@ -10,7 +10,7 @@ const workspaceEnvPath = resolve(process.cwd(), '.env');
 
 const appEnvSchema = z.object({
   JOB_EVALUATOR_METHOD: z
-    .enum(['embedding', 'jev', 'llm'])
+    .enum(['embedding', 'jev', 'llm', 'jev_llm'])
     .default('embedding'),
   JOB_EVALUATOR_EMBEDDING_THRESHOLD: z
     .string()
@@ -25,6 +25,16 @@ const appEnvSchema = z.object({
   EMBEDDING_PROVIDER: z.enum(['ollama', 'ai_gateway']).optional(),
   AI_GATEWAY_API_KEY: z.string().optional(),
   AI_GATEWAY_JOB_EVALUATOR_MODEL: z.string().optional(),
+  AI_GATEWAY_JOB_EVALUATOR_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(5000),
+  AI_GATEWAY_JOB_EVALUATOR_MAX_ATTEMPTS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(7),
   AI_GATEWAY_COVER_LETTER_GENERATOR_MODEL: z.string().optional(),
   AI_GATEWAY_CRITIQUE_MODEL: z.string().optional(),
   AI_GATEWAY_CV_PARSER_MODEL: z.string().optional(),

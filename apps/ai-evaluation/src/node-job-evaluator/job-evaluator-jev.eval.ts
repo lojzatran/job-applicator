@@ -15,7 +15,7 @@ import {
   type JobEvaluationDecision,
   type JobEvaluationReason,
 } from '@apps/shared';
-import { summaryEval } from './summary-eval';
+import { createSummaryEval } from './summary-eval';
 
 const logger = createLogger('job-evaluator-jev-eval');
 
@@ -85,7 +85,7 @@ async function main() {
     {
       data: env.DATASET_NAME ?? DATASET_NAME,
       evaluators: [correctnessEvaluator],
-      summaryEvaluators: [summaryEval],
+      summaryEvaluators: [createSummaryEval()],
       experimentPrefix: JEV_EXPERIMENT_PREFIX,
       maxConcurrency: 2,
       metadata: {

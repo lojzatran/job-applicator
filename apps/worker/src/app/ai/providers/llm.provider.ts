@@ -6,7 +6,9 @@ import {
   CV_PARSER_LLM,
 } from '../ai.constants';
 import { env } from '../../../utils/env';
-import { ChatOpenAI } from '@langchain/openai';
+import { ChatOpenAI, type ChatOpenAIFields } from '@langchain/openai';
+
+type AIGatewayLlmOptions = Pick<ChatOpenAIFields, 'timeout' | 'maxRetries'>;
 
 function createOllamaLlm(model: string, temperature: number): ChatOpenAI {
   return new ChatOpenAI({
@@ -19,8 +21,9 @@ function createOllamaLlm(model: string, temperature: number): ChatOpenAI {
   });
 }
 
-function createAIGatewayLlm(model: string) {
+function createAIGatewayLlm(model: string, options?: AIGatewayLlmOptions) {
   return new ChatOpenAI({
+    ...options,
     apiKey: env.AI_GATEWAY_API_KEY,
     modelName: model,
     configuration: {
@@ -46,12 +49,13 @@ function createJobEvaluatorLlm() {
     env.AI_GATEWAY_API_KEY &&
     env.AI_GATEWAY_JOB_EVALUATOR_MODEL
   ) {
-    return createAIGatewayLlm(env.AI_GATEWAY_JOB_EVALUATOR_MODEL);
+    return createAIGatewayLlm(env.AI_GATEWAY_JOB_EVALUATOR_MODEL, {
+      timeout: env.AI_GATEWAY_JOB_EVALUATOR_TIMEOUT_MS,
+      maxRetries: env.AI_GATEWAY_JOB_EVALUATOR_MAX_ATTEMPTS - 1,
+    });
   }
 
-  throw new Error(
-    'Missing LLM job evaluator configuration. Check JOB_EVALUATOR_PROVIDER and its model and credentials.',
-  );
+  return null;
 }
 
 function createCoverLetterGeneratorLlm() {
@@ -132,8 +136,7 @@ function createCvParserLlm() {
 
 export const jobEvaluatorLlmProvider = {
   provide: JOB_EVALUATOR_LLM,
-  useFactory: () =>
-    env.JOB_EVALUATOR_METHOD === 'llm' ? createJobEvaluatorLlm() : null,
+  useFactory: createJobEvaluatorLlm,
 };
 
 export const coverLetterGeneratorLlmProvider = {
