@@ -50,8 +50,8 @@ function createJobEvaluatorLlm() {
     env.AI_GATEWAY_JOB_EVALUATOR_MODEL
   ) {
     return createAIGatewayLlm(env.AI_GATEWAY_JOB_EVALUATOR_MODEL, {
-      timeout: 5_000,
-      maxRetries: 6,
+      timeout: env.AI_GATEWAY_JOB_EVALUATOR_TIMEOUT_MS,
+      maxRetries: env.AI_GATEWAY_JOB_EVALUATOR_MAX_ATTEMPTS - 1,
     });
   }
 

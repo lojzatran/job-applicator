@@ -25,6 +25,16 @@ const appEnvSchema = z.object({
   EMBEDDING_PROVIDER: z.enum(['ollama', 'ai_gateway']).optional(),
   AI_GATEWAY_API_KEY: z.string().optional(),
   AI_GATEWAY_JOB_EVALUATOR_MODEL: z.string().optional(),
+  AI_GATEWAY_JOB_EVALUATOR_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(5000),
+  AI_GATEWAY_JOB_EVALUATOR_MAX_ATTEMPTS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(7),
   AI_GATEWAY_COVER_LETTER_GENERATOR_MODEL: z.string().optional(),
   AI_GATEWAY_CRITIQUE_MODEL: z.string().optional(),
   AI_GATEWAY_CV_PARSER_MODEL: z.string().optional(),
